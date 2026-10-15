@@ -1,0 +1,1099 @@
+{
+ "frames": {
+  "crate": {
+   "frame": {
+    "x": 151,
+    "y": 2,
+    "w": 12,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 12
+   },
+   "duration": 100
+  },
+  "barrel": {
+   "frame": {
+    "x": 165,
+    "y": 2,
+    "w": 10,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 10,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 10,
+    "h": 12
+   },
+   "duration": 100
+  },
+  "plank": {
+   "frame": {
+    "x": 153,
+    "y": 64,
+    "w": 20,
+    "h": 3
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 20,
+    "h": 3
+   },
+   "sourceSize": {
+    "w": 20,
+    "h": 3
+   },
+   "duration": 100
+  },
+  "lantern": {
+   "frame": {
+    "x": 177,
+    "y": 2,
+    "w": 7,
+    "h": 10
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 10
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 10
+   },
+   "duration": 100
+  },
+  "lantern_flame": {
+   "frame": {
+    "x": 2,
+    "y": 64,
+    "w": 7,
+    "h": 10
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 10
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 10
+   },
+   "duration": 100
+  },
+  "wheel": {
+   "frame": {
+    "x": 66,
+    "y": 2,
+    "w": 15,
+    "h": 15
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 15,
+    "h": 15
+   },
+   "sourceSize": {
+    "w": 15,
+    "h": 15
+   },
+   "duration": 100
+  },
+  "helm": {
+   "frame": {
+    "x": 126,
+    "y": 2,
+    "w": 6,
+    "h": 13
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 6,
+    "h": 13
+   },
+   "sourceSize": {
+    "w": 6,
+    "h": 13
+   },
+   "duration": 100
+  },
+  "pump": {
+   "frame": {
+    "x": 42,
+    "y": 2,
+    "w": 12,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 16
+   },
+   "duration": 100
+  },
+  "pump_handle": {
+   "frame": {
+    "x": 2,
+    "y": 76,
+    "w": 16,
+    "h": 3
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 16,
+    "h": 3
+   },
+   "sourceSize": {
+    "w": 16,
+    "h": 3
+   },
+   "duration": 100
+  },
+  "searchlight_base": {
+   "frame": {
+    "x": 11,
+    "y": 64,
+    "w": 10,
+    "h": 8
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 10,
+    "h": 8
+   },
+   "sourceSize": {
+    "w": 10,
+    "h": 8
+   },
+   "duration": 100
+  },
+  "searchlight_head": {
+   "frame": {
+    "x": 23,
+    "y": 64,
+    "w": 12,
+    "h": 8
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 8
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 8
+   },
+   "duration": 100
+  },
+  "searchlight_glow": {
+   "frame": {
+    "x": 37,
+    "y": 64,
+    "w": 12,
+    "h": 8
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 8
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 8
+   },
+   "duration": 100
+  },
+  "cannon": {
+   "frame": {
+    "x": 97,
+    "y": 64,
+    "w": 18,
+    "h": 7
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 18,
+    "h": 7
+   },
+   "sourceSize": {
+    "w": 18,
+    "h": 7
+   },
+   "duration": 100
+  },
+  "cannon_carriage": {
+   "frame": {
+    "x": 51,
+    "y": 64,
+    "w": 14,
+    "h": 8
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 8
+   },
+   "sourceSize": {
+    "w": 14,
+    "h": 8
+   },
+   "duration": 100
+  },
+  "workbench": {
+   "frame": {
+    "x": 100,
+    "y": 2,
+    "w": 24,
+    "h": 14
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 14
+   },
+   "sourceSize": {
+    "w": 24,
+    "h": 14
+   },
+   "duration": 100
+  },
+  "hatch_closed": {
+   "frame": {
+    "x": 67,
+    "y": 64,
+    "w": 8,
+    "h": 8
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 8,
+    "h": 8
+   },
+   "sourceSize": {
+    "w": 8,
+    "h": 8
+   },
+   "duration": 100
+  },
+  "hatch_open": {
+   "frame": {
+    "x": 56,
+    "y": 2,
+    "w": 8,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 8,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 8,
+    "h": 16
+   },
+   "duration": 100
+  },
+  "leak": {
+   "frame": {
+    "x": 77,
+    "y": 64,
+    "w": 8,
+    "h": 8
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 8,
+    "h": 8
+   },
+   "sourceSize": {
+    "w": 8,
+    "h": 8
+   },
+   "duration": 100
+  },
+  "patch": {
+   "frame": {
+    "x": 87,
+    "y": 64,
+    "w": 8,
+    "h": 8
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 8,
+    "h": 8
+   },
+   "sourceSize": {
+    "w": 8,
+    "h": 8
+   },
+   "duration": 100
+  },
+  "bubble": {
+   "frame": {
+    "x": 134,
+    "y": 2,
+    "w": 15,
+    "h": 13
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 15,
+    "h": 13
+   },
+   "sourceSize": {
+    "w": 15,
+    "h": 13
+   },
+   "duration": 100
+  },
+  "icon_leak": {
+   "frame": {
+    "x": 117,
+    "y": 64,
+    "w": 7,
+    "h": 7
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 7
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 7
+   },
+   "duration": 100
+  },
+  "icon_plank": {
+   "frame": {
+    "x": 126,
+    "y": 64,
+    "w": 7,
+    "h": 7
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 7
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 7
+   },
+   "duration": 100
+  },
+  "icon_help": {
+   "frame": {
+    "x": 135,
+    "y": 64,
+    "w": 7,
+    "h": 7
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 7
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 7
+   },
+   "duration": 100
+  },
+  "icon_water": {
+   "frame": {
+    "x": 144,
+    "y": 64,
+    "w": 7,
+    "h": 7
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 7
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 7
+   },
+   "duration": 100
+  },
+  "lighthouse": {
+   "frame": {
+    "x": 2,
+    "y": 2,
+    "w": 18,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 18,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 18,
+    "h": 60
+   },
+   "duration": 100
+  },
+  "lighthouse_glow": {
+   "frame": {
+    "x": 22,
+    "y": 2,
+    "w": 18,
+    "h": 60
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 18,
+    "h": 60
+   },
+   "sourceSize": {
+    "w": 18,
+    "h": 60
+   },
+   "duration": 100
+  },
+  "moon": {
+   "frame": {
+    "x": 83,
+    "y": 2,
+    "w": 15,
+    "h": 15
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 15,
+    "h": 15
+   },
+   "sourceSize": {
+    "w": 15,
+    "h": 15
+   },
+   "duration": 100
+  }
+ },
+ "meta": {
+  "app": "leuchtturmwaerter/scripts/generate-assets.ts (Aseprite-compatible)",
+  "version": "1.0",
+  "image": "props.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 192,
+   "h": 81
+  },
+  "scale": "1",
+  "frameTags": [],
+  "layers": [],
+  "slices": [
+   {
+    "name": "crate",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 12,
+       "h": 12
+      },
+      "pivot": {
+       "x": 6,
+       "y": 6
+      }
+     }
+    ]
+   },
+   {
+    "name": "barrel",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 10,
+       "h": 12
+      },
+      "pivot": {
+       "x": 5,
+       "y": 6
+      }
+     }
+    ]
+   },
+   {
+    "name": "plank",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 20,
+       "h": 3
+      },
+      "pivot": {
+       "x": 10,
+       "y": 1
+      }
+     }
+    ]
+   },
+   {
+    "name": "lantern",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 7,
+       "h": 10
+      },
+      "pivot": {
+       "x": 3,
+       "y": 0
+      }
+     }
+    ]
+   },
+   {
+    "name": "lantern_flame",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 7,
+       "h": 10
+      },
+      "pivot": {
+       "x": 3,
+       "y": 0
+      }
+     }
+    ]
+   },
+   {
+    "name": "wheel",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 15,
+       "h": 15
+      },
+      "pivot": {
+       "x": 7,
+       "y": 7
+      }
+     }
+    ]
+   },
+   {
+    "name": "helm",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 6,
+       "h": 13
+      },
+      "pivot": {
+       "x": 3,
+       "y": 12
+      }
+     }
+    ]
+   },
+   {
+    "name": "pump",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 12,
+       "h": 16
+      },
+      "pivot": {
+       "x": 6,
+       "y": 15
+      }
+     }
+    ]
+   },
+   {
+    "name": "pump_handle",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 16,
+       "h": 3
+      },
+      "pivot": {
+       "x": 8,
+       "y": 1
+      }
+     }
+    ]
+   },
+   {
+    "name": "searchlight_base",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 10,
+       "h": 8
+      },
+      "pivot": {
+       "x": 5,
+       "y": 7
+      }
+     }
+    ]
+   },
+   {
+    "name": "searchlight_head",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 12,
+       "h": 8
+      },
+      "pivot": {
+       "x": 4,
+       "y": 4
+      }
+     }
+    ]
+   },
+   {
+    "name": "searchlight_glow",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 12,
+       "h": 8
+      },
+      "pivot": {
+       "x": 4,
+       "y": 4
+      }
+     }
+    ]
+   },
+   {
+    "name": "cannon",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 18,
+       "h": 7
+      },
+      "pivot": {
+       "x": 4,
+       "y": 3
+      }
+     }
+    ]
+   },
+   {
+    "name": "cannon_carriage",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 14,
+       "h": 8
+      },
+      "pivot": {
+       "x": 7,
+       "y": 7
+      }
+     }
+    ]
+   },
+   {
+    "name": "workbench",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 24,
+       "h": 14
+      },
+      "pivot": {
+       "x": 12,
+       "y": 13
+      }
+     }
+    ]
+   },
+   {
+    "name": "hatch_closed",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 8,
+       "h": 8
+      },
+      "pivot": {
+       "x": 0,
+       "y": 0
+      }
+     }
+    ]
+   },
+   {
+    "name": "hatch_open",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 8,
+       "h": 16
+      },
+      "pivot": {
+       "x": 0,
+       "y": 8
+      }
+     }
+    ]
+   },
+   {
+    "name": "leak",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 8,
+       "h": 8
+      },
+      "pivot": {
+       "x": 0,
+       "y": 0
+      }
+     }
+    ]
+   },
+   {
+    "name": "patch",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 8,
+       "h": 8
+      },
+      "pivot": {
+       "x": 0,
+       "y": 0
+      }
+     }
+    ]
+   },
+   {
+    "name": "bubble",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 15,
+       "h": 13
+      },
+      "pivot": {
+       "x": 2,
+       "y": 12
+      }
+     }
+    ]
+   },
+   {
+    "name": "icon_leak",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 7,
+       "h": 7
+      },
+      "pivot": {
+       "x": 3,
+       "y": 3
+      }
+     }
+    ]
+   },
+   {
+    "name": "icon_plank",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 7,
+       "h": 7
+      },
+      "pivot": {
+       "x": 3,
+       "y": 3
+      }
+     }
+    ]
+   },
+   {
+    "name": "icon_help",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 7,
+       "h": 7
+      },
+      "pivot": {
+       "x": 3,
+       "y": 3
+      }
+     }
+    ]
+   },
+   {
+    "name": "icon_water",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 7,
+       "h": 7
+      },
+      "pivot": {
+       "x": 3,
+       "y": 3
+      }
+     }
+    ]
+   },
+   {
+    "name": "lighthouse",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 18,
+       "h": 60
+      },
+      "pivot": {
+       "x": 9,
+       "y": 59
+      }
+     }
+    ]
+   },
+   {
+    "name": "lighthouse_glow",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 18,
+       "h": 60
+      },
+      "pivot": {
+       "x": 9,
+       "y": 59
+      }
+     }
+    ]
+   },
+   {
+    "name": "moon",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 15,
+       "h": 15
+      },
+      "pivot": {
+       "x": 7,
+       "y": 7
+      }
+     }
+    ]
+   }
+  ]
+ }
+}

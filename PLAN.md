@@ -33,8 +33,8 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Tests: Wasserfluss, Pumpe, Leck-Reparatur
 
 ## Schritt 5 – Assets (Platzhalter-Pixel-Art)
-- [ ] Generator-Skript: eigener PNG-Encoder, Normal Maps (`_n.png`), Aseprite-kompatibles Spritesheet-JSON
-- [ ] Rumpf (3 Decks), Rückwand, Spielerfigur (Lauf-Animation + Mantel-Layer zum Einfärben), Kiste, Fass, Planke, Laterne, Steuerrad, Pumpe, Scheinwerfer, Kanone, Werkbank, Pixel-Font
+- [x] Generator-Skript: eigener PNG-Encoder, Normal Maps (`_n.png`), Aseprite-kompatibles Spritesheet-JSON
+- [x] Rumpf (3 Decks), Rückwand, Spielerfigur (Lauf-Animation + Mantel-Layer zum Einfärben), Kiste, Fass, Planke, Laterne, Steuerrad, Pumpe, Scheinwerfer, Kanone, Werkbank, Pixel-Font
 
 ## Schritt 6 – Client Phase 1 (spielbar)
 - [ ] PixiJS v8 (WebGL), Low-Res-RenderTexture, ganzzahliges Nearest-Upscaling
