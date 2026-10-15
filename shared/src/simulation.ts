@@ -104,6 +104,10 @@ export type HintIcon = 'wheel' | 'pump' | 'searchlight' | 'cannon' | 'workshop' 
 export const ROCK_LOOKAHEAD = 160;
 /** World x offset of the bow tip from the ship pivot (m). */
 export const BOW_OFFSET = 15.6;
+/** Seconds the ship needs to stop after arriving. */
+const ARRIVE_STOP_TIME = 4;
+/** The lighthouse island stands this far past the end of the voyage (m, world x). */
+export const LIGHTHOUSE_ISLAND = 26;
 /** Where the kraken grabs the bow (m ahead of the pivot). */
 export const MONSTER_ATTACK_OFFSET = 19;
 /** Ship-local position of the searchlight lens pivot and the cannon barrel pivot relative to their station (m). */
@@ -443,7 +447,10 @@ export class Simulation {
       volume += c.volume;
       moment += c.volume * c.centroidX;
     }
-    updateShip(s.ship, s.time, dt, { volume, moment }, this.tuning.ship, this.tuning.gameplay.gravity);
+    // arrived: the ship slows down and stops in front of the lighthouse island
+    const G = this.tuning.gameplay;
+    const throttle = s.status === 'arrived' ? clamp((s.statusTimer - (G.arrivedResetTime - ARRIVE_STOP_TIME)) / ARRIVE_STOP_TIME, 0, 1) : 1;
+    updateShip(s.ship, s.time, dt, { volume, moment }, this.tuning.ship, G.gravity, throttle);
     if (s.forcedRoll !== null) {
       s.ship.roll = s.forcedRoll;
       s.ship.rollVel = 0;
@@ -1160,10 +1167,16 @@ export class Simulation {
     const v = s.voyage;
     const G = this.tuning.gameplay;
     const ship = s.ship;
+    // after a jump (debug, reconnect) never spawn a pile of rocks behind the bow
+    if (v.nextRockX < ship.x + 60) v.nextRockX = ship.x + 60;
     // new rocks appear far ahead, denser the closer the lighthouse
     while (v.nextRockX - ship.x < ROCK_LOOKAHEAD && v.nextRockX < v.length - 40) {
+      // around where the ship will be when it gets there on its current heading:
+      // drifting off course does not dodge rocks, only steering does
+      const eta = (v.nextRockX - ship.x) / Math.max(0.5, ship.speed);
+      const predicted = ship.lateral + this.tuning.ship.speed * Math.sin(ship.heading) * eta;
       const inLane = nextRandom(s) < 0.45;
-      const lateral = ship.lateral + (inLane ? this.rand(-1.5, 1.5) : this.rand(-8, 8));
+      const lateral = predicted + (inLane ? this.rand(-1.5, 1.5) : this.rand(-8, 8));
       s.rocks.push({ id: this.nextId(), x: v.nextRockX, lateral, radius: this.rand(1.6, 3.4), spotted: false, hit: false });
       v.nextRockX += this.rand(G.rockSpacingMin, G.rockSpacingMax) * (1 - 0.35 * progress);
     }
@@ -1208,8 +1221,8 @@ export class Simulation {
     if (r.radius > 2.8) this.leakAt('bottom');
   }
 
-  /** Opens a new leak in a part of the hull (bow / bottom), if one is still intact there. */
-  private leakAt(where: 'bow' | 'bottom' | 'any'): void {
+  /** Opens a new leak in a part of the hull (bow / bottom), if one is still intact there. Returns false if none is left. */
+  private leakAt(where: 'bow' | 'bottom' | 'any'): boolean {
     const L = this.layout;
     const midX = L.width / 2;
     const candidates = L.leakPoints.filter((lp) => {
@@ -1218,9 +1231,10 @@ export class Simulation {
       if (where === 'bottom') return lp.inward.y !== 0 || lp.tx > midX + 8;
       return true;
     });
-    if (candidates.length === 0) return;
+    if (candidates.length === 0) return false;
     const pick = candidates[Math.floor(nextRandom(this.state) * candidates.length) % candidates.length]!;
     this.createLeak(pick.id);
+    return true;
   }
 
   /** World-space ray of the searchlight (origin, angle), or null. */
@@ -1278,7 +1292,15 @@ export class Simulation {
           m.attackIn = G.monsterAttackInterval;
           s.ship.rollVel += 0.25;
           this.emit({ type: 'monsterAttack' });
-          this.leakAt('bow');
+          if (!this.leakAt('bow')) {
+            // no planks left to break: it squeezes the hull and water pours in
+            const lower = s.compartments[s.compartments.length - 1];
+            const geom = this.waterGeometry[s.compartments.length - 1];
+            if (lower && geom) {
+              lower.volume = Math.min(geom.capacity, lower.volume + 0.8);
+              refreshSurface(geom, lower);
+            }
+          }
         }
         break;
       case 'flee':

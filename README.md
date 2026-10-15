@@ -4,8 +4,9 @@ Koop-Browserspiel für 2–4 Spieler: Die Crew steuert ein Schiff durch einen ne
 Das Schiff ist ein Querschnitt mit drei Decks; man läuft zu Stationen (Steuerrad, Scheinwerfer, Pumpe,
 Werkstatt, Kanone) und hält das Schiff zusammen weiter.
 
-**Stand: Phase 1 (spielbares Schiff), Phase 2 (Look) und Phase 3 (Online-Multiplayer) sind umgesetzt.**
-2–4 Geräte spielen über einen Raumcode zusammen auf einem Schiff; allein üben geht weiterhin ohne Server.
+**Stand: Phase 1–4 sind umgesetzt** – spielbares Schiff, Look, Online-Multiplayer und Spielinhalt: Die Crew muss das
+Schiff durch Sturm, Felsen im Nebel und Kraken-Angriffe bis zum Leuchtturm bringen. 2–4 Geräte spielen über einen
+Raumcode zusammen; allein üben geht ohne Server. Mit Platzhalter-Sounds.
 
 ![Scheinwerfer im Nebel](screenshots/chromium-07-scheinwerfer-nebel.png)
 
@@ -16,8 +17,10 @@ Werkstatt, Kanone) und hält das Schiff zusammen weiter.
 | ![](screenshots/chromium-03-debug-overlay.png) | ![](screenshots/chromium-05-normal-buffer.png) | ![](screenshots/chromium-08-touch-ipad.png) |
 | **Steuerrad zum Drehen** | **Einstellungen (F9)** | **Lobby** |
 | ![](screenshots/chromium-09-steuerrad-widget.png) | ![](screenshots/chromium-10-einstellungen.png) | ![](screenshots/chromium-11-lobby.png) |
-| **Online: zweiter Browser sieht „ANNA“** | | |
-| ![](screenshots/chromium-12-mehrspieler.png) | | |
+| **Online: zweiter Browser sieht „ANNA“** | **Scheinwerfer entdeckt Felsen (Seekarte links)** | **Krake am Bug, Kanone** |
+| ![](screenshots/chromium-12-mehrspieler.png) | ![](screenshots/chromium-13-felsen-scheinwerfer.png) | ![](screenshots/chromium-14-krake-kanone.png) |
+| **Leuchtturm erreicht** | | |
+| ![](screenshots/chromium-15-ankunft.png) | | |
 
 ---
 
@@ -78,7 +81,9 @@ Weitere Befehle:
 | Leiter rauf/runter | W / S | ↑ / ↓ | Stick hoch/runter |
 | Springen | Leertaste | Shift rechts / Num 0 | Button ⤒ |
 | Station betreten/verlassen, Luke öffnen/schließen, Leck reparieren, Planke holen | E | Enter / Num 1 | Button E |
-| Objekt aufheben/ablegen, Planke an der Werkbank nehmen | F | Strg rechts / Num 2 / . | Button F |
+| Objekt aufheben/ablegen, Planke an der Werkbank nehmen, **Kanone abfeuern** | F | Strg rechts / Num 2 / . | Button F |
+| **Ping** (Stelle für alle markieren) | Rechtsklick / Mittelklick / Q (an der Maus) | – | Button ❗, dann auf die Stelle tippen (2× tippen = „hier bei mir“) |
+| Menü / Ton aus | Esc / M | – | ☰ oben rechts |
 
 Allein spielend steuern auch die Pfeiltasten Spieler 1.
 
@@ -89,7 +94,8 @@ Allein spielend steuern auch die Pfeiltasten Spieler 1.
 - **Pumpe:** den Hebel rauf und runter ziehen (oder A und D **im Wechsel**). Jeder volle Hub pumpt Wasser ab.
 - **Scheinwerfer:** auf der Kompass-Scheibe in die Richtung zeigen, in die der Kegel leuchten soll. Das Rollen des Schiffs
   wird ausgeglichen, solange man festhält.
-- **Kanone:** zielen wie beim Scheinwerfer (Feuern kommt später).
+- **Kanone:** zielen wie beim Scheinwerfer, **F feuert** (dann 2 s Nachladen, Balken unter der Scheibe).
+- Neben dem Steuerrad erscheint groß die **Seekarte** (siehe unten).
 
 E oder Leertaste verlässt die Station. Auf Touch-Geräten zeigen die Buttons E und F als Icon, was sie gerade tun würden
 (Steuerrad, Pumpe, Luke, Hammer, Planke, Aufheben …). Ist ein Button grau, gibt es dort gerade nichts zu tun.
@@ -106,11 +112,37 @@ E oder Leertaste verlässt die Station. Auf Touch-Geräten zeigen die Buttons E 
 | F6 | Nebel an/aus |
 | F2 | zweiten lokalen Spieler hinzufügen/entfernen |
 | F8 | Neustart |
+| K / J / P | Krake sofort / Felsen direkt voraus / 200 m vorspulen |
 | F9 | Einstellungen (auch über ⚙ oben rechts im Dev-Server) |
 | Esc | Menü (Lobby / im Spiel: Raumcode, Einladungslink, Schiff verlassen) – auf Touch-Geräten ☰ oben rechts |
 
 Online dürfen nur die Person, die das Schiff geöffnet hat (Host), Debug-Tasten und das Einstellungs-Panel benutzen; die
 Werte gelten dann für alle an Bord. F2 (zweiter lokaler Spieler) gibt es online nicht – da hat jeder sein Gerät.
+
+## So läuft eine Fahrt (Phase 4)
+
+Ziel: das Schiff **1500 m bis zum Leuchtturm** bringen (Anzeige „820 M“ + Balken unter der Seekarte). Je näher man kommt,
+desto stärker der **Sturm**: höhere Wellen, dichterer Nebel, Regen, Blitze. Ohne Crew sinkt das Schiff nach 3–5 Minuten.
+
+- **Felsen im Nebel:** tauchen weit voraus auf. Wer am **Scheinwerfer** (Mastkorb) den Kegel knapp über den Horizont
+  schwenkt, entdeckt sie und ruft „Felsen!“. Entdeckte Felsen erscheinen auf der **Seekarte** (HUD links oben und groß
+  neben dem Steuerrad): unten das eigene Schiff, nach oben die Fahrtrichtung, **rot blinkend = liegt im Weg**. Am
+  **Steuerrad** daran vorbeisteuern – oder mit der **Kanone** zerschießen (nur Felsen im Weg). Ein Treffer am Bug reißt
+  Lecks und wirft alle durcheinander. Wer nicht steuert, treibt ab – und das Schiff fährt langsamer.
+- **Der Krake** taucht bei 30 % der Strecke auf (danach alle 450 m), nähert sich, packt den Bug und schlägt alle 7 s ein
+  neues Leck. **Drei Kanonentreffer** verjagen ihn. Mit dem Scheinwerfer sieht man ihn früher, seine Augen leuchten.
+- **Lecks:** Planke an der Werkbank holen (F), am Leck E (Hammer). Bis dahin pumpen. Ist das Unterdeck fast voll, sinkt
+  das Schiff (Neustart nach 5 s).
+- **Ohne Sprache:** Automatische Zurufe (Sprechblasen) – „Ruder!“ wenn der Kurs abdriftet und keiner steuert, „Wasser!“,
+  „Felsen!“, „Krake!“, „Land in Sicht!“. Dazu **Pings**: Der Ping bekommt seine Bedeutung von der Stelle (auf ein Leck =
+  Leck-Symbol, auf eine Station = „hier wird jemand gebraucht“, aufs Meer = Gefahr, sonst Pfeil „hierher“). Pings außerhalb
+  des Bildschirms kleben mit Pfeil am Rand.
+- **Ankunft:** Feuerwerk, Nebelhorn, das Schiff stoppt vor der Leuchtturm-Insel, Bilanz (Felsen umschifft / zerschossen /
+  gerammt, Krake verjagt, Lecks geflickt), nach 15 s geht es von vorn los.
+
+Gute Rollenverteilung zu viert: Steuerrad, Scheinwerfer, Kanone, „Zimmermann“ (Lecks + Pumpe).
+
+Alle Werte (Strecke, Felsen-Abstand, Krake, Kanone, Sturm …) stehen im Einstellungs-Panel unter „Fahrt & Gefahren“.
 
 ### Einmal durchspielen (Testablauf)
 1. **L** drücken → „LECK!“, die nächste Figur ruft per Sprechblase, im Unterdeck spritzt Wasser herein.
@@ -118,7 +150,7 @@ Werte gelten dann für alle an Bord. F2 (zweiter lokaler Spieler) gibt es online
 3. Leiter runter zur **Pumpe** (Unterdeck, Heck), E, dann A/D im Wechsel → Wasserstand sinkt.
 4. Zur **Werkbank** (Mitteldeck), F → Planke in den Händen (man wird langsamer).
 5. Zum Leck, E → Reparatur-Balken; danach ist das Loch geflickt und es läuft kein Wasser mehr nach.
-6. Läuft der Rumpf zu 80 % voll, sinkt das Schiff und das Spiel startet nach 5 s neu.
+6. Läuft das Unterdeck voll (42 % des ganzen Rumpfs), sinkt das Schiff und das Spiel startet nach 5 s neu.
 
 ---
 
@@ -270,11 +302,22 @@ Begründung stehen in [`DECISIONS.md`](DECISIONS.md), der Arbeitsplan in [`PLAN.
 - Namensschilder, Raumcode + Besatzung im HUD, Verbindungsstatus, Netzwerk-Werte im Debug-Overlay (F3)
 - Deploy-Dateien für Fly.io (Docker), Tests mit echten Verbindungen
 
+**Phase 4 – Spielinhalt, Kommunikation, Sound**
+- Fahrt zum Leuchtturm mit wachsendem Sturm (Wellen, Nebel, Regen, Blitze), Leuchtturm wird größer, Ankunft mit Bilanz
+- Felsen im Nebel mit seitlicher Position, Scheinwerfer entdeckt sie, Seekarte, Ausweichen per Steuerrad, Rammen = Lecks
+- Kanone mit Kugeln (ballistisch), zerschießt Felsen im Weg und verjagt den Kraken (3 Treffer)
+- Krake: taucht auf, nähert sich, packt den Bug, schlägt Lecks
+- Pings mit Bedeutung aus dem Ort, für alle sichtbar (auch online, Ratenlimit auf dem Server)
+- Automatische Zurufe: Ruder, Wasser, Felsen, Krake, Land in Sicht
+- 3 zusätzliche Leckstellen (Bug, Boden, Mitteldeck)
+- Platzhalter-Sounds (41 synthetisierte WAVs, austauschbar) mit Web-Audio-Engine: Entfernung/Stereo, gedämpft unter
+  Deck, Loops für Meer/Wind/Regen/Leck, Lautstärke im Menü
+- Snapshots binär statt msgpack: ~0,8 KB statt ~3,5 KB (≈ 16 KB/s pro Gerät)
+
 ## Was (noch) nicht fertig ist
-- Pings (auf eine Stelle zeigen) und weitere automatische Sprechblasen – siehe Vorschlag Phase 4
-- Kanone feuern, Seemonster, Gefahren im Nebel, Ziel/Fortschritt (Leuchtturm erreichen), Sturm/Blitze
-- Sound/Musik
-- Echte Grafiken (alles Platzhalter, aber austauschbar – siehe `client/public/assets/README.md`)
+- Musik (kommt von dir), echte Sounds (Platzhalter sind austauschbar – siehe `client/public/assets/README.md`)
+- Echte Grafiken (alles Platzhalter, aber austauschbar)
+- Weitere Gefahren / Abwechslung (siehe Vorschlag Phase 5), Schwierigkeitsstufen, Statistiken über Runden hinweg
 
 ## Bekannte Probleme
 - **Safari/WebKit nicht automatisch getestet:** In der Build-Umgebung konnte WebKit nicht installiert werden. Das
@@ -292,8 +335,11 @@ Begründung stehen in [`DECISIONS.md`](DECISIONS.md), der Arbeitsplan in [`PLAN.
 - Sehr selten können an exakten Tile-Ecken einzelne Lichtpixel durch Wände „durchblitzen“.
 - **Online: andere Spieler werden vorausberechnet** (sie „machen weiter, was sie zuletzt taten“). Ändern sie plötzlich die
   Richtung, gleitet ihre Figur bei hoher Verzögerung kurz zurück. Im WLAN (< 50 ms) kaum sichtbar.
-- Online kostet ein Snapshot ca. 3 KB (20/s → ~60 KB/s pro Gerät). Für WLAN kein Problem; bei Bedarf lässt sich das später
-  stark komprimieren.
+- Online kostet ein Snapshot ca. 0,8 KB (20/s → ~16 KB/s pro Gerät).
+- **Sounds sind nicht probegehört:** Sie sind synthetisiert und nur technisch geprüft (Pegel, Loops nahtlos). Auf dem
+  iPad: Ist der Stumm-Schalter an, spielt Safari keinen Web-Audio-Ton.
+- Die Felsen-Lage hängt am Kurs: Die Seekarte zeigt Felsen relativ zur aktuellen Spur. Wer stark vom Kurs abkommt, hat
+  andere Felsen im Weg, als vorher rot waren – das ist Absicht (man muss steuern), kann aber anfangs verwirren.
 - Server-Neustart (z. B. neues Deploy) beendet alle laufenden Schiffe.
 
 ---
@@ -311,7 +357,7 @@ SwiftShader, also komplett auf 4 CPU-Kernen. Diese Zahlen sind eine Untergrenze 
 | Spiel, Qualität **low** (CSS-Upscaling + halber Light-Buffer) | 25,6 |
 | Spiel bei 480×270 ×1 (ohne Upscaling) | ~37 |
 
-CPU-Anteil (JavaScript) im selben Browser: **2,6 ms pro Frame** inkl. Simulation, davon ein 60-Hz-Physik-Step **0,13 ms**;
+CPU-Anteil (JavaScript) im selben Browser: **2,6 ms pro Frame** inkl. Simulation (mit Phase 4: 2,8 ms Median), davon ein 60-Hz-Physik-Step **0,13 ms**;
 ein kompletter Neuaufbau aller 6 Licht-Polygone **0,84 ms** (wird gecacht, solange Lichter stillstehen). Der Rest ist
 Software-Rasterisierung von 5 Low-Res-Pässen à 130 000 Pixel plus Upscaling – genau das, was eine echte GPU (auch die eines
 alten iPads) nebenbei erledigt.
@@ -342,17 +388,19 @@ Debug-Overlay (F3 bzw. `?debug`).
       Seite neu laden → wieder auf demselben Platz.
 - [ ] **Einladungslink** über das Teilen-Menü (AirDrop/Nachrichten) öffnen → Lobby mit eingetragenem Code.
 - [ ] **Nach dem Hosten:** Vercel-Seite (HTTPS) mit Fly-Server, 4 Geräte gleichzeitig, auch im Schul-WLAN.
+- [ ] **Eine ganze Fahrt zu zweit/viert:** Ist es schaffbar? Zu leicht/zu schwer? (Felsen-Abstand, Krake, Leck-Einstrom
+      im Panel unter „Fahrt & Gefahren“ / „Spielregeln“ justieren.) Mit P lässt sich vorspulen, K holt den Kraken.
+- [ ] **Seekarte:** Versteht man ohne Erklärung, was rot bedeutet und wohin man steuern muss?
+- [ ] **Pings:** Rechtsklick am Mac, Ping-Button auf dem iPad (antippen, dann Stelle antippen). Sieht man sie gut?
+- [ ] **Sounds anhören** (Ton an, Stumm-Schalter am iPad aus): Was bleibt, was ersetzt du? Lautstärke im Menü (Esc / ☰).
 
 ---
 
-## Vorschlag für Phase 4 (Spielinhalt + Kommunikation)
+## Vorschlag für Phase 5
 
-1. **Pings:** lange auf eine Stelle tippen / mittlere Maustaste → Marker mit Icon für alle (Leck, Hilfe, hierher, Planke).
-   Nachrichten laufen schon als Befehle über den Server; ein Ping ist nur ein weiterer Typ.
-2. **Mehr automatische Sprechblasen:** „Ruder unbesetzt!“, „Wasser steigt!“, „Luke zu!“ – ausgelöst von der Simulation,
-   damit sie auf allen Geräten gleich erscheinen.
-3. **Gefahren im Nebel:** Felsen und Riffe tauchen auf, die man nur mit dem Scheinwerfer rechtzeitig sieht; Kollision =
-   Leck an der getroffenen Seite. Damit bekommen Steuerrad und Scheinwerfer zusammen eine Aufgabe.
-4. **Ziel:** Strecke bis zum Leuchtturm, Fortschrittsanzeige, Sturm wird stärker, je näher man kommt.
-5. **Kanone:** Kugeln aus der Werkstatt holen, laden, feuern – gegen etwas, das sich im Nebel nähert.
-6. **Sound:** Meeres-Ambience, Holzknarzen, Pumpe, Leck, Nebelhorn (Web Audio, Lautstärke an Schlagseite/Sturm gekoppelt).
+1. **Musik** von dir einbauen (ruhiger Loop, der mit dem Sturm intensiver wird – zwei Stems übereinander blenden).
+2. **Abwechslung:** Nebelbänke ohne Sicht, Treibgut (Planken auffischen), ein Sturmbrecher, der das Deck flutet, Blitz
+   schlägt in den Mast (Feuer löschen).
+3. **Schwierigkeitsstufen** für den Raum (Strecke, Felsen-Dichte, Krake) und eine kleine **Bestenliste** pro Raum.
+4. **Echte Grafiken** schrittweise (Spielerfigur, Krake, Stationen) – das Format bleibt gleich.
+5. **Leistung auf alten iPads** messen und, falls nötig, Partikel/Regen nach Qualitätsstufe reduzieren.

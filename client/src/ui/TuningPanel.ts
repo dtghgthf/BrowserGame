@@ -67,6 +67,22 @@ const SECTIONS: { title: string; items: Spec[] }[] = [
       { group: 'gameplay', key: 'sinkFraction', label: 'Sinkt ab Füllung', min: 0.2, max: 1, step: 0.01, unit: '×' },
     ],
   },
+  {
+    title: 'Fahrt & Gefahren',
+    items: [
+      { group: 'gameplay', key: 'voyageLength', label: 'Strecke (ab Neustart)', min: 200, max: 4000, step: 50, unit: 'm' },
+      { group: 'gameplay', key: 'stormGrowth', label: 'Sturm wächst um', min: 0, max: 1, step: 0.05 },
+      { group: 'gameplay', key: 'rockSpacingMin', label: 'Felsen-Abstand min', min: 15, max: 200, step: 5, unit: 'm' },
+      { group: 'gameplay', key: 'rockSpacingMax', label: 'Felsen-Abstand max', min: 20, max: 300, step: 5, unit: 'm' },
+      { group: 'gameplay', key: 'rockSpotRange', label: 'Scheinwerfer-Reichweite', min: 20, max: 160, step: 5, unit: 'm' },
+      { group: 'gameplay', key: 'shipBeam', label: 'Schiffsbreite (halb)', min: 1, max: 5, step: 0.1, unit: 'm' },
+      { group: 'gameplay', key: 'monsterEvery', label: 'Krake alle', min: 100, max: 2000, step: 25, unit: 'm' },
+      { group: 'gameplay', key: 'monsterHp', label: 'Krake: Treffer nötig', min: 1, max: 10, step: 1 },
+      { group: 'gameplay', key: 'monsterAttackInterval', label: 'Krake greift an alle', min: 2, max: 30, step: 0.5, unit: 's' },
+      { group: 'gameplay', key: 'cannonReload', label: 'Kanone lädt', min: 0.3, max: 8, step: 0.1, unit: 's' },
+      { group: 'gameplay', key: 'ballSpeed', label: 'Kugel-Tempo', min: 8, max: 50, step: 1, unit: 'm/s' },
+    ],
+  },
 ];
 
 const STORAGE_KEY = 'lw.tuning.v1';

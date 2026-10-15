@@ -129,3 +129,34 @@ Format: **Entscheidung** – Begründung.
 - **Lobby und Menü als DOM** (nicht im Pixel-HUD): Texteingabe und iPad-Tastatur funktionieren nur mit echten
   Eingabefeldern. Profil (Name, Farbe) in `localStorage`.
 - **Raumcode und Besatzung im HUD unter dem Kurs-Panel**, weil oben rechts die Menü-/Einstellungs-Knöpfe liegen.
+
+## Phase 4 – Spielinhalt, Kommunikation, Sound
+- **Binär-Snapshots mit Schema (`shared/src/net/codec.ts`):** Positionen als int16 in mm, Geschwindigkeiten /400, Winkel
+  /8000, Aufzählungen als Byte, alles andere float32. Das Schema ist aus den State-Interfaces getypt (fehlt ein Feld, kompiliert
+  es nicht), ein Rundreise-Test vergleicht jeden Wert. 3,5 KB → 0,8 KB pro Snapshot. Events bleiben msgpack (selten, vielgestaltig).
+  Delta-Kompression bewusst nicht: Ganz-Snapshots sind robust gegen Verbindungsabbrüche und einfach.
+- **Seitliche Position (`ship.lateral`) statt 2D-Seekarte in der Simulation:** Die Seitenansicht kann „neben dem Kurs“
+  nicht zeigen. Felsen haben deshalb eine Querposition, das Schiff driftet mit dem Kurswinkel quer – die Seekarte (Draufsicht)
+  macht das sichtbar. Felsen entstehen um die **vorausberechnete** Position bei Ankunft (aktueller Kurs), sonst wäre
+  Nichtstun (Abdriften) die sicherste Strategie.
+- **Entdecken durch den Scheinwerfer** (Strahl-Winkel gegen Richtung zum Felsen, Reichweite 95 m) statt automatisch: gibt
+  dem Scheinwerfer eine echte Aufgabe und erzwingt Absprache Scheinwerfer ↔ Steuerrad – ohne Sprache über Seekarte und Zurufe.
+- **Felsen in der Spur stehen auf dem nahen Meer, die anderen auf dem fernen Band** (kleiner, blasser): einfache Tiefe ohne
+  zweite Kamera.
+- **Kanone ballistisch mit eigener „Welt-Schwerkraft“ (12 m/s²)** statt der stilisierten Spieler-Schwerkraft (22): schöne
+  Flugbahnen, Reichweite ~45 m. Kugeln zerstören nur Felsen in der eigenen Spur.
+- **Krake als Zustandsautomat** (auftauchen → nähern → angreifen → fliehen) mit Lebenspunkten; hat er keine Planke mehr zum
+  Zerbrechen, drückt er Wasser direkt ins Unterdeck – sonst wäre er nach drei Lecks harmlos.
+- **Sinken ab 42 % des Rumpfvolumens** (vorher 80 %): Wasser kann nicht nach oben gedrückt werden, das Unterdeck allein ist
+  47 % – mit 80 % konnte das Schiff praktisch nie sinken. Simuliert: ohne Crew sinkt es nach 3–5 Minuten.
+- **Pings als `SimCommand` mit Bedeutung aus dem Ort** (Leck, Station, Luke, Meer = Gefahr, sonst „hierher“): ein Klick
+  genügt, kein Auswahlmenü – wichtig auf dem iPad. Online darf jeder pingen (max. 4/s), der Server setzt die Spieler-Id.
+- **Automatische Zurufe in der Simulation** (mit Abklingzeiten im State), damit sie auf allen Geräten gleich erscheinen.
+- **Ankunft:** Status `arrived`, das Schiff bremst in 4 s ab und steht vor der Insel (26 m hinter dem Ziel), Kamera schwenkt
+  hin, Bilanz im HUD, Neustart nach 15 s.
+- **Sounds synthetisiert im Asset-Generator** (eigener kleiner Synthesizer + WAV-Encoder, deterministisch) statt
+  Sound-Bibliothek oder Downloads: keine Lizenzfragen, austauschbar wie die Grafiken (Hash-Liste schützt ersetzte Dateien),
+  `index.json` listet die Dateien. 22 kHz mono hält es bei ~3 MB; die Sounds werden erst nach dem ersten Tippen geladen.
+- **Web Audio mit zwei Bussen** (Effekte, Ambience mit Tiefpass für „unter Deck“), Lautstärke/Pan nach Abstand zum eigenen
+  Spieler. Eigene Ereignisse kommen aus der Vorhersage (sofort), fremde aus den Server-Events – keine doppelten Sounds.
+- **Regen/Blitz rein im Client** (Math.random erlaubt, weil ohne Einfluss aufs Spiel); Blitz hellt über die Exposure auf.

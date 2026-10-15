@@ -203,6 +203,51 @@ async function runBrowser(name, launcher) {
   await shot('10-einstellungen');
   await key('F9');
 
+  // phase 4: a rock ahead, spotted by the searchlight, on the sea chart
+  await page.evaluate(() => {
+    const g = window.__game;
+    const s = g.sim.state;
+    s.voyage.nextRockX = 1e9;
+    s.voyage.nextMonsterX = 1e9;
+    s.rocks.length = 0;
+    s.rocks.push({ id: 9001, x: s.ship.x + 30, lateral: s.ship.lateral, radius: 3, spotted: false, hit: false });
+    s.stations.find((x) => x.kind === 'searchlight').value = 0.32;
+    g.sim.teleportPlayer('p1', 13, -0.7);
+  });
+  await sleep(2500);
+  result.rockSpotted = await page.evaluate(() => window.__game.sim.state.rocks.some((r) => r.spotted));
+  await shot('13-felsen-scheinwerfer');
+
+  // the kraken attacks the bow, the cannon fires at it
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.sim.state.rocks.length = 0;
+    g.sim.state.monster = { offset: 19, depth: 0, hp: 3, phase: 'attack', timer: 0, attackIn: 5, spotted: true, hurt: 0 };
+    const st = g.sim.state.stations.find((x) => x.kind === 'cannon');
+    g.sim.teleportPlayer('p1', st.x, st.y - 0.66);
+  });
+  await sleep(400);
+  await key('KeyE');
+  await sleep(300);
+  await key('KeyF');
+  await sleep(300);
+  result.cannonBalls = await page.evaluate(() => window.__game.sim.state.balls.length);
+  await shot('14-krake-kanone');
+  await key('KeyE');
+
+  // arrival at the lighthouse
+  await page.evaluate(() => {
+    const g = window.__game;
+    const s = g.sim.state;
+    s.monster = null;
+    s.ship.x = s.voyage.length - 2;
+    g.sim.teleportPlayer('p1', 4, -0.7);
+  });
+  await sleep(2500);
+  result.arrived = await page.evaluate(() => window.__game.sim.state.status);
+  await shot('15-ankunft');
+  await page.evaluate(() => window.__game.command({ type: 'reset' }));
+
   // 8) frame rate per quality level (top deck, 1920x1080)
   await placePlayer(page, 20, 12);
   result.fps = {};
@@ -239,6 +284,7 @@ async function runBrowser(name, launcher) {
   await sleep(2500);
   result.touch = await tp.evaluate(() => ({
     controlsVisible: getComputedStyle(document.querySelector('.touch')).display !== 'none',
+    pingButton: !!document.querySelector('.btn-ping'),
     layout: window.__game.r.layout,
   }));
   const tpath = join(outDir, `${name}-08-touch-ipad.png`);
@@ -285,6 +331,11 @@ async function playOnline(browser, name, result) {
   await sleep(500);
   await a.page.keyboard.up('KeyD');
   await sleep(1200);
+  // Ben pings a spot on deck (right click); Anna sees the marker
+  await b.page.mouse.click(700, 330, { button: 'right' });
+  await a.page.waitForFunction(() => window.__game.sim.state.pings.length > 0, null, { timeout: 5000 }).catch(() => {});
+  const pingSeen = await a.page.evaluate(() => window.__game.sim.state.pings.map((p) => p.kind));
+  await sleep(150);
   const shot = join(outDir, `${name}-12-mehrspieler.png`);
   await b.page.screenshot({ path: shot });
   result.screenshots.push(shot);
@@ -294,7 +345,7 @@ async function playOnline(browser, name, result) {
   });
   await a.ctx.close();
   await b.ctx.close();
-  return { code, ...seen };
+  return { code, pingSeen, ...seen };
 }
 
 const gameServer = startGameServer();

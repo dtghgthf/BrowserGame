@@ -80,12 +80,13 @@ export function updateShip(
   load: HullLoad,
   M: Readonly<ShipTuning> = DEFAULT_TUNING.ship,
   gravity = GRAVITY,
+  throttle = 1,
 ): void {
   // course
   ship.heading = clamp(ship.heading + (ship.rudder * M.turnRate + courseDrift(t)) * dt, -1.3, 1.3);
-  ship.speed = M.speed * (0.35 + 0.65 * Math.cos(ship.heading));
+  ship.speed = M.speed * (0.35 + 0.65 * Math.cos(ship.heading)) * throttle;
   ship.x += ship.speed * dt;
-  ship.lateral += M.speed * Math.sin(ship.heading) * dt;
+  ship.lateral += M.speed * Math.sin(ship.heading) * dt * throttle;
 
   // list from water distribution and rudder heel
   const maxList = M.maxListDeg * DEG;

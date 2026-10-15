@@ -144,7 +144,7 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     searchlightSpeed: 1.5,
     cannonSpeed: 1.0,
     workshopCooldown: 1.0,
-    sinkFraction: 0.8,
+    sinkFraction: 0.42,
     sunkResetTime: 5,
     overboardTime: 2.5,
     bubbleTime: 3,

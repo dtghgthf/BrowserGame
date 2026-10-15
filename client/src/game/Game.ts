@@ -2,6 +2,7 @@ import { Sprite } from 'pixi.js';
 import {
   BOW_OFFSET,
   DEFAULT_TUNING,
+  LIGHTHOUSE_ISLAND,
   PLAYER_HALF_HEIGHT,
   monsterHead,
   worldToShip,
@@ -579,6 +580,12 @@ export class Game {
       tx = (targets.reduce((a, p) => a + p.x, 0) / targets.length) * PPM;
       ty = (targets.reduce((a, p) => a + p.y, 0) / targets.length) * PPM + 18;
     }
+    // arrived: the camera turns towards the lighthouse island
+    if (s.status === 'arrived') {
+      const islandX = (s.voyage.length + LIGHTHOUSE_ISLAND) * PPM;
+      tx = tx + (Math.min(islandX, tx + 260) - tx) * 0.55;
+      ty -= 20;
+    }
     if (!this.camera) this.camera = { x: tx, y: ty };
     const k = 1 - Math.exp(-dt * 5);
     this.camera.x += (tx - this.camera.x) * k;
@@ -604,7 +611,7 @@ export class Game {
     let lx = left + width * 0.86;
     // the far sea band is drawn with a quarter of the wave height, 34 px up
     let ly = farSurfaceAt(lx) * 0.25 - 31;
-    const islandX = (s.voyage.length + 22) * PPM;
+    const islandX = (s.voyage.length + LIGHTHOUSE_ISLAND) * PPM;
     const near = islandX < lx;
     if (near) {
       lx = islandX;

@@ -86,3 +86,14 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Namensschilder, Raumcode im HUD, Verbindungsstatus, getrennte Spieler halb durchsichtig
 - [x] `npm run dev` startet Server + Client; Dockerfile + `fly.toml`; Verifikation mit 2 Browsern
 - [x] Hosting eingerichtet: Server auf Fly.io, Client auf Vercel mit `VITE_SERVER_URL`
+
+## Phase 4 – Spielinhalt, Kommunikation, Sound
+- [x] Snapshots binär (Schema-Codec, ~4× kleiner), Protokoll-Version 2
+- [x] Fahrt zum Leuchtturm, Sturm wächst, Ankunft mit Bilanz und Neustart
+- [x] Felsen mit Querposition, Entdecken per Scheinwerfer, Rammen = Lecks, Seekarte (HUD + am Steuerrad)
+- [x] Kanone feuert (ballistisch), zerschießt Felsen, verjagt den Kraken
+- [x] Krake: auftauchen, nähern, Bug packen, Lecks schlagen, fliehen
+- [x] Pings (Maus, Q, Touch-Button) mit Bedeutung aus dem Ort, Rand-Pfeile; automatische Zurufe
+- [x] Regen, Blitze, dichterer Nebel, Leuchtturm-Insel
+- [x] Platzhalter-Sounds (Generator) + Audio-Engine + Lautstärke im Menü
+- [x] Tests (Fahrt, Felsen, Scheinwerfer, Kanone, Krake, Pings, Zurufe, Codec), Browser-Verifikation, Balance-Simulation
