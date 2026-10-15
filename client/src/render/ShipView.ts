@@ -251,6 +251,11 @@ export class ShipView {
     return { parts, moving, glow };
   }
 
+  /** Speech bubbles (world space) are hidden while the 2.5D view is shown. */
+  setOverlaysVisible(v: boolean): void {
+    this.bubbleLayer.visible = v;
+  }
+
   /** Searchlight lens position (ship px) and beam angle. */
   searchlightPose(view: Snapshot): { x: number; y: number; angle: number } | null {
     const st = this.sim.state.stations.find((s) => s.kind === 'searchlight');

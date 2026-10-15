@@ -1,8 +1,10 @@
 [
   {
     "browser": "chromium",
-    "ok": true,
-    "errors": [],
+    "ok": false,
+    "errors": [
+      "pageerror: Cannot read properties of undefined (reading 'toFixed')"
+    ],
     "warnings": [],
     "screenshots": [
       "/home/user/BrowserGame/screenshots/chromium-01-oberdeck.png",
@@ -17,6 +19,12 @@
       "/home/user/BrowserGame/screenshots/chromium-13-felsen-scheinwerfer.png",
       "/home/user/BrowserGame/screenshots/chromium-14-krake-kanone.png",
       "/home/user/BrowserGame/screenshots/chromium-15-ankunft.png",
+      "/home/user/BrowserGame/screenshots/chromium-16-3d-steuerrad.png",
+      "/home/user/BrowserGame/screenshots/chromium-17-3d-pumpe.png",
+      "/home/user/BrowserGame/screenshots/chromium-18-3d-kanone.png",
+      "/home/user/BrowserGame/screenshots/chromium-19-3d-kiste.png",
+      "/home/user/BrowserGame/screenshots/chromium-20-hafen.png",
+      "/home/user/BrowserGame/screenshots/chromium-21-kartentisch.png",
       "/home/user/BrowserGame/screenshots/chromium-08-touch-ipad.png",
       "/home/user/BrowserGame/screenshots/chromium-11-lobby.png",
       "/home/user/BrowserGame/screenshots/chromium-12-mehrspieler.png"
@@ -24,18 +32,18 @@
     "fps": {
       "high": {
         "avg": 7.1,
-        "min": 5.6,
-        "samples": 12
+        "min": 6.5,
+        "samples": 5
       },
       "medium": {
-        "avg": 16.5,
-        "min": 7.3,
-        "samples": 15
+        "avg": 15.2,
+        "min": 7.7,
+        "samples": 7
       },
       "low": {
-        "avg": 19,
-        "min": 16.4,
-        "samples": 14
+        "avg": 19.3,
+        "min": 18.2,
+        "samples": 7
       }
     },
     "info": {
@@ -52,17 +60,22 @@
       "renderer": "WebKit WebGL"
     },
     "wheelRudder": 0.57,
-    "rockSpotted": true,
+    "rockSpotted": false,
     "cannonBalls": 1,
     "arrived": "arrived",
+    "crateOpened": 1,
+    "campaign": {
+      "status": "campaign",
+      "legs": 13
+    },
     "state": {
-      "tick": 1283,
+      "tick": 640,
       "water": [
         0,
         0
       ],
       "leaks": 0,
-      "roll": 3.9
+      "roll": 2.5
     },
     "touch": {
       "controlsVisible": true,
@@ -78,7 +91,7 @@
       }
     },
     "online": {
-      "code": "JPXT",
+      "code": "NVLR",
       "pingSeen": [
         "here"
       ],
@@ -90,8 +103,8 @@
       "stats": {
         "pending": 6,
         "replayed": 0,
-        "snapshots": 28,
-        "serverTick": 999
+        "snapshots": 27,
+        "serverTick": 972
       }
     }
   }

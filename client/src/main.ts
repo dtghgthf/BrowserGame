@@ -1,7 +1,7 @@
 import { DEFAULT_TUNING, Simulation, dailySeed, diffTuning, normalizeRoomCode, parseMode, type GameMode, type TuningPatch } from '@lw/shared';
 import { AudioEngine } from './audio/AudioEngine';
 import { GameAudio } from './audio/GameAudio';
-import { Game } from './game/Game';
+import { Game, saveStage3d } from './game/Game';
 import { resolveServerUrl } from './net/config';
 import { NetLink } from './net/NetLink';
 import { Keyboard } from './input/Keyboard';
@@ -50,6 +50,7 @@ async function boot(): Promise<void> {
     game.autoQuality = !forced;
     if (params.has('debug')) game.debug.toggle();
     if (params.has('p2')) game.addLocalPlayer('secondary');
+    if (params.get('stage3d') === '0') game.stage3d = false;
     game.tuningPanel = new TuningPanel(
       {
         tuning: sim.baseTuning,
@@ -116,6 +117,15 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
     },
     normalizeRoomCode(params.get('room') ?? '') || null,
     sound,
+    {
+      get stage3d() {
+        return game.stage3d;
+      },
+      setStage3d(on: boolean) {
+        game.stage3d = on;
+        saveStage3d(on);
+      },
+    },
   );
   game.onNetClosed = (reason) => {
     setRoomInUrl(null);

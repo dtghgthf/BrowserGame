@@ -14,7 +14,7 @@ interface Spec {
 }
 
 /** What the panel shows. Everything else stays editable in the JSON files. */
-const SECTIONS: { title: string; items: Spec[] }[] = [
+export const SECTIONS: { title: string; items: Spec[] }[] = [
   {
     title: 'Licht & Look',
     items: [
@@ -76,7 +76,7 @@ const SECTIONS: { title: string; items: Spec[] }[] = [
       { group: 'gameplay', key: 'rockSpacingMax', label: 'Felsen-Abstand max', min: 20, max: 300, step: 5, unit: 'm' },
       { group: 'gameplay', key: 'rockSpotRange', label: 'Scheinwerfer-Reichweite', min: 20, max: 160, step: 5, unit: 'm' },
       { group: 'gameplay', key: 'shipBeam', label: 'Schiffsbreite (halb)', min: 1, max: 5, step: 0.1, unit: 'm' },
-      { group: 'gameplay', key: 'monsterEvery', label: 'Krake alle', min: 100, max: 2000, step: 25, unit: 'm' },
+      { group: 'gameplay', key: 'encounterEvery', label: 'Begegnung alle', min: 80, max: 1500, step: 10, unit: 'm' },
       { group: 'gameplay', key: 'monsterHp', label: 'Krake: Treffer nötig', min: 1, max: 10, step: 1 },
       { group: 'gameplay', key: 'monsterAttackInterval', label: 'Krake greift an alle', min: 2, max: 30, step: 0.5, unit: 's' },
       { group: 'gameplay', key: 'cannonSoloLoad', label: 'Kanone lädt allein', min: 0.3, max: 10, step: 0.1, unit: 's' },

@@ -97,7 +97,7 @@ async function runBrowser(name, launcher) {
   });
   page.on('pageerror', (err) => result.errors.push(`pageerror: ${err.message}`));
 
-  await page.goto(`${url}?sea=0.8&quality=high&solo&mode=single`, { waitUntil: 'load' });
+  await page.goto(`${url}?sea=0.8&quality=high&solo&mode=single&stage3d=0`, { waitUntil: 'load' });
   await page.waitForFunction(() => !!window.__game, null, { timeout: 30000 });
   const info = await page.evaluate(() => {
     const g = window.__game;
@@ -210,7 +210,7 @@ async function runBrowser(name, launcher) {
     s.voyage.nextRockX = 1e9;
     s.voyage.nextEncounterX = 1e9;
     s.rocks.length = 0;
-    s.rocks.push({ id: 9001, x: s.ship.x + 30, lateral: s.ship.lateral, radius: 3, spotted: false, hit: false });
+    s.rocks.push({ id: 9001, x: s.ship.x + 30, lateral: s.ship.lateral, radius: 3, spotted: false, hit: false, kind: 'rock', hp: 1 });
     s.stations.find((x) => x.kind === 'searchlight').value = 0.32;
     g.sim.teleportPlayer('p1', 13, -0.7);
   });
@@ -247,6 +247,62 @@ async function runBrowser(name, launcher) {
   result.arrived = await page.evaluate(() => window.__game.sim.state.status);
   await shot('15-ankunft');
   await page.evaluate(() => window.__game.command({ type: 'reset' }));
+
+  // 2.5D station view: helm, pump, cannon, opening a crate
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.stage3d = true;
+    g.autoQuality = false;
+    g.r.setQuality('high');
+  });
+  for (const [kind, file] of [
+    ['wheel', '16-3d-steuerrad'],
+    ['pump', '17-3d-pumpe'],
+    ['cannon', '18-3d-kanone'],
+  ]) {
+    await page.evaluate((k) => {
+      const g = window.__game;
+      const st = g.sim.state.stations.find((x) => x.kind === k);
+      g.sim.teleportPlayer('p1', st.x, st.y - 0.68);
+    }, kind);
+    await sleep(500);
+    await key('KeyE');
+    await sleep(1300);
+    await shot(file);
+    await key('KeyE');
+    await sleep(900);
+  }
+  await page.evaluate(() => {
+    const g = window.__game;
+    const c = g.sim.state.objects.find((o) => o.kind === 'crate' && !o.opened);
+    c.contents = ['plank', 'coins'];
+    g.sim.teleportPlayer('p1', c.x - 0.7, c.y - 0.3);
+  });
+  await sleep(500);
+  await key('KeyE');
+  for (let i = 0; i < 6; i++) await key(i % 2 ? 'KeyA' : 'KeyD');
+  await sleep(1400);
+  await shot('19-3d-kiste');
+  result.crateOpened = await page.evaluate(() => window.__game.sim.state.voyage.cratesOpened);
+  await sleep(2500);
+
+  // campaign: the start harbour and the chart table
+  await page.evaluate(() => window.__game.startSolo('none', 'campaign'));
+  await sleep(1500);
+  await placePlayer(page, 50, 12);
+  await sleep(1200);
+  await shot('20-hafen');
+  await placePlayer(page, 19, 18);
+  await sleep(500);
+  await key('KeyE');
+  await sleep(1400);
+  await shot('21-kartentisch');
+  await key('KeyE');
+  result.campaign = await page.evaluate(() => ({ status: window.__game.sim.state.campaign.mode, legs: window.__game.sim.state.campaign.nodes.length }));
+  await page.evaluate(() => window.__game.startSolo('none', 'single'));
+  await page.evaluate(() => {
+    window.__game.stage3d = false;
+  });
 
   // 8) frame rate per quality level (top deck, 1920x1080)
   await placePlayer(page, 20, 12);

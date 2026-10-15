@@ -43,6 +43,18 @@ export class StationWidget {
   private roll = 0;
   /** Ring station: the ring is in the water, the control pulls the line. */
   private pulling = false;
+  /** 2.5D view: the controls are the props in the scene; drag around their projected centre. */
+  private diorama: { center: { x: number; y: number }; radius: number; scale: number } | null = null;
+
+  /** Called every frame: null = the 2D controls, otherwise drag on the scene's station. */
+  setDiorama(d: { center: { x: number; y: number }; radius: number; scale: number } | null): void {
+    this.diorama = d;
+  }
+
+  /** Pixel distance that means "full deflection" for linear controls (lever, saw, line). */
+  private span(base: number): number {
+    return this.diorama ? Math.max(8, this.diorama.radius * 0.8) : base;
+  }
   private value = 0;
   private time = 0;
   /** Last pointer position (internal px) of the active drag, re-applied every frame. */
@@ -133,19 +145,19 @@ export class StationWidget {
       }
       case 'pump':
         // pull the lever: up = -1, down = +1
-        this.target = Math.max(-1, Math.min(1, (p.y - this.center.y) / 16));
+        this.target = Math.max(-1, Math.min(1, (p.y - this.center.y) / this.span(16)));
         break;
       case 'table':
         // point left / right on the chart to pick a way
-        this.target = Math.max(-1, Math.min(1, (p.x - this.center.x) / 60));
+        this.target = Math.max(-1, Math.min(1, (p.x - this.center.x) / this.span(60)));
         break;
       case 'workshop':
         // push and pull the saw sideways
-        this.target = Math.max(-1, Math.min(1, (p.x - this.center.x) / 20));
+        this.target = Math.max(-1, Math.min(1, (p.x - this.center.x) / this.span(20)));
         break;
       case 'ring':
         // the ring in the water: pull the line sideways; otherwise aim the throw like the cannon
-        if (this.pulling) this.target = Math.max(-1, Math.min(1, (p.x - this.center.x) / 20));
+        if (this.pulling) this.target = Math.max(-1, Math.min(1, (p.x - this.center.x) / this.span(20)));
         else if (Math.hypot(dx, dy) > 3) this.target = Math.atan2(dy, dx) - this.roll;
         break;
       case 'searchlight':
@@ -185,7 +197,7 @@ export class StationWidget {
     const H = this.r.layout.height;
     const cx = Math.round(W / 2);
     const cy = H - 60;
-    this.center = { x: cx, y: cy };
+    this.center = this.diorama ? { x: Math.round(this.diorama.center.x), y: Math.round(this.diorama.center.y) } : { x: cx, y: cy };
     this.g.clear();
     for (const s of [this.wheel, this.dial, this.needle, this.pump, this.lever]) s.visible = false;
     this.chart.root.visible = false;
@@ -307,6 +319,22 @@ export class StationWidget {
       }
       default:
         break;
+    }
+    if (this.diorama) {
+      // the scene shows the station itself: only the texts stay, near the bottom
+      this.g.clear();
+      for (const sp of [this.wheel, this.dial, this.needle, this.pump, this.lever]) sp.visible = false;
+      this.chart.root.visible = false;
+      // the route map stays readable at the chart table (the parchment in the scene is too flat to read)
+      this.route.root.visible = kind === 'table';
+      if (kind === 'table') this.route.draw(state.campaign, cx - 100, 64, 200, 104, this.time, 'SEEKARTE DER FAHRT');
+      this.radius = this.diorama.radius;
+      this.title.text = title;
+      this.title.position.set(Math.round(cx - this.title.textWidth / 2), H - 38);
+      this.sub.text = sub;
+      this.sub.position.set(Math.round(cx - this.sub.textWidth / 2), H - 30);
+      this.sub.visible = sub.length > 0;
+      return;
     }
     this.title.text = title;
     const big = kind === 'table';

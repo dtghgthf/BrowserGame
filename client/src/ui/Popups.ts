@@ -33,6 +33,9 @@ export class Popups {
     });
   }
 
+  /** Optional projection of a ship-local point to screen px (the 2.5D view); null = use the 2D ship. */
+  project: ((x: number, y: number) => { x: number; y: number } | null) | null = null;
+
   update(dt: number, view: Snapshot, left: number, top: number): void {
     for (let i = this.items.length - 1; i >= 0; i--) {
       const p = this.items[i]!;
@@ -45,8 +48,11 @@ export class Popups {
       }
       p.text.visible = t >= 0;
       if (t < 0) continue;
+      const scr = this.project?.(p.x, p.y);
       const w = shipToWorld(view.ship, { x: p.x, y: p.y });
-      p.text.position.set(Math.round(w.x * PPM - left - p.text.textWidth / 2), Math.round(w.y * PPM - top - 10 - p.lift - t * 12));
+      const sx = scr ? scr.x : w.x * PPM - left;
+      const sy = scr ? scr.y : w.y * PPM - top;
+      p.text.position.set(Math.round(sx - p.text.textWidth / 2), Math.round(sy - 10 - p.lift - t * 12));
       p.text.alpha = t > 1.3 ? (1.8 - t) * 2 : 1;
     }
   }

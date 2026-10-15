@@ -18,6 +18,12 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 - **Brecher im Sturm:** „Welle!“ – zwei Sekunden später spült eine Welle übers Oberdeck. Wer an einer Station steht, hält sich fest.
 - **Mann über Bord:** Ist noch jemand an Bord, kann er den Rettungsring am Heck werfen. Der Schwimmer greift zu, dann Hand über Hand einholen.
 
+## Stationen in 3D
+- **Wer eine Station übernimmt, ist mittendrin:** Die Kamera fährt heran, das Schiff wird zum kleinen Puppenhaus-Diorama – Steuerrad mit Kompass und Seekarte an der Pinnwand, Pumpe mit Manometer und Wasserstand im Glasrohr, Scheinwerfer mit Kurbel und Ölglas, Kanone mit Ladestock und glimmender Lunte, Werkbank mit Säge, Kartentisch mit Kerze.
+- Bedient wird direkt am Gerät: Rad drehen, Hebel ziehen, Säge schieben. Die anderen laufen vor und hinter euch vorbei, die Laterne wirft Schatten.
+- **Kisten öffnen** passiert auch in der Nahansicht: Brecheisen ansetzen (A/D drücken hilft), der Deckel klappt auf, die Beute steigt heraus.
+- Im Menü abschaltbar („Stationen in 3D“).
+
 ## Kampagne: sechs Etappen bis zum Leuchtturm
 - **Route wählen:** Am Kartentisch im Mitteldeck seht ihr die Seekarte der Fahrt. Jede Etappe ist eine andere Meeresart: Ruhige See, Nebelbank, Riff, Krakengrund, Piratenküste, Eismeer – und zum Schluss immer die Sturmfront.
 - **Häfen zwischen den Etappen:** Belohnung kassieren, die Hafenarbeiter flicken das Schiff. Auf dem Oberdeck stehen drei Händler: Messingpumpe, Bilgenpumpe, Kupferbeschlag, Schnelllader, Linse für den Scheinwerfer und mehr.

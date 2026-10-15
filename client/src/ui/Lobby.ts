@@ -99,6 +99,7 @@ export class Lobby {
     private readonly actions: LobbyActions,
     invitedCode: string | null,
     private readonly sound: VolumeControl | null = null,
+    private readonly view: { stage3d: boolean; setStage3d(on: boolean): void } | null = null,
   ) {
     this.el = document.createElement('div');
     this.el.className = 'lobby allow-touch hidden';
@@ -136,6 +137,7 @@ export class Lobby {
           <input class="lobby-volume" type="range" min="0" max="100" step="1" />
           <button class="lobby-mute" title="Ton an/aus (M)">🔊</button>
         </div>
+        <button class="lobby-btn subtle lobby-3d"></button>
         <div class="lobby-status"></div>
       </div>`;
     parent.appendChild(this.el);
@@ -225,6 +227,15 @@ export class Lobby {
       });
       this.syncSound = syncSound;
     } else q<HTMLDivElement>('.lobby-sound').style.display = 'none';
+    const b3d = q<HTMLButtonElement>('.lobby-3d');
+    if (view) {
+      const sync3d = () => (b3d.textContent = `Stationen in 3D: ${view.stage3d ? 'an' : 'aus'}`);
+      sync3d();
+      b3d.addEventListener('click', () => {
+        view.setStage3d(!view.stage3d);
+        sync3d();
+      });
+    } else b3d.style.display = 'none';
     // keys typed into the menu must not steer the ship
     this.el.addEventListener('keydown', (e) => {
       e.stopPropagation();

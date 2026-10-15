@@ -36,6 +36,7 @@ import { frameOf } from '../render/assets';
 import type { GameRenderer } from '../render/GameRenderer';
 import type { LightDef } from '../render/lighting/LightSystem';
 import { HarborView } from '../render/HarborView';
+import { StationView } from '../stage/StationView';
 import { HazardView } from '../render/HazardView';
 import { Particles } from '../render/Particles';
 import { StormView } from '../render/StormView';
@@ -95,6 +96,8 @@ export class Game {
   private readonly pingView: PingView;
   private readonly popups: Popups;
   private readonly harbor: HarborView;
+  /** 2.5D view of the station the own player operates. */
+  readonly stationView: StationView;
   /** Unlit particles (muzzle flash, fireworks). */
   private readonly fx: Particles;
   private readonly island: Sprite;
@@ -137,6 +140,8 @@ export class Game {
   private qualityTime = -2;
   private qualityFrames = 0;
   running = true;
+  /** Menu option: stations in the 2.5D view. */
+  stage3d = loadStage3d();
 
   constructor(
     readonly sim: Simulation,
@@ -153,6 +158,7 @@ export class Game {
     this.hud = new Hud(font);
     this.names = new NameTags(font);
     r.hud.addChild(this.names.root);
+    this.stationView = new StationView(r, this.shipView.lights, sim, assets, font);
     this.station = new StationWidget(r, assets.props, font);
     r.hud.addChild(this.station.root);
     r.hud.addChild(this.hud.root);
@@ -194,6 +200,7 @@ export class Game {
     this.pingView = new PingView(assets.props);
     r.hud.addChildAt(this.pingView.root, 0);
     this.popups = new Popups(font);
+    this.popups.project = (x, y) => this.stationView.projectShip(x, y);
     r.hud.addChildAt(this.popups.root, 1);
     r.hud.addChildAt(this.harbor.hud, 1);
     this.setupPingInput();
@@ -516,6 +523,7 @@ export class Game {
     const s = this.sim.state;
     for (const e of events) {
       this.audio?.event(e, s);
+      this.stationView.event(e);
       if (e.type === 'reset') {
         takeSnapshot(s, this.prev);
         clearCorrections(this.corrections);
@@ -678,6 +686,8 @@ export class Game {
     const sy = (Math.random() - 0.5) * this.shake;
     r.setTransforms(this.camera.x + sx, this.camera.y + sy, shipPx.x, shipPx.y, v.ship.roll);
 
+    this.stationView.enabled = this.stage3d;
+    this.stationView.update(s, v, this.locals[0]?.id, dt);
     const left = r.viewLeft;
     const top = r.viewTop;
     const width = r.layout.width;
@@ -742,7 +752,10 @@ export class Game {
     });
     this.spray.update(dt);
     const ids = this.locals.map((l) => l.id);
+    this.station.setDiorama(this.stationView.active ? this.stationView.control() : null);
     this.station.update(s, v, ids[0], this.sim.tuning);
+    this.shipView.setOverlaysVisible(!this.stationView.active);
+    this.names.root.visible = !this.stationView.active;
     this.names.update(s, v, ids, left, top, this.time);
     this.pingView.update(s, v, left, top, width, height, this.time);
     this.popups.update(dt, v, left, top);
@@ -788,5 +801,22 @@ export class Game {
         this.spray.spawn(sx, sy, e.dir * (10 + Math.random() * 50) + s.ship.speed * PPM * 0.15, -30 - Math.random() * (60 + Math.abs(rel) * 25), 0.5 + Math.random() * 0.7, Math.random() > 0.4 ? 0xdcecf2 : 0x9fc4d8, 0, 240, 0.4, sy + 3);
       }
     });
+  }
+}
+
+/** The 2.5D station view is on unless switched off in the menu. */
+export function loadStage3d(): boolean {
+  try {
+    return localStorage.getItem('lw.stage3d') !== '0';
+  } catch {
+    return true;
+  }
+}
+
+export function saveStage3d(on: boolean): void {
+  try {
+    localStorage.setItem('lw.stage3d', on ? '1' : '0');
+  } catch {
+    /* storage unavailable */
   }
 }

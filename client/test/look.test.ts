@@ -17,3 +17,16 @@ describe('look tuning', () => {
     expect(l.gamma).toBe(DEFAULT_LOOK.gamma);
   });
 });
+
+describe('tuning panel', () => {
+  it('every slider points at an existing value', async () => {
+    const { SECTIONS } = await import('../src/ui/TuningPanel');
+    const { DEFAULT_TUNING } = await import('@lw/shared');
+    for (const s of SECTIONS) {
+      for (const it of s.items) {
+        const group = it.group === 'look' ? (DEFAULT_LOOK as unknown as Record<string, number>) : (DEFAULT_TUNING[it.group] as unknown as Record<string, number>);
+        expect(typeof group[it.key], `${it.group}.${it.key}`).toBe('number');
+      }
+    }
+  });
+});

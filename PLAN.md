@@ -119,3 +119,14 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
       Biom, Modifikatoren, Hafen-Countdown, Bilanz), Nebel je Biom, Rollen-Abzeichen, Sounds
 - [x] Tests (Route, Tagesfahrt, effektives Tuning, Hafen/Händler/Übertrag, Leuchtturm/Untergang, Codec, Rollen)
 - [x] Balance-Skript mit Bot-Crew
+
+## Phase 7 – Stationen als 2.5D-Diorama
+- [x] `Camera25` (Projektion, Rückprojektion, Roll) + Tests, `Card` (PerspectiveMesh in Albedo/Normal/Unlit), `Stage`
+      (Ebenen, Sortierung, planare Schatten, Weltlichter, Masken-Rechteck)
+- [x] `StationView`: Set aus dem Layout (Rückwand, Boden, Decke, Puppenhaus-Front, Laterne), Kamerafahrt aus dem exakten
+      2D-Bild, Überblendung, Spieler auf Tiefenspuren, lose Gegenstände
+- [x] Detaillierte Stations-Sprites (32 px/m): Kompasshaus, Pinnwand, Manometer, Glasrohr, Scheinwerfergehäuse, Kurbel,
+      Ölglas, Kanone + Lafette + Ladestock + Lunte, Sägebock + Säge, Kartentisch + Kerze, Kistenteile, Beute
+- [x] Szenen: Steuerrad (Kompass, Seekarte auf der Pinnwand), Pumpe (Manometer, Wasserstand), Scheinwerfer (Kurbel, Öl,
+      Kegel), Kanone (Rückstoß, Laden, Lunte), Werkbank (Säge, Schnitt), Kartentisch (Routenkarte, Kerze), Kiste öffnen
+- [x] Eingabe am projizierten Requisit, Popups in der Szene, Menü-Schalter, `npm run verify` mit 2.5D- und Hafen-Szenen

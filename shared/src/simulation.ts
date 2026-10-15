@@ -897,6 +897,8 @@ export class Simulation implements SimContext {
         p.jumpBuffer = 0;
       } else {
         p.action.progress += dt;
+        // prying a crate: every push on the crowbar (left / right) gets it open faster
+        if (p.action.kind === 'open' && (pressed('left') || pressed('right'))) p.action.progress += this.tuning.player.openTime * 0.08;
         const v = rt.body.linvel();
         rt.body.setLinvel({ x: approach(v.x, 0, this.tuning.player.groundAccel * dt), y: clampFall(this.tuning.player, v.y + g.y * dt) }, true);
         if (p.action.progress >= this.actionDuration(p.action.kind, p.role)) this.finishAction(p);

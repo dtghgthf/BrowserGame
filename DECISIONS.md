@@ -238,3 +238,35 @@ Format: **Entscheidung** – Begründung.
 - **Balance-Skript** (`npx tsx scripts/balance.ts [seeds] [good|average|slow]`): eine Bot-Crew mit Reaktionszeiten. Ergebnis
   (8 Seeds, Etappe 3): alle Biome überlebbar, Riff und Krakengrund mit den meisten Lecks (≈8), Ruhige See ≈2–4. Die Bots
   pumpen dauerhaft – echte Crews sind schwächer verteilt, deshalb wurde nichts härter gemacht.
+
+## Phase 7 – Stationen als 2.5D-Diorama
+- **Eigene 2.5D-Schicht in Pixi statt Three.js** („2D-Sprites im 3D-Raum“): `Camera25` (Orbit-Kamera mit Yaw, Pitch,
+  Dolly, Roll) projiziert Punkte in Schiffskoordinaten mit Tiefe; jede Karte ist eine Pixi-`PerspectiveMesh` mit
+  perspektivisch korrekten UVs. Die Karten liegen in denselben Render-Passes wie alles andere (Albedo, Normal, Maske,
+  Unlit) – Licht, Normal Maps, posterisiertes Licht, Dither und Nebel gelten unverändert. Kein zweiter WebGL-Kontext, keine
+  neue Abhängigkeit.
+- **Unsichtbarer Schnitt:** Die Kamera startet bei Yaw = Pitch = 0 mit 16 px/m genau dort, wo das Ziel im 2D-Bild steht,
+  und mit dem Rollwinkel des Schiffs – die Ebene z = 0 deckt sich dann pixelgenau mit dem 2D-Bild. Danach Dolly + Schwenk
+  in 0,65 s; das 2D-Schiff wird dabei ausgeblendet (Überblendung statt hartem Wechsel, weil der Raum nur einen Ausschnitt
+  zeigt). Das Meer bleibt der 2D-Weltlayer dahinter.
+- **Das Set wird aus dem Layout gebaut** (funktioniert damit auch für Schiffe aus dem Editor): Ausschnitt der Rückwand-
+  Grafik bei z = −1,6, Dielen als liegende Karten, Decke, und innen der Ausschnitt der Rumpf-Grafik als offene
+  „Puppenhaus-Front“ bei z = +1,3. Der Ausschnitt reicht nur so weit wie der begehbare Boden (Wände, Rand des Mastkorbs).
+  An Deck keine Front (sie stand vor der Kanone), dafür die ferne Reling getönt hinten.
+- **Spieler auf Tiefenspuren:** Wer die Station bedient, steht auf ihrer Bedienspur; alle anderen laufen je nach
+  Blickrichtung vor (z = +0,85) oder hinter (z = −0,85) der Station, mit weichem Übergang. Figuren und Requisiten sind
+  Billboards (zur Kamera gedreht), damit die Seitenansicht-Sprites nicht flach wirken.
+- **Schatten als planare Projektion** jeder Karte vom Hauptlicht (Laterne des Raums, sonst die Szenenlampe) auf den Boden,
+  begrenzt durch die Rückwand: eine schwarze, halbtransparente Kopie derselben Textur. Billig, pixelig, bewegt sich mit
+  der schwingenden Laterne.
+- **Licht im Diorama:** Die Schiffslichter (Sichtbarkeits-Polygone gegen Tiles) passen nicht zu den projizierten
+  Positionen; während der Ansicht sind sie aus, stattdessen bis zu vier unverdeckte Weltlichter an projizierten Punkten
+  (Laterne, Kerze, Scheinwerferkegel, ein warmes Fülllicht in dunklen Räumen).
+- **Bedienen direkt am Requisit:** Das bestehende Stations-Widget übernimmt die Eingabe, nur sein Mittelpunkt und Radius
+  kommen aus der Projektion (Radnabe, Hebeldrehpunkt, Säge). Damit bleibt die Simulation unberührt; Tastatur geht wie
+  vorher. Am Kartentisch bleibt die Routenkarte zusätzlich flach eingeblendet – schräg auf dem Tisch ist sie nicht lesbar.
+- **Seekarte und Routenkarte als Render-Textur** auf Karten im Set (Pinnwand neben dem Rad, Pergament auf dem Tisch).
+- **Kiste öffnen** bekommt ein eigenes Set (Kamera schräg von oben): Brecheisen, Deckel am Scharnier, Stroh, Beute steigt
+  auf; die Popups mit den Namen werden in die Szene projiziert. Jeder Druck auf A/D (Brecheisen) beschleunigt das Öffnen
+  – so hat die Interaktion auch auf dem iPad etwas zu tun.
+- Abschaltbar im Menü („Stationen in 3D“) und bei Qualitätsstufe *low* immer aus; `?stage3d=0` für Tests.

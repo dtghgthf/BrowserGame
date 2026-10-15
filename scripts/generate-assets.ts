@@ -116,7 +116,7 @@ saveCanvas('ship_back', drawBack(layout), 1.2, 0);
 // --- props atlas
 {
   const sprites = drawProps();
-  const width = 192;
+  const width = 256;
   const pos = packSprites(sprites, width);
   const H = pos.height ?? 64;
   const atlas = new Canvas(width, H);

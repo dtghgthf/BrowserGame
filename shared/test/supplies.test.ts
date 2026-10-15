@@ -165,3 +165,14 @@ describe('searchlight oil', () => {
     expect(barrel.fill).toBeCloseTo(0, 5);
   });
 });
+
+describe('prying', () => {
+  it('pushing the crowbar (left / right) opens a crate faster', async () => {
+    const sim = await calm();
+    const crate = sim.state.objects.find((o) => o.kind === 'crate')!;
+    stand(sim, crate.x - 0.7, crate.y + 0.375);
+    tap(sim, 'a', 'interact');
+    for (let i = 0; i < 6; i++) tap(sim, 'a', i % 2 ? 'left' : 'right');
+    expect(sim.state.players[0]!.action!.progress).toBeGreaterThan(DEFAULT_TUNING.player.openTime * 0.4);
+  });
+});

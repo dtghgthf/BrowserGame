@@ -2,6 +2,7 @@ import { Canvas, hash, hex, mix, shade, type RGBA } from './canvas';
 import { drawCampaign } from './campaign';
 import { drawEncounters } from './encounters';
 import { drawHazards } from './hazards';
+import { drawStations } from './stations';
 import { drawUi } from './ui';
 
 export interface PropSprite {
@@ -492,6 +493,7 @@ export function drawProps(): PropSprite[] {
     ...drawHazards(),
     ...drawEncounters(),
     ...drawCampaign(),
+    ...drawStations(),
   ];
 }
 
