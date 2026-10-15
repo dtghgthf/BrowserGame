@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-"Leuchtturmwärter": a 2–4 player co-op browser game (pixel-art ship cross-section, PixiJS v8 + Rapier2D, Colyseus online play). Code and comments are English; docs (`README.md` = public GitHub page, `DECISIONS.md`, `PLAN.md`, asset README) and all in-game text are German. Record non-obvious design decisions in `DECISIONS.md` and progress in `PLAN.md`. Detailed developer notes (controls, debug keys, hosting, known issues, manual tests) live in the gitignored `NOTIZEN.md` (local only).
+"Leuchtturmwärter": a 2–4 player co-op browser game (pixel-art ship cross-section, PixiJS v8 + Rapier2D, Colyseus online play). Code and comments are English; docs (`README.md` = public GitHub page, `DECISIONS.md`, `PLAN.md`, asset README) and all in-game text are German. Record non-obvious design decisions in `DECISIONS.md` and progress in `PLAN.md`. Detailed developer notes (hosting steps, known issues, manual test list) live in the gitignored `NOTIZEN.md` — it exists only on the owner's machine, not in fresh clones. Player-facing changes go into `RELEASE_NOTES.md`.
 
 ## Commands
 
@@ -23,6 +23,7 @@ cd shared && npx vitest run test/voyage.test.ts
 cd shared && npx vitest run -t "kraken"
 ```
 `node scripts/net-lag.mjs 200` (with `npm run dev` running) measures prediction feel under artificial lag. Useful URL params: `?solo` (skip lobby), `?debug`, `?quality=high|medium|low`, `?sea=0.8`, `?server=wss://…`, `?lag=150`, `?room=ABCD`, `?tune`.
+In-game debug keys (local play, or the room host online): F3 overlay, F7 render buffers, F9 tuning panel, L leak, K kraken, J rock ahead, P +200 m, [ ] sea state, F4 fix roll, F6 fog, F2 second local player, F8 reset. Playtests/balance checks can also be run headless by stepping a `Simulation` in a small `tsx` script (no browser needed).
 
 TypeScript is 7 (native `tsc`), used only for type checking; Vite/tsx transpile. Playwright is pinned to the preinstalled Chromium — do not run `playwright install`. Headless FPS numbers come from SwiftShader and are not representative.
 
