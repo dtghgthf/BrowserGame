@@ -1,5 +1,7 @@
 # Leuchtturmwärter – Release 1.0
 
+**Jetzt spielen: https://game.echterhofflabs.me**
+
 Ein Koop-Browserspiel für 2–4 Leute: Bringt euer Schiff gemeinsam durch Sturm und Nebel zum Leuchtturm – ohne miteinander zu reden.
 
 ## Spielen
