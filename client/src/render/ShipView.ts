@@ -180,8 +180,8 @@ export class ShipView {
       y: 0,
       color: [0.82, 0.92, 1.0],
       intensity: 2.6,
-      radius: 470,
-      height: 40,
+      radius: 480,
+      height: 110,
       cone: { direction: 0, half: 0.19, soft: 0.025 },
       scatter: 1.6,
       occluded: true,
@@ -456,16 +456,29 @@ export class ShipView {
       s.setFrame(frameOf(this.assets.props, name));
       if (leak.active && leak.inflow > 0) {
         // water jet + drips into the hull, in ship space with the apparent gravity
-        const n = Math.min(6, leak.inflow * 40 * dt * 10);
+        const n = Math.min(8, Math.round(leak.inflow * 140 * dt));
         const cx = ox + lp.tx * 8 + 4 + lp.inward.x * 3;
         const cy = oy + lp.ty * 8 + 4 + lp.inward.y * 3;
         const g = state.ship.gravity;
         const floorY = this.floorBelow(lp.tx + lp.inward.x, lp.ty + lp.inward.y, state);
-        for (let i = 0; i < n; i++) {
-          if (Math.random() > 0.7) continue;
-          const spd = 20 + leak.inflow * 90 * Math.random();
-          const spread = (Math.random() - 0.5) * 18;
-          this.leakParticles.spawn(cx, cy + (Math.random() - 0.5) * 4, lp.inward.x * spd + spread * Math.abs(lp.inward.y), lp.inward.y * spd + spread * Math.abs(lp.inward.x) - 10 * Math.random(), 0.5 + Math.random() * 0.6, Math.random() > 0.3 ? 0x9cc8e0 : 0xe0f0ff, g.x * PPM * 0.6, g.y * PPM * 0.6, 0.6, floorY);
+        if (floorY < cy) {
+          // the leak is under water: bubbles rise to the surface instead of a jet
+          if (Math.random() < leak.inflow * 30 * dt) {
+            for (let i = 0; i < 2; i++) {
+              this.leakParticles.spawn(cx + lp.inward.x * 2 + (Math.random() - 0.5) * 3, cy, lp.inward.x * 8 + (Math.random() - 0.5) * 6, -10, 3, 0xc8e8f4, -g.x * PPM * 0.05, -g.y * PPM * 0.12, 1.5, floorY + 1);
+            }
+          }
+          continue;
+        }
+        // pressurised jet: water squirts inwards and slightly upwards, then falls
+        for (let i = 0; i < n + 2; i++) {
+          const spd = 25 + leak.inflow * 110 * Math.random();
+          const up = 15 + Math.random() * 45;
+          const side = (Math.random() - 0.5) * 16;
+          const vx = lp.inward.x * spd + side * Math.abs(lp.inward.y);
+          const vy = lp.inward.y * spd + side * Math.abs(lp.inward.x) - up * Math.abs(lp.inward.x);
+          const color = Math.random() > 0.35 ? 0x9cc8e0 : 0xe8f6ff;
+          this.leakParticles.spawn(cx, cy + (Math.random() - 0.5) * 3, vx, vy, 0.6 + Math.random() * 0.7, color, g.x * PPM * 0.6, g.y * PPM * 0.6, 0.5, floorY);
         }
       }
     }

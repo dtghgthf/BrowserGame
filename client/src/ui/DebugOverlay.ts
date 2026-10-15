@@ -118,7 +118,7 @@ export class DebugOverlay {
       ``,
       ...state.players.map((pp) => `${pp.id} ${pp.anim.padEnd(7)} (${pp.x.toFixed(2)}, ${pp.y.toFixed(2)}) v(${pp.vx.toFixed(1)}, ${pp.vy.toFixed(1)}) ${pp.grounded ? 'G' : '-'}${pp.climbing !== null ? 'L' : ''} water ${pp.inWater.toFixed(2)}`),
       ``,
-      `F3 debug  L leak  [ ] sea state  F4 fix roll  F6 fog  F2 2 players  F8 reset`,
+      `F3 debug  F7 buffer view (${this.r.debugView})  L leak  [ ] sea  F4 fix roll  F6 fog  F2 2 players  F8 reset`,
     ];
     this.panel.textContent = lines.join('\n');
   }

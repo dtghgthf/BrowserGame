@@ -11,7 +11,10 @@ interface P {
   gx: number;
   gy: number;
   drag: number;
-  /** y (in the particle space) below which the particle dies (e.g. the water surface); NaN = never. */
+  /**
+   * Kill line in particle space: falling particles (gy >= 0) die below it (floor / water
+   * surface), rising particles (gy < 0, bubbles) die above it. NaN = never.
+   */
   floorY: number;
 }
 
@@ -62,7 +65,8 @@ export class Particles {
       p.vy *= d;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      if (p.life <= 0 || p.y > p.floorY) {
+      const crossed = p.gy >= 0 ? p.y > p.floorY : p.y < p.floorY;
+      if (p.life <= 0 || crossed) {
         this.container.removeParticle(p.sprite);
         this.alive.splice(i, 1);
         this.pool.push(p);

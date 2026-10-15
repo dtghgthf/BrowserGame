@@ -235,6 +235,24 @@ describe('leak, pump and repair', () => {
   });
 });
 
+describe('sinking', () => {
+  it('a flooded hull sinks the ship and the game restarts after a few seconds', async () => {
+    const sim = await Simulation.create({ seaState: 0 });
+    sim.addPlayer('a');
+    const { capacity } = sim.waterTotals();
+    sim.step({}, SIM_DT, [
+      { type: 'debugWater', compartment: 0, volume: capacity },
+      { type: 'debugWater', compartment: 1, volume: capacity },
+    ]);
+    sim.step({});
+    expect(sim.state.status).toBe('sunk');
+    run(sim, GAMEPLAY.sunkResetTime + 0.2);
+    expect(sim.state.status).toBe('sailing');
+    expect(sim.waterTotals().volume).toBe(0);
+    expect(sim.state.players.map((p) => p.id)).toEqual(['a']);
+  });
+});
+
 describe('determinism', () => {
   it('two simulations with identical inputs produce identical states', async () => {
     const a = await Simulation.create({ seaState: 1, seed: 7 });

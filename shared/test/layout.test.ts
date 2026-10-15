@@ -69,6 +69,23 @@ describe('ship layout parser', () => {
     for (const v of count.values()) expect(v).toBeGreaterThanOrEqual(1);
   });
 
+  it('railings collide but do not occlude light', () => {
+    const rails: [number, number][] = [];
+    for (let i = 0; i < layout.railMask.length; i++) if (layout.railMask[i]) rails.push([i % layout.width, Math.floor(i / layout.width)]);
+    expect(rails.length).toBeGreaterThanOrEqual(2);
+    for (const [x, y] of rails) {
+      expect(layout.tiles[y * layout.width + x]).toBe(TileKind.Solid);
+      expect(layout.solidRects.some((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)).toBe(true);
+      // no occluder on the rail's sides or top (its bottom touches the floor, whose top face is exposed)
+      const sideOrTop = layout.occluders.some((s) => {
+        const vertical = s.ax === s.bx && (s.ax === x || s.ax === x + 1) && Math.min(s.ay, s.by) < y + 1 && Math.max(s.ay, s.by) > y;
+        const top = s.ay === s.by && s.ay === y && Math.min(s.ax, s.bx) < x + 1 && Math.max(s.ax, s.bx) > x;
+        return vertical || top;
+      });
+      expect(sideOrTop).toBe(false);
+    }
+  });
+
   it('finds the leak points on the lower deck hull', () => {
     expect(layout.leakPoints).toHaveLength(2);
     for (const lp of layout.leakPoints) {

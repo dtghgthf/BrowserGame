@@ -48,9 +48,23 @@ export function drawHull(layout: ShipLayout): Canvas {
     return max + 1;
   };
 
+  const railPx = (x: number, y: number) => {
+    const tx = Math.floor(x / T);
+    const ty = Math.floor(y / T);
+    return tx >= 0 && ty >= 0 && tx < layout.width && ty < layout.height && layout.railMask[ty * layout.width + tx] === 1;
+  };
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       if (!solidPx(x, y)) continue;
+      if (railPx(x, y)) {
+        // railing post: 2 px wide post + 1 px top rail
+        const lx = x % T;
+        const ly = y % T;
+        if (ly === 0) c.set(x, y, WOOD_HI, 2.4);
+        else if (lx === 3 || lx === 4) c.set(x, y, lx === 3 ? WOOD_HI : WOOD[1]!, 2.2);
+        else if (ly === 4) c.set(x, y, WOOD[0]!, 1.6);
+        continue;
+      }
       const strake = Math.floor(y / 4);
       const off = Math.floor(hash(strake, 7) * 32);
       const plank = Math.floor((x + off) / 32);

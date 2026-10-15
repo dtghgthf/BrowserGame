@@ -163,6 +163,11 @@ export class Game {
       case 'F8':
         this.command({ type: 'reset' });
         break;
+      case 'F7': {
+        const views = ['final', 'albedo', 'normal', 'light', 'mask'] as const;
+        this.r.debugView = views[(views.indexOf(this.r.debugView) + 1) % views.length]!;
+        break;
+      }
     }
   }
 

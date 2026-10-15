@@ -79,6 +79,9 @@ export class GameRenderer {
   quality: Quality = 'high';
   /** Light buffer resolution relative to the internal resolution (1 or 0.5). */
   lightScale = 1;
+  /** Debug buffer view (F7): shows an intermediate buffer instead of the final image. */
+  debugView: 'final' | 'albedo' | 'normal' | 'light' | 'mask' = 'final';
+  private readonly debugSprite = new Sprite();
   /** Profiling switches: a disabled pass keeps its previous buffer content. */
   readonly passEnabled = { albedo: true, normal: true, mask: true, light: true, final: true, screen: true };
 
@@ -113,6 +116,7 @@ export class GameRenderer {
       }, 'composite'),
     );
     this.final.root.addChildAt(this.composite, 0);
+    this.final.root.addChild(this.debugSprite);
     this.final.root.addChild(this.hud);
 
     this.finalSprite = new Sprite(this.rt.final);
@@ -247,6 +251,15 @@ export class GameRenderer {
 
     const r = this.renderer;
     const on = this.passEnabled;
+    this.debugSprite.visible = this.debugView !== 'final';
+    this.composite.visible = !this.debugSprite.visible;
+    if (this.debugSprite.visible) {
+      const map = { albedo: this.rt.scene, normal: this.rt.normal, light: this.rt.light, mask: this.rt.mask } as const;
+      const tex = map[this.debugView as keyof typeof map];
+      this.debugSprite.texture = tex;
+      this.debugSprite.width = this.layout.width;
+      this.debugSprite.height = this.layout.height;
+    }
     if (on.albedo) r.render({ container: this.albedo.root, target: this.rt.scene, clear: true, clearColor: [0, 0, 0, 0] });
     if (on.normal) r.render({ container: this.normal.root, target: this.rt.normal, clear: true, clearColor: [0.5, 0.5, 1, 0] });
     if (on.mask) r.render({ container: this.mask.root, target: this.rt.mask, clear: true, clearColor: [0, 0, 0, 0] });

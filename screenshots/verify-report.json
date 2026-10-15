@@ -9,12 +9,27 @@
       "/home/user/BrowserGame/screenshots/chromium-02-unterdeck-leck.png",
       "/home/user/BrowserGame/screenshots/chromium-03-debug-overlay.png",
       "/home/user/BrowserGame/screenshots/chromium-04-licht-mitteldeck.png",
-      "/home/user/BrowserGame/screenshots/chromium-05-scheinwerfer-nebel.png"
+      "/home/user/BrowserGame/screenshots/chromium-05-normal-buffer.png",
+      "/home/user/BrowserGame/screenshots/chromium-06-light-buffer.png",
+      "/home/user/BrowserGame/screenshots/chromium-07-scheinwerfer-nebel.png",
+      "/home/user/BrowserGame/screenshots/chromium-08-touch-ipad.png"
     ],
     "fps": {
-      "avg": 10.3,
-      "min": 8.8,
-      "samples": 4
+      "high": {
+        "avg": 8.9,
+        "min": 7.7,
+        "samples": 8
+      },
+      "medium": {
+        "avg": 21.7,
+        "min": 10.3,
+        "samples": 9
+      },
+      "low": {
+        "avg": 25.3,
+        "min": 23.2,
+        "samples": 8
+      }
     },
     "info": {
       "layout": {
@@ -30,13 +45,36 @@
       "renderer": "WebKit WebGL"
     },
     "state": {
-      "tick": 1448,
+      "tick": 2322,
       "water": [
         0,
-        6.4
+        12.11
       ],
       "leaks": 1,
-      "roll": 6.5
+      "roll": -5.1
+    },
+    "touch": {
+      "controlsVisible": true,
+      "layout": {
+        "width": 360,
+        "height": 270,
+        "scale": 6,
+        "deviceWidth": 2160,
+        "deviceHeight": 1620,
+        "cssWidth": 1080,
+        "cssHeight": 810
+      }
     }
+  },
+  {
+    "browser": "webkit",
+    "ok": false,
+    "errors": [
+      "could not launch webkit: browserType.launch: Executable doesn't exist at /opt/pw-browsers/webkit-2215/pw_run.sh"
+    ],
+    "warnings": [],
+    "screenshots": [],
+    "fps": null,
+    "skipped": true
   }
 ]

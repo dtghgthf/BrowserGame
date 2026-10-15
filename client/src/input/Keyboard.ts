@@ -38,5 +38,5 @@ export class Keyboard {
 }
 
 const PREVENT = new Set([
-  'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F2', 'F3', 'F4', 'F6', 'F8', 'Tab', 'ShiftRight', 'Enter',
+  'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F2', 'F3', 'F4', 'F6', 'F7', 'F8', 'Tab', 'ShiftRight', 'Enter',
 ]);

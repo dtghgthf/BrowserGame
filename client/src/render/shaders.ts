@@ -239,7 +239,7 @@ void main() {
     vec3 fogLit = uFogColor * (0.55 + light.a * uFog.y);
     col = mix(col, fogLit, density);
     // thin air scattering so beams are visible even between fog banks
-    col += vec3(0.62, 0.70, 0.78) * light.a * 0.10 * (1.0 - mask.g);
+    col += vec3(0.62, 0.70, 0.78) * light.a * 0.075 * (1.0 - mask.g);
   }
   finalColor = vec4(col, 1.0);
 }`;

@@ -106,6 +106,8 @@ export interface ShipLayout {
   origin: Vec2;
   tiles: Uint8Array;
   ladderMask: Uint8Array;
+  /** Solid tiles that are railings: they collide but do not occlude light. */
+  railMask: Uint8Array;
   /** Compartment id per tile, -1 if none. */
   compartmentOf: Int16Array;
   /** Merged solid rectangles (hatches excluded). */
@@ -146,6 +148,7 @@ export function parseLayout(map: readonly string[], options: ParseOptions): Ship
   const tileSize = options.tileSize ?? TILE_SIZE;
   const tiles = new Uint8Array(width * height);
   const ladderMask = new Uint8Array(width * height);
+  const railMask = new Uint8Array(width * height);
   const markers: MarkerDef[] = [];
   const idx = (x: number, y: number) => y * width + x;
   const charAt = (x: number, y: number) => map[y]?.[x] ?? ' ';
@@ -155,10 +158,11 @@ export function parseLayout(map: readonly string[], options: ParseOptions): Ship
     for (let x = 0; x < width; x++) {
       const c = charAt(x, y);
       const i = idx(x, y);
-      if (c === '#' || c === 'x') tiles[i] = TileKind.Solid;
+      if (c === '#' || c === 'x' || c === '|') tiles[i] = TileKind.Solid;
       else if (c === '=') tiles[i] = TileKind.Hatch;
       else tiles[i] = TileKind.Exterior; // refined by the flood fill below
       if (c === 'H') ladderMask[i] = 1;
+      if (c === '|') railMask[i] = 1;
       const marker = MARKERS[c];
       if (marker) markers.push({ type: marker, tx: x, ty: y });
     }
@@ -290,6 +294,7 @@ export function parseLayout(map: readonly string[], options: ParseOptions): Ship
 
   const isSolid = (x: number, y: number) =>
     x >= 0 && y >= 0 && x < width && y < height && tiles[idx(x, y)] === TileKind.Solid;
+  const isOccluder = (x: number, y: number) => isSolid(x, y) && !railMask[idx(x, y)];
 
   return {
     width,
@@ -298,9 +303,10 @@ export function parseLayout(map: readonly string[], options: ParseOptions): Ship
     origin: { x: options.origin.x, y: options.origin.y },
     tiles,
     ladderMask,
+    railMask,
     compartmentOf,
     solidRects: mergeSolidRects(width, height, isSolid),
-    occluders: buildOccluders(width, height, isSolid),
+    occluders: buildOccluders(width, height, isOccluder),
     ladders,
     hatches,
     compartments,

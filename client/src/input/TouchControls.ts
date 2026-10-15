@@ -67,6 +67,7 @@ export class TouchControls {
   setEnabled(v: boolean): void {
     this.enabled = v;
     this.root.style.display = v ? 'block' : 'none';
+    document.body.classList.toggle('is-touch', v);
   }
 
   get isEnabled(): boolean {

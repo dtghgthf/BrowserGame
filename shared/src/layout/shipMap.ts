@@ -7,6 +7,7 @@
  * Legend
  *   ' '  exterior air (outside the hull)        '.'  interior air
  *   '#'  solid (hull, deck, wall)               'H'  ladder
+ *   '|'  railing: solid for physics, but does not block light
  *   '='  hatch in a floor (with ladder below = one-way platform when open)
  *   'x'  solid hull tile with a possible leak    '@'  player spawn
  *   'w'  steering wheel   'p'  pump   's'  searchlight   'c'  cannon   'k'  workshop
@@ -16,7 +17,7 @@ export const SHIP_MAP: readonly string[] = [
   '                                                                        ',
   '                                                                        ',
   '                                                                        ',
-  '                               #    s#                                  ',
+  '                               |    s|                                  ',
   '                               ###=###                                  ',
   '                                  H                                     ',
   '                                  H                                     ',

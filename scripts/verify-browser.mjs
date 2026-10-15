@@ -115,13 +115,13 @@ async function runBrowser(name, launcher) {
   await sleep(3000);
   await shot('01-oberdeck');
 
-  // 2) lower deck with a leak, water rising
-  await placePlayer(page, 50, 24);
-  await key('KeyL');
-  await sleep(9000);
+  // 2) lower deck: leak at the bow, water rising, spray from the leak
+  await placePlayer(page, 55, 24);
+  await page.evaluate(() => window.__game.command({ type: 'debugLeak', point: 1 }));
+  await sleep(12000);
   await shot('02-unterdeck-leck');
 
-  // 3) debug overlay (colliders, gravity, water, light polygons)
+  // 3) debug overlay (colliders, gravity vector, water surfaces, light polygons)
   await key('F3');
   await sleep(900);
   await shot('03-debug-overlay');
@@ -132,29 +132,46 @@ async function runBrowser(name, launcher) {
   await sleep(1500);
   await shot('04-licht-mitteldeck');
 
-  // 5) searchlight sweeping the fog from the crow's nest
+  // 5) intermediate buffers (F7): normals and light buffer
+  await key('F7');
+  await key('F7');
+  await sleep(400);
+  await shot('05-normal-buffer');
+  await key('F7');
+  await sleep(400);
+  await shot('06-light-buffer');
+  await key('F7');
+  await key('F7');
+
+  // 7) searchlight from the crow's nest, aimed down across the deck into the fog
   await placePlayer(page, 36, 3);
   await sleep(600);
   await key('KeyE');
   await page.keyboard.down('KeyD');
-  await sleep(700);
+  await sleep(250);
   await page.keyboard.up('KeyD');
-  await sleep(1200);
-  await shot('05-scheinwerfer-nebel');
-  await key('KeyE');
+  await sleep(300);
+  await placePlayer(page, 62, 12);
+  await sleep(1800);
+  await shot('07-scheinwerfer-nebel');
 
-  // 6) frame rate over a few seconds on the top deck
+  // 8) frame rate per quality level (top deck, 1920x1080)
   await placePlayer(page, 20, 12);
-  await sleep(500);
-  await page.evaluate(() => {
-    window.__game.perf.samples.length = 0;
-  });
-  await sleep(fpsSeconds * 1000);
-  result.fps = await page.evaluate(() => {
-    const s = window.__game.perf.samples.slice(1);
-    const avg = s.reduce((a, b) => a + b, 0) / Math.max(s.length, 1);
-    return { avg: Math.round(avg * 10) / 10, min: Math.round(Math.min(...s) * 10) / 10, samples: s.length };
-  });
+  result.fps = {};
+  for (const q of ['high', 'medium', 'low']) {
+    await page.evaluate((q) => {
+      const g = window.__game;
+      g.autoQuality = false;
+      g.r.setQuality(q);
+      g.perf.samples.length = 0;
+    }, q);
+    await sleep(fpsSeconds * 1000);
+    result.fps[q] = await page.evaluate(() => {
+      const s = window.__game.perf.samples.slice(1);
+      const avg = s.reduce((a, b) => a + b, 0) / Math.max(s.length, 1);
+      return { avg: Math.round(avg * 10) / 10, min: Math.round(Math.min(...s) * 10) / 10, samples: s.length };
+    });
+  }
 
   result.state = await page.evaluate(() => {
     const s = window.__game.sim.state;
@@ -165,6 +182,22 @@ async function runBrowser(name, launcher) {
       roll: Math.round((s.ship.roll * 1800) / Math.PI) / 10,
     };
   });
+  // 9) iPad-like touch device: on-screen controls must appear
+  const touchCtx = await browser.newContext({ viewport: { width: 1080, height: 810 }, deviceScaleFactor: 2, hasTouch: true, isMobile: name === 'chromium' });
+  const tp = await touchCtx.newPage();
+  tp.on('pageerror', (err) => result.errors.push(`touch pageerror: ${err.message}`));
+  await tp.goto(`${url}?sea=0.8&quality=high`, { waitUntil: 'load' });
+  await tp.waitForFunction(() => !!window.__game, null, { timeout: 30000 });
+  await sleep(2500);
+  result.touch = await tp.evaluate(() => ({
+    controlsVisible: getComputedStyle(document.querySelector('.touch')).display !== 'none',
+    layout: window.__game.r.layout,
+  }));
+  const tpath = join(outDir, `${name}-08-touch-ipad.png`);
+  await tp.screenshot({ path: tpath });
+  result.screenshots.push(tpath);
+  await touchCtx.close();
+
   await browser.close();
   result.ok = result.errors.length === 0;
   return result;

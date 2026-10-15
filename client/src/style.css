@@ -52,6 +52,9 @@ html, body {
 }
 #help.hidden { opacity: 0; }
 #help b { color: #e0b860; }
+#help .help-touch { display: none; }
+body.is-touch #help .help-keys { display: none; }
+body.is-touch #help .help-touch { display: inline; }
 
 .debug-panel {
   position: fixed;
