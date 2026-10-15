@@ -30,6 +30,9 @@ npm install
 npm run dev          # Spiel-Server (Port 2567) + Dev-Server auf http://localhost:5173 (auch im WLAN erreichbar)
 ```
 
+Nach einem `git pull` mit neuen Paketen installiert `npm run dev` fehlende Abhängigkeiten selbst nach (sonst käme
+„Failed to resolve import …“). Läuft der Dev-Server dabei schon, einmal neu starten.
+
 - **iPad / Handy testen:** Rechner und Gerät ins gleiche WLAN, auf dem Gerät `http://<IP-deines-Rechners>:5173` öffnen
   (die IP zeigt Vite beim Start unter „Network“ an). Im Dev-Modus verbindet sich das Spiel automatisch mit dem
   Spiel-Server auf demselben Rechner – so könnt ihr schon im WLAN zu mehreren spielen, ohne etwas zu hosten.

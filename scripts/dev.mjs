@@ -3,7 +3,35 @@
  * `npm run dev`: starts the game server (Colyseus, port 2567) and the Vite dev
  * server (port 5173) together, with prefixed output. Ctrl+C stops both.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, statSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * After a `git pull` with new dependencies the dev server would fail with
+ * "Failed to resolve import". Install first if packages are missing or the
+ * lockfile is newer than the last install.
+ */
+function ensureDependencies() {
+  const installed = join(root, 'node_modules', '.package-lock.json');
+  const lock = join(root, 'package-lock.json');
+  const stale = !existsSync(installed) || statSync(lock).mtimeMs > statSync(installed).mtimeMs + 1000;
+  const missing = [
+    ['client', '@colyseus/sdk'],
+    ['client', 'pixi.js'],
+    ['server', '@colyseus/core'],
+    ['shared', '@dimforge/rapier2d-compat'],
+  ].filter(([ws, pkg]) => !existsSync(join(root, ws, 'node_modules', pkg, 'package.json')) && !existsSync(join(root, 'node_modules', pkg, 'package.json')));
+  if (!stale && missing.length === 0) return;
+  console.log(`[dev] Abhängigkeiten fehlen oder sind veraltet${missing.length ? ` (${missing.map((m) => m[1]).join(', ')})` : ''} – führe npm install aus …`);
+  const r = spawnSync('npm', ['install'], { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' });
+  if (r.status !== 0) process.exit(r.status ?? 1);
+}
+
+ensureDependencies();
 
 const procs = [
   { name: 'server', color: 36, args: ['run', 'dev', '-w', '@lw/server'] },
