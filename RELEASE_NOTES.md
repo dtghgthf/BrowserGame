@@ -18,8 +18,14 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 - **Brecher im Sturm:** „Welle!“ – zwei Sekunden später spült eine Welle übers Oberdeck. Wer an einer Station steht, hält sich fest.
 - **Mann über Bord:** Ist noch jemand an Bord, kann er den Rettungsring am Heck werfen. Der Schwimmer greift zu, dann Hand über Hand einholen.
 
-## Abwechslung
-- Unterwegs wird bei jeder Fahrt neu ausgewürfelt, was passiert: Krake, Piraten, Eis, Strudel oder Treibgut.
+## Kampagne: sechs Etappen bis zum Leuchtturm
+- **Route wählen:** Am Kartentisch im Mitteldeck seht ihr die Seekarte der Fahrt. Jede Etappe ist eine andere Meeresart: Ruhige See, Nebelbank, Riff, Krakengrund, Piratenküste, Eismeer – und zum Schluss immer die Sturmfront.
+- **Häfen zwischen den Etappen:** Belohnung kassieren, die Hafenarbeiter flicken das Schiff. Auf dem Oberdeck stehen drei Händler: Messingpumpe, Bilgenpumpe, Kupferbeschlag, Schnelllader, Linse für den Scheinwerfer und mehr.
+- **Jede Fahrt ist anders:** neue Route, Modifikatoren wie „Neumond“, „Rostige Pumpe“ oder „Hungriger Krake“. Gesunken? Dann beginnt eine neue Fahrt.
+- **Tagesfahrt:** Jeden Tag eine Route für alle. Wer kommt am weitesten?
+- **Einzelfahrt:** die lange Fahrt wie früher.
+- **Rollen:** Zimmermann (flickt und sägt schneller), Maschinist (pumpt mehr), Ausguck (sieht weiter), Kanonier (lädt schneller) – oder einfach Matrose.
+- Eure Bestleistung steht in der Lobby.
 
 ---
 

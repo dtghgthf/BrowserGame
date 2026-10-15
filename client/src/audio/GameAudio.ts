@@ -229,6 +229,19 @@ export class GameAudio {
       case 'rescued':
         a.play('repaired', { volume: 0.9 });
         break;
+      case 'harbor':
+        a.play('arrive', { volume: 0.7 });
+        a.play('coins', { volume: 0.8, delay: 0.8 });
+        break;
+      case 'depart':
+        a.play('foghorn', { volume: 0.6 });
+        break;
+      case 'chooseLeg':
+        a.play('ui_click', { volume: 0.7 });
+        break;
+      case 'bought':
+        a.play('coins', { volume: 0.9 });
+        break;
       default:
         break;
     }

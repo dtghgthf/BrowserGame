@@ -36,6 +36,8 @@ export interface SimContext {
   /** World-space ray of the searchlight, or null if it is dark. */
   searchlightRay(): BeamRay | null;
   inBeam(ray: BeamRay, x: number, y: number, size: number, range: number): boolean;
+  /** How far the searchlight spots things (with the operator's role). */
+  spotRange(): number;
   /** Opens a leak at a specific leak point. */
   createLeak(point?: number): void;
   /** Throws a player (fire, breaking wave): sets the velocity of the body. */

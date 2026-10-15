@@ -5,6 +5,9 @@ import {
   LIGHTHOUSE_ISLAND,
   PLAYER_HALF_HEIGHT,
   LOOT_NAMES,
+  UPGRADE_INFO,
+  currentNode,
+  isFinalLeg,
   monsterHead,
   worldToShip,
   EMPTY_INPUT,
@@ -16,7 +19,10 @@ import {
   clamp,
   seaSurfaceY,
   shipToWorld,
+  dailySeed,
   type GameEvent,
+  type GameMode,
+  type Role,
   type PlayerInput,
   type SimCommand,
   type Simulation,
@@ -29,6 +35,7 @@ import type { TouchControls } from '../input/TouchControls';
 import { frameOf } from '../render/assets';
 import type { GameRenderer } from '../render/GameRenderer';
 import type { LightDef } from '../render/lighting/LightSystem';
+import { HarborView } from '../render/HarborView';
 import { HazardView } from '../render/HazardView';
 import { Particles } from '../render/Particles';
 import { StormView } from '../render/StormView';
@@ -42,6 +49,7 @@ import type { PixelFont } from '../ui/PixelFont';
 import { NameTags } from '../ui/NameTags';
 import { PingView } from '../ui/PingView';
 import { Popups } from '../ui/Popups';
+import { recordRun } from '../ui/best';
 import {
   applyCorrections,
   clearCorrections,
@@ -86,6 +94,7 @@ export class Game {
   readonly storm: StormView;
   private readonly pingView: PingView;
   private readonly popups: Popups;
+  private readonly harbor: HarborView;
   /** Unlit particles (muzzle flash, fireworks). */
   private readonly fx: Particles;
   private readonly island: Sprite;
@@ -179,12 +188,14 @@ export class Game {
     this.island.anchor.set(0.5, 1);
     this.island.scale.set(2);
     this.hazards.landmarks.addChild(this.island, this.lighthouse);
+    this.harbor = new HarborView(r, assets.props, this.hazards.landmarks, this.hazards.rockNormal, font, sim);
     this.storm = new StormView(r);
     this.fx = new Particles(r.final.world, 400);
     this.pingView = new PingView(assets.props);
     r.hud.addChildAt(this.pingView.root, 0);
     this.popups = new Popups(font);
     r.hud.addChildAt(this.popups.root, 1);
+    r.hud.addChildAt(this.harbor.hud, 1);
     this.setupPingInput();
 
     this.addLocalPlayer('primary');
@@ -226,10 +237,12 @@ export class Game {
     link.onSnapshot = (m) => net.predictor.receive(m);
     link.onWelcome = (w) => {
       // everybody predicts with the server's numbers
-      applyTuningPatch(this.sim.tuning, DEFAULT_TUNING);
-      applyTuningPatch(this.sim.tuning, w.tuning);
+      this.sim.setBaseTuning(w.tuning);
     };
-    link.onTuning = (patch) => applyTuningPatch(this.sim.tuning, patch);
+    link.onTuning = (patch) => {
+      applyTuningPatch(this.sim.baseTuning, patch);
+      this.sim.refreshTuning();
+    };
     link.onStatus = (st, reason) => {
       net.status = st;
       if (st === 'closed' && this.net === net) {
@@ -238,6 +251,19 @@ export class Game {
       }
     };
     link.start();
+  }
+
+  /** Local play from the lobby: a fresh run of the chosen kind with the chosen role. */
+  startSolo(role: Role, mode: GameMode): void {
+    if (this.net) return;
+    for (const p of [...this.sim.state.players]) this.sim.removePlayer(p.id);
+    this.locals.length = 0;
+    this.sim.startRun(mode, mode === 'daily' ? dailySeed(new Date()) : Math.floor(Math.random() * 2 ** 31));
+    this.sim.addPlayer('p1', { role });
+    this.locals.push({ id: 'p1', sampler: new InputSampler(), scheme: 'primary' });
+    clearCorrections(this.corrections);
+    takeSnapshot(this.sim.state, this.prev);
+    takeSnapshot(this.sim.state, this.cur);
   }
 
   /** Back to local single player (after leaving or losing the room). */
@@ -570,6 +596,14 @@ export class Game {
       } else if (e.type === 'flotsamFished') {
         const p = s.players.find((pp) => pp.id === e.player);
         if (p) this.popups.add(['TREIBGUT!'], p.x, p.y - 1);
+      } else if (e.type === 'harbor') {
+        const p = s.players.find((pp) => pp.id === this.locals[0]?.id);
+        if (p) this.popups.add(['HAFEN ERREICHT!', `+${e.coins} MÜNZEN`], p.x, p.y - 1.2, 0xe0b860);
+      } else if (e.type === 'bought') {
+        const p = s.players.find((pp) => pp.id === e.player);
+        if (p) this.popups.add([UPGRADE_INFO[e.kind].name.toUpperCase()], p.x, p.y - 1, 0x6cc070);
+      } else if (e.type === 'runOver' || (e.type === 'sunk' && s.campaign.mode !== 'single')) {
+        recordRun(s.campaign.mode, s.campaign.leg, s.voyage.coins);
       } else if (e.type === 'rescued') {
         const p = s.players.find((pp) => pp.id === e.player);
         if (p) this.popups.add(['GERETTET!'], p.x, p.y - 1, 0x6cc070);
@@ -655,13 +689,18 @@ export class Game {
     this.sea.update(left, left + width, top + height + 8, v.time, surfaceAt, farSurfaceAt);
 
     // the lighthouse: on the horizon at first, bigger as the ship gets closer, at the end on its island ahead
-    const progress = clamp(v.ship.x / Math.max(1, s.voyage.length), 0, 1);
+    const legProgress = clamp(v.ship.x / Math.max(1, s.voyage.length), 0, 1);
+    // in a campaign the lighthouse grows over the whole run, not each leg
+    const cur = currentNode(s.campaign);
+    const cols = s.campaign.nodes.length ? Math.max(...s.campaign.nodes.map((n) => n.col)) + 1 : 1;
+    const progress = s.campaign.mode === 'single' ? legProgress : clamp(((cur?.col ?? -1) + (s.status === 'harbor' ? 1 : legProgress)) / cols, 0, 1);
     const scale = progress < 0.5 ? 1 : progress < 0.8 ? 2 : 3;
     let lx = left + width * 0.86;
     // the far sea band is drawn with a quarter of the wave height, 34 px up
     let ly = farSurfaceAt(lx) * 0.25 - 31;
+    const final = isFinalLeg(s.campaign);
     const islandX = (s.voyage.length + LIGHTHOUSE_ISLAND) * PPM;
-    const near = islandX < lx;
+    const near = final && islandX < lx;
     if (near) {
       lx = islandX;
       ly = surfaceAt(islandX) - 22;
@@ -685,7 +724,11 @@ export class Game {
     this.updateSpray(dt, v);
     this.hazards.update(s, v, dt, (x) => seaSurfaceY(x, v.time, seaState), (x) => seaSurfaceY(x, v.time * 0.6, seaState) * 0.25 - 34 / PPM);
     this.storm.update(dt, seaState);
-    r.fogScale = 1 + 0.6 * progress;
+    // the sea area of the leg: fog banks are thick, calm sea is clear
+    const biome = cur?.biome;
+    const fog = biome === 'fog' ? 1.9 : biome === 'calm' ? 0.65 : biome === 'storm' ? 1.25 : 1;
+    r.fogScale = (1 + 0.6 * legProgress) * (s.status === 'harbor' ? 0.6 : fog);
+    this.harbor.update(s, v, this.locals[0]?.id, this.time);
     this.fx.update(dt);
     this.shipView.update(s, v, dt);
     const ls = r.lightScale;

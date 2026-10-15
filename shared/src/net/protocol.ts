@@ -1,6 +1,7 @@
 import { DEBUG_HAZARDS, EMPTY_INPUT, type DebugHazard, type PlayerInput, type SimCommand } from '../input';
 import type { GameEvent, GameState } from '../state';
 import type { TuningPatch } from '../tuning';
+import { GAME_MODES, ROLES, type GameMode, type Role } from '../campaign';
 
 /**
  * Network protocol between the browser and the Colyseus server. Shared so both
@@ -36,6 +37,19 @@ export interface JoinOptions {
   name: string;
   color: number;
   protocol: number;
+  role?: Role;
+  /** Only when opening a ship: what kind of voyage. */
+  mode?: GameMode;
+}
+
+/** A role from the network (anything unknown = no role). */
+export function parseRole(v: unknown): Role {
+  return typeof v === 'string' && (ROLES as readonly string[]).includes(v) ? (v as Role) : 'none';
+}
+
+/** A game mode from the network (anything unknown = campaign). */
+export function parseMode(v: unknown): GameMode {
+  return typeof v === 'string' && (GAME_MODES as readonly string[]).includes(v) ? (v as GameMode) : 'campaign';
 }
 
 export interface WelcomeMessage {

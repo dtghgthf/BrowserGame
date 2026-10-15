@@ -12,7 +12,7 @@
  *   'x'  solid hull tile with a possible leak    '@'  player spawn
  *   'w'  steering wheel   'p'  pump   's'  searchlight   'c'  cannon   'k'  workshop
  *   'l'  lantern (hangs from the ceiling above)  'b'  crate   'f'  barrel (oil)   'n'  plank
- *   'u'  rack of cannon balls   'o'  oil can   'e'  bucket   'r'  life ring (station)
+ *   'u'  rack of cannon balls   'o'  oil can   'e'  bucket   'r'  life ring (station)   't'  chart table
  */
 export const SHIP_MAP: readonly string[] = [
   '                                                                        ',
@@ -33,7 +33,7 @@ export const SHIP_MAP: readonly string[] = [
   '   #..........H.........#.....................#.........H...........#   ',
   '   #..........H.........................................H..........##   ',
   '   #..........H.........................................H..........x    ',
-  '   ##..e......H.............b....o......k..n............H.........##    ',
+  '   ##..e......H....t........b....o......k..n............H.........##    ',
   '    ##########################=###################==###############     ',
   '    ##..............l.........H.....#...........l................##     ',
   '     #........................H.................................##      ',

@@ -1,4 +1,4 @@
-import { DEFAULT_TUNING, Simulation, diffTuning, normalizeRoomCode, type TuningPatch } from '@lw/shared';
+import { DEFAULT_TUNING, Simulation, dailySeed, diffTuning, normalizeRoomCode, parseMode, type GameMode, type TuningPatch } from '@lw/shared';
 import { AudioEngine } from './audio/AudioEngine';
 import { GameAudio } from './audio/GameAudio';
 import { Game } from './game/Game';
@@ -28,7 +28,11 @@ async function boot(): Promise<void> {
     const forced = params.get('quality');
     const quality: Quality = forced === 'low' || forced === 'medium' || forced === 'high' ? forced : 'high';
     const [sim, renderer, hull, back, player, props] = await Promise.all([
-      Simulation.create({ seed: Number(params.get('seed')) || 1337, seaState: params.has('sea') ? Number(params.get('sea')) : undefined }),
+      Simulation.create({
+        mode: parseMode(params.get('mode') ?? 'campaign'),
+        seed: Number(params.get('seed')) || (params.get('mode') === 'daily' ? dailySeed(new Date()) : Math.floor(Math.random() * 2 ** 31)),
+        seaState: params.has('sea') ? Number(params.get('sea')) : undefined,
+      }),
       GameRenderer.create(host, quality),
       loadImageLayer('assets/ship_hull.png'),
       loadImageLayer('assets/ship_back.png'),
@@ -48,7 +52,7 @@ async function boot(): Promise<void> {
     if (params.has('p2')) game.addLocalPlayer('secondary');
     game.tuningPanel = new TuningPanel(
       {
-        tuning: sim.tuning,
+        tuning: sim.baseTuning,
         look: renderer.look,
         tune: (patch) => game.command({ type: 'tune', patch }),
         setSeaState: (value) => game.command({ type: 'seaState', value }),
@@ -85,7 +89,7 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
 
   const enter = (link: NetLink, opened: boolean) => {
     // values tuned on this device travel with the person who opens the ship
-    const local = diffTuning(DEFAULT_TUNING, sim.tuning);
+    const local = diffTuning(DEFAULT_TUNING, sim.baseTuning);
     game.goOnline(link);
     if (opened && hasKeys(local)) link.sendCommand({ type: 'tune', patch: local });
     lobby.roomCode = link.code;
@@ -97,9 +101,12 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
     document.body,
     {
       serverUrl,
-      create: async (name, color) => enter(await NetLink.create(serverUrl!, name, color, lag), true),
-      join: async (code, name, color) => enter(await NetLink.join(serverUrl!, code, name, color, lag), false),
-      solo: () => setRoomInUrl(null),
+      create: async (name, color, role, mode) => enter(await NetLink.create(serverUrl!, name, color, role, mode, lag), true),
+      join: async (code, name, color, role) => enter(await NetLink.join(serverUrl!, code, name, color, role, lag), false),
+      solo: (role, mode) => {
+        setRoomInUrl(null);
+        game.startSolo(role, mode);
+      },
       leave: async () => {
         const link = game.net?.link;
         game.goOffline();

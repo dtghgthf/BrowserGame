@@ -109,3 +109,13 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Client: Flammen + Feuerlicht + Rauch, Schaluppe, Haken-Seil, Strudel, Eisschollen, Treibgut, Schwimmer, Ring mit Leine,
       Seekarte (Strudel, Treibgut, Piraten, Eis), Warnungen im HUD, Popups beim Kisten öffnen, neue Platzhalter-Sounds
 - [x] Tests: Kisten, Laden, Öl, Feuer, Eimer, Brecher, Begegnungen, Piraten, Strudel, Eis, Treibgut, Rettung, Codec
+
+## Phase 6 – Kampagne, Hafen, Upgrades, Modifikatoren, Rollen
+- [x] `campaign.ts`: Routen-Graph (6 Etappen), 7 Biome, 7 Modifikatoren, 10 Upgrades, 5 Rollen, Tagesfahrt-Seed
+- [x] Simulation: Modi single/campaign/daily, Hafen-Status (Belohnung, Händler, Hafenarbeiter), Kartentisch, Etappenwechsel mit
+      Übertrag, neuer Lauf nach Untergang, effektives Tuning, Rollen-Boni; Codec; Protokoll (Modus, Rolle)
+- [x] Server: Modus und Rolle aus den Join-Optionen, Tagesfahrt-Seed
+- [x] Client: Lobby (Rolle, Fahrt, Bestleistung), Routenkarte am Kartentisch, Hafen-Kulisse, Händler-Stände, HUD (Etappe,
+      Biom, Modifikatoren, Hafen-Countdown, Bilanz), Nebel je Biom, Rollen-Abzeichen, Sounds
+- [x] Tests (Route, Tagesfahrt, effektives Tuning, Hafen/Händler/Übertrag, Leuchtturm/Untergang, Codec, Rollen)
+- [x] Balance-Skript mit Bot-Crew

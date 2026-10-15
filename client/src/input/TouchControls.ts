@@ -20,6 +20,8 @@ const ICONS: Record<HintIcon, string> = {
   oil: 'ui_i_oil',
   bucket: 'ui_i_bucket',
   ring: 'ui_i_ring',
+  table: 'ui_i_table',
+  buy: 'ui_i_buy',
 };
 
 type ButtonKey = 'jump' | 'interact' | 'pick';

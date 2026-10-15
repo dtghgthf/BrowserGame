@@ -11,7 +11,7 @@ export function updateWhirl(ctx: SimContext, dt: number): void {
   const ahead = w.x - ship.x;
   if (!w.spotted) {
     const light = ctx.searchlightRay();
-    if (ahead < G.rockSeeRange * 1.5 || (light && ctx.inBeam(light, w.x, seaSurfaceY(w.x, s.time, ship.seaState), w.radius * 0.5, G.rockSpotRange))) {
+    if (ahead < G.rockSeeRange * 1.5 || (light && ctx.inBeam(light, w.x, seaSurfaceY(w.x, s.time, ship.seaState), w.radius * 0.5, ctx.spotRange()))) {
       w.spotted = true;
       const st = s.stations.find((x) => x.kind === 'searchlight');
       const who = (st?.occupant && s.players.find((p) => p.id === st.occupant)) || ctx.closestPlayer(10, -1);

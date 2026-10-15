@@ -1,3 +1,20 @@
+import {
+  HARBOR_TIME,
+  ROLE_INFO,
+  SHOP_STALLS,
+  START_HARBOR_TIME,
+  UPGRADE_INFO,
+  createCampaign,
+  currentNode,
+  effectiveTuning,
+  isFinalLeg,
+  legSeaState,
+  nextLegs,
+  rollShop,
+  type CampaignState,
+  type GameMode,
+  type Role,
+} from './campaign';
 import { SIM_DT } from './constants';
 import { copyInput, EMPTY_INPUT, type InputMap, type PlayerInput, type SimCommand } from './input';
 import { COMPARTMENT_NAMES, SHIP_MAP, SHIP_ORIGIN } from './layout/shipMap';
@@ -77,6 +94,8 @@ export interface SimulationOptions {
   layout?: ShipLayout;
   /** Overrides on top of DEFAULT_TUNING. */
   tuning?: TuningPatch;
+  /** single = one voyage (default), campaign = a run of legs with harbours, daily = the campaign of the day. */
+  mode?: GameMode;
 }
 
 /** Physics handles of a player. Everything else about the player lives in PlayerState. */
@@ -96,6 +115,7 @@ export interface AddPlayerOptions {
   name?: string;
   /** Preferred colour slot 0..3 (the next free one is used if it is taken). */
   color?: number;
+  role?: Role;
 }
 
 /** Number of distinct coat colours / spawn points. */
@@ -120,6 +140,22 @@ const MARKER_OBJECTS: Partial<Record<MarkerDef['type'], ObjectKind>> = {
   bucket: 'bucket',
 };
 
+/** Voyage counters and stock a run carries from leg to leg. */
+const CARRIED_STATS = [
+  'timber',
+  'coins',
+  'cratesOpened',
+  'rocksHit',
+  'rocksPassed',
+  'rocksDestroyed',
+  'monstersRepelled',
+  'leaksRepaired',
+  'firesPut',
+  'piratesBeaten',
+  'flotsamFished',
+  'rescues',
+] as const;
+
 const STATION_KINDS: Partial<Record<MarkerDef['type'], StationKind>> = {
   wheel: 'wheel',
   pump: 'pump',
@@ -128,10 +164,11 @@ const STATION_KINDS: Partial<Record<MarkerDef['type'], StationKind>> = {
   workshop: 'workshop',
   rack: 'rack',
   ring: 'ring',
+  table: 'table',
 };
 
 /** Stations a player can enter (the ball rack is used by pressing F next to it instead). */
-const OPERABLE: ReadonlySet<StationKind> = new Set(['wheel', 'pump', 'searchlight', 'cannon', 'workshop', 'ring']);
+const OPERABLE: ReadonlySet<StationKind> = new Set(['wheel', 'pump', 'searchlight', 'cannon', 'workshop', 'ring', 'table']);
 
 /** Language independent icon for an interaction (touch context buttons). */
 export type HintIcon =
@@ -151,7 +188,9 @@ export type HintIcon =
   | 'ball'
   | 'oil'
   | 'bucket'
-  | 'ring';
+  | 'ring'
+  | 'table'
+  | 'buy';
 
 /** Seconds the ship needs to stop after arriving. */
 const ARRIVE_STOP_TIME = 4;
@@ -178,15 +217,19 @@ export class Simulation implements SimContext {
   readonly layout: ShipLayout;
   readonly waterGeometry: CompartmentGeometry[];
   readonly ladders: LadderZone[];
-  /** This simulation's gameplay numbers (change them with a `tune` command). */
-  readonly tuning: Tuning;
+  /** Gameplay numbers before modifiers, biome and upgrades (changed by `tune` commands). */
+  readonly baseTuning: Tuning;
+  /** The numbers in effect right now (base + run modifiers + biome of the leg + upgrades). */
+  tuning!: Tuning;
+  /** Kind of voyage for new runs (the running one is in `state.campaign.mode`). */
+  mode: GameMode;
   state!: GameState;
 
   private world!: World;
   private hatchColliders: Collider[] = [];
   private readonly players = new Map<string, PlayerRuntime>();
   private readonly objects = new Map<number, ObjectRuntime>();
-  private readonly seed: number;
+  private seed: number;
   private readonly initialSeaState: number;
 
   /** Initialises Rapier (once) and creates a simulation. */
@@ -199,19 +242,67 @@ export class Simulation implements SimContext {
     this.layout = options.layout ?? getShipLayout();
     this.waterGeometry = this.layout.compartments.map((c) => buildCompartmentGeometry(this.layout, c));
     this.ladders = this.layout.ladders.map((l) => ladderZone(this.layout, l));
-    this.tuning = cloneTuning(DEFAULT_TUNING);
-    applyTuningPatch(this.tuning, options.tuning);
+    this.baseTuning = cloneTuning(DEFAULT_TUNING);
+    applyTuningPatch(this.baseTuning, options.tuning);
+    this.tuning = cloneTuning(this.baseTuning);
+    this.mode = options.mode ?? 'single';
     this.seed = options.seed ?? 1337;
-    this.initialSeaState = options.seaState ?? this.tuning.ship.initialSeaState;
+    this.initialSeaState = options.seaState ?? this.baseTuning.ship.initialSeaState;
     this.reset();
+  }
+
+  /** Recomputes the effective tuning from the base and the run (after tune, purchases, a new leg, a snapshot). */
+  refreshTuning(): void {
+    this.tuning = this.state ? effectiveTuning(this.baseTuning, this.state.campaign) : cloneTuning(this.baseTuning);
+  }
+
+  /** Replaces the base tuning (defaults + patch), e.g. with the numbers of an online room. */
+  setBaseTuning(patch: TuningPatch): void {
+    applyTuningPatch(this.baseTuning, DEFAULT_TUNING);
+    applyTuningPatch(this.baseTuning, patch);
+    this.refreshTuning();
   }
 
   // ---------------------------------------------------------------- setup
 
-  /** Rebuilds the physics world and resets the game state. Players are kept. */
+  /** Starts a fresh run of another kind (lobby: campaign / daily / single). Players are kept. */
+  startRun(mode: GameMode, seed: number): void {
+    this.mode = mode;
+    this.seed = seed >>> 0;
+    this.state.campaign.run = -1;
+    this.reset();
+  }
+
+  /**
+   * Starts over: a new voyage (single) or a new run (campaign, the daily run
+   * starts its route again). Players are kept.
+   */
   reset(): void {
-    const keep = this.state ? this.state.players.map((p) => ({ id: p.id, name: p.name, color: p.color, away: p.away })) : [];
+    const prev = this.state?.campaign;
+    const run = !prev || prev.run < 0 ? 0 : this.mode === 'campaign' && prev.mode === 'campaign' ? prev.run + 1 : 0;
+    this.rebuild(createCampaign(this.mode, this.seed, run), null);
+    if (this.mode !== 'single') {
+      this.state.status = 'harbor';
+      this.state.statusTimer = START_HARBOR_TIME;
+    }
+  }
+
+  /** Sails out of the harbour on the chosen leg: a fresh voyage, the stock and the run carry over. */
+  private startLeg(node: number): void {
+    const old = this.state;
+    const c = old.campaign;
+    c.node = node;
+    c.shop = [];
+    c.choice = -1;
+    this.rebuild(c, old);
+    this.emit({ type: 'depart', node });
+  }
+
+  /** Rebuilds the physics world and the state for a voyage. `carry` = the previous leg of the same run. */
+  private rebuild(campaign: CampaignState, carry: GameState | null): void {
+    const keep = this.state ? this.state.players.map((p) => ({ id: p.id, name: p.name, color: p.color, role: p.role, away: p.away })) : [];
     const forcedRoll = this.state?.forcedRoll ?? null;
+    this.tuning = effectiveTuning(this.baseTuning, campaign);
     if (this.world) this.world.free();
     this.players.clear();
     this.objects.clear();
@@ -221,11 +312,11 @@ export class Simulation implements SimContext {
     const statics = buildStaticColliders(this.world, this.layout);
     this.hatchColliders = statics.hatchColliders;
 
-    const seaState = this.state?.voyage.seaBase ?? this.initialSeaState;
+    const seaState = campaign.mode === 'single' ? (this.state?.voyage.seaBase ?? this.initialSeaState) : legSeaState(campaign, this.initialSeaState);
     this.state = {
       tick: 0,
       time: 0,
-      rng: this.seed >>> 0,
+      rng: carry ? carry.rng : (campaign.mode === 'single' ? this.seed : campaign.seed) >>> 0,
       status: 'sailing',
       statusTimer: 0,
       ship: createShipState(this.tuning.ship, this.tuning.gameplay.gravity, seaState),
@@ -251,7 +342,16 @@ export class Simulation implements SimContext {
       pings: [],
       shouts: { wheel: 6, water: 0, rock: 0, oil: 0, fire: 0 },
       nextId: 1,
+      campaign,
     };
+    if (carry) {
+      // the stock and the run's statistics go on
+      const v = this.state.voyage;
+      const o = carry.voyage;
+      for (const k of CARRIED_STATS) v[k] = o[k];
+      v.hammer = o.hammer;
+      v.crowbar = o.crowbar;
+    }
     this.layout.hatches.forEach((h) => applyHatchState(this.hatchColliders[h.id]!, h, true));
 
     for (const m of this.layout.markers) {
@@ -264,6 +364,89 @@ export class Simulation implements SimContext {
       if (kind === 'barrel' || kind === 'oilcan') o.fill = 1;
     }
     for (const k of keep) this.addPlayer(k.id, k).away = k.away;
+  }
+
+  // ---------------------------------------------------------------- campaign
+
+  /** End of a leg that is not the last one: into the harbour, pay the reward, open the shop. */
+  private enterHarbor(): void {
+    const s = this.state;
+    const c = s.campaign;
+    const node = currentNode(c);
+    s.status = 'harbor';
+    s.statusTimer = HARBOR_TIME;
+    c.leg++;
+    const reward = Math.round((node?.reward ?? 20) * this.tuning.gameplay.rewardFactor);
+    s.voyage.coins += reward;
+    // the harbour sells wood cheaply: the stock is topped up to the start amount
+    s.voyage.timber = Math.max(s.voyage.timber, this.tuning.gameplay.startTimber);
+    c.shop = rollShop(s, c);
+    c.choice = nextLegs(c)[0]?.id ?? -1;
+    s.rocks = [];
+    s.whirl = null;
+    s.flotsam = [];
+    if (s.monster) s.monster.phase = 'flee';
+    if (s.pirate) {
+      cutHook(this);
+      s.pirate.phase = 'flee';
+    }
+    this.emit({ type: 'harbor', coins: reward });
+  }
+
+  /** In the harbour the dock workers patch the hull, pump it dry and put out fires. */
+  private updateHarbor(dt: number): void {
+    const s = this.state;
+    const since = (s.campaign.node < 0 ? START_HARBOR_TIME : HARBOR_TIME) - s.statusTimer;
+    if (since < 1.5) return;
+    for (const leak of s.leaks) {
+      if (!leak.active) continue;
+      leak.active = false;
+      leak.inflow = 0;
+      this.emit({ type: 'repaired', leak: leak.id });
+    }
+    if (s.fires.length) s.fires = [];
+    s.compartments.forEach((c, i) => {
+      if (c.volume > 0) this.addWater(i, -1.6 * dt);
+    });
+  }
+
+  private buy(p: PlayerState, index: number): void {
+    const s = this.state;
+    const c = s.campaign;
+    const offer = c.shop[index];
+    if (!offer || offer.sold || s.voyage.coins < offer.price) return;
+    s.voyage.coins -= offer.price;
+    offer.sold = true;
+    if (offer.kind === 'timber') s.voyage.timber += 4;
+    else if (offer.kind === 'tools') {
+      s.voyage.hammer = true;
+      s.voyage.crowbar = true;
+    } else if (!UPGRADE_INFO[offer.kind].consumable) c.upgrades.push(offer.kind);
+    this.refreshTuning();
+    this.emit({ type: 'bought', player: p.id, kind: offer.kind });
+  }
+
+  /** Feet height of the top deck (ship-local m): the first floor from the top at the pivot column. */
+  deckFeetY(): number {
+    const L = this.layout;
+    const tx = Math.round(L.origin.x);
+    for (let ty = 1; ty < L.height; ty++) {
+      const k = L.tiles[ty * L.width + tx];
+      if (k === 2 && L.railMask[ty * L.width + tx] === 0) return tileToLocal(L, tx, ty).y;
+    }
+    return 0;
+  }
+
+  /** Searchlight range with the operator's role. */
+  spotRange(): number {
+    const st = this.state.stations.find((x) => x.kind === 'searchlight');
+    const op = st?.occupant ? this.state.players.find((p) => p.id === st.occupant) : undefined;
+    return this.tuning.gameplay.rockSpotRange * (op?.role === 'lookout' ? this.tuning.gameplay.roleLookout : 1);
+  }
+
+  private roleOf(id: string | null): Role {
+    if (!id) return 'none';
+    return this.state.players.find((p) => p.id === id)?.role ?? 'none';
   }
 
   private createVoyage(seaBase: number): VoyageState {
@@ -333,6 +516,7 @@ export class Simulation implements SimContext {
       id,
       name: options.name ?? '',
       color,
+      role: options.role ?? 'none',
       away: false,
       x: spawn.x,
       y: spawn.y,
@@ -423,6 +607,7 @@ export class Simulation implements SimContext {
     this.world.gravity = { x: src.ship.gravity.x, y: src.ship.gravity.y };
     this.world.propagateModifiedBodyPositionsToColliders();
     this.state = src;
+    this.refreshTuning();
   }
 
   /** Moves a player (ship-local meters, body centre). Used by tests and debug tools. */
@@ -506,6 +691,14 @@ export class Simulation implements SimContext {
         return;
       }
     }
+    if (s.status === 'harbor') {
+      s.statusTimer -= dt;
+      if (s.statusTimer <= 0) {
+        this.startLeg(s.campaign.choice >= 0 ? s.campaign.choice : (nextLegs(s.campaign)[0]?.id ?? 0));
+        return;
+      }
+      this.updateHarbor(dt);
+    }
 
     // the storm grows on the way to the lighthouse
     const progress = clamp(s.ship.x / Math.max(1, s.voyage.length), 0, 1);
@@ -521,6 +714,7 @@ export class Simulation implements SimContext {
     // arrived: the ship slows down and stops in front of the lighthouse island
     const G = this.tuning.gameplay;
     let throttle = s.status === 'arrived' ? clamp((s.statusTimer - (G.arrivedResetTime - ARRIVE_STOP_TIME)) / ARRIVE_STOP_TIME, 0, 1) : 1;
+    if (s.status === 'harbor') throttle = s.campaign.node < 0 ? 0 : clamp((s.statusTimer - (HARBOR_TIME - ARRIVE_STOP_TIME)) / ARRIVE_STOP_TIME, 0, 1);
     // a pirate grappling hook holds the bow
     if (s.pirate && s.pirate.hook > 0) throttle *= G.hookSlow;
     updateShip(s.ship, s.time, dt, { volume, moment }, this.tuning.ship, G.gravity, throttle);
@@ -614,7 +808,8 @@ export class Simulation implements SimContext {
         this.state.forcedRoll = c.value;
         break;
       case 'tune':
-        applyTuningPatch(this.tuning, c.patch);
+        applyTuningPatch(this.baseTuning, c.patch);
+        this.refreshTuning();
         break;
       case 'reset':
         this.reset();
@@ -686,7 +881,7 @@ export class Simulation implements SimContext {
         consumed = true;
         p.jumpBuffer = 0;
       } else {
-        this.operateStation(st, input, dt, !!pressed('pick'));
+        this.operateStation(st, input, dt, !!pressed('pick'), (pressed('right') ? 1 : 0) - (pressed('left') ? 1 : 0));
         rt.body.setTranslation({ x: st.x, y: st.y - PLAYER_HALF_HEIGHT - 0.01 }, true);
         rt.body.setLinvel({ x: 0, y: 0 }, true);
         this.setPlatformFilter(p, rt, true);
@@ -704,7 +899,7 @@ export class Simulation implements SimContext {
         p.action.progress += dt;
         const v = rt.body.linvel();
         rt.body.setLinvel({ x: approach(v.x, 0, this.tuning.player.groundAccel * dt), y: clampFall(this.tuning.player, v.y + g.y * dt) }, true);
-        if (p.action.progress >= this.actionDuration(p.action.kind)) this.finishAction(p);
+        if (p.action.progress >= this.actionDuration(p.action.kind, p.role)) this.finishAction(p);
         return;
       }
     }
@@ -852,6 +1047,7 @@ export class Simulation implements SimContext {
       workshop: 'Werkbank',
       rack: 'Kugeln',
       ring: 'Rettungsring',
+      table: 'Kartentisch',
     };
 
     const carried = p.carrying !== null ? this.state.objects.find((o) => o.id === p.carrying) : undefined;
@@ -900,6 +1096,17 @@ export class Simulation implements SimContext {
       const hp = hookPoint(this.layout);
       const d = Math.hypot(hp.x - p.x, hp.y - feetY);
       if (d < 1.4) candidates.push({ d: d - 0.6, label: 'Haken kappen', icon: 'repair', run: () => (p.action = { kind: 'cut', target: 0, progress: 0 }) });
+    }
+    // the harbour stalls on the top deck
+    const s = this.state;
+    if (s.status === 'harbor' && !carried && feetY < this.deckFeetY() + 0.3) {
+      s.campaign.shop.forEach((offer, i) => {
+        const dx = Math.abs(SHOP_STALLS[i]! - p.x);
+        if (offer.sold || dx > 0.9) return;
+        const info = UPGRADE_INFO[offer.kind];
+        const afford = s.voyage.coins >= offer.price;
+        candidates.push({ d: dx - 0.4, label: afford ? `${info.name} kaufen (${offer.price})` : `Zu teuer (${offer.price})`, icon: 'buy', run: () => this.buy(p, i) });
+      });
     }
     // flotsam alongside: fish it out with the boat hook
     if (!carried && compartmentAtLocal(this.layout, p.x, p.y) < 0) {
@@ -1000,7 +1207,7 @@ export class Simulation implements SimContext {
    * it towards the target, at most a bit faster than the keys - so touch and
    * keyboard players are equally strong.
    */
-  private operateStation(st: StationState, input: Readonly<PlayerInput>, dt: number, fire = false): void {
+  private operateStation(st: StationState, input: Readonly<PlayerInput>, dt: number, fire = false, tapDir = 0): void {
     const G = this.tuning.gameplay;
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     const target = input.target;
@@ -1028,7 +1235,7 @@ export class Simulation implements SimContext {
           const comp = this.pumpCompartment(st);
           if (comp >= 0) {
             const c = this.state.compartments[comp]!;
-            const removed = Math.min(c.volume, G.pumpStroke);
+            const removed = Math.min(c.volume, G.pumpStroke * (this.roleOf(st.occupant) === 'engineer' ? G.roleEngineer : 1));
             c.volume -= removed;
             refreshSurface(this.waterGeometry[comp]!, c);
             st.aux += 1;
@@ -1053,7 +1260,8 @@ export class Simulation implements SimContext {
         else if (st.charge < 2) {
           // alone the gunner loads by himself (slower than with a helper)
           const before = st.charge;
-          st.charge = Math.min(2, st.charge + (2 / G.cannonSoloLoad) * dt);
+          const load = G.cannonSoloLoad * (this.roleOf(st.occupant) === 'gunner' ? G.roleGunner : 1);
+          st.charge = Math.min(2, st.charge + (2 / load) * dt);
           if (before < 2 && st.charge >= 2) this.emit({ type: 'cannonLoad', player: st.occupant, station: st.id, charge: 2 });
         }
         break;
@@ -1073,7 +1281,8 @@ export class Simulation implements SimContext {
           if (op && !op.bubble) this.say(op, 'wood');
           break;
         }
-        st.charge = Math.min(1, st.charge + 1 / Math.max(1, G.sawStrokes));
+        const carpenter = this.roleOf(st.occupant) === 'carpenter' ? 1 / G.roleCarpenter : 1;
+        st.charge = Math.min(1, st.charge + carpenter / Math.max(1, G.sawStrokes));
         this.emit({ type: 'sawStroke', player: st.occupant, station: st.id });
         if (st.charge >= 1) {
           st.charge = 0;
@@ -1100,6 +1309,24 @@ export class Simulation implements SimContext {
           st.value = wrapAngle(st.value + dir * G.cannonSpeed * dt);
         }
         if (fire) ringButton(this, st);
+        break;
+      }
+      case 'table': {
+        // in the harbour: choose the next leg; F = cast off now
+        const s = this.state;
+        if (s.status !== 'harbor') break;
+        const c = s.campaign;
+        const legs = nextLegs(c);
+        if (legs.length === 0) break;
+        let idx = Math.max(0, legs.findIndex((n) => n.id === c.choice));
+        if (hasTarget) idx = Math.round(((clamp(target, -1, 1) + 1) / 2) * (legs.length - 1));
+        else if (tapDir !== 0) idx = (idx + tapDir + legs.length) % legs.length;
+        const node = legs[idx]!;
+        if (node.id !== c.choice) {
+          c.choice = node.id;
+          this.emit({ type: 'chooseLeg', node: node.id });
+        }
+        if (fire && s.statusTimer > 3) s.statusTimer = 3;
         break;
       }
       case 'rack':
@@ -1264,12 +1491,12 @@ export class Simulation implements SimContext {
   }
 
   /** Seconds a timed action takes (with the tools the crew found). */
-  actionDuration(kind: PlayerActionKind): number {
+  actionDuration(kind: PlayerActionKind, role: Role = 'none'): number {
     const P = this.tuning.player;
     const v = this.state.voyage;
     switch (kind) {
       case 'repair':
-        return P.repairTime * (v.hammer ? P.hammerFactor : 1);
+        return P.repairTime * (v.hammer ? P.hammerFactor : 1) * (role === 'carpenter' ? this.tuning.gameplay.roleCarpenter : 1);
       case 'open':
         return P.openTime * (v.crowbar ? P.crowbarFactor : 1);
       case 'ram':
@@ -1496,6 +1723,14 @@ export class Simulation implements SimContext {
 
     const progress = s.ship.x / Math.max(1, v.length);
     if (s.ship.x >= v.length) {
+      if (!isFinalLeg(s.campaign)) {
+        this.enterHarbor();
+        return;
+      }
+      if (s.campaign.mode !== 'single') {
+        s.campaign.leg++;
+        this.emit({ type: 'runOver', won: true });
+      }
       s.status = 'arrived';
       s.statusTimer = G.arrivedResetTime;
       s.rocks = [];
@@ -1566,7 +1801,7 @@ export class Simulation implements SimContext {
       if (Math.hypot(lp.x - x, lp.y - y) < 1.4) return 'leak';
     }
     for (const st of s.stations) {
-      if (Math.abs(st.x - x) < 1.2 && y > st.y - 2 && y < st.y + 0.5) return st.kind === 'workshop' ? 'plank' : st.kind === 'rack' ? 'cannon' : st.kind;
+      if (Math.abs(st.x - x) < 1.2 && y > st.y - 2 && y < st.y + 0.5) return st.kind === 'workshop' ? 'plank' : st.kind === 'rack' ? 'cannon' : st.kind === 'table' ? 'here' : st.kind;
     }
     for (const h of this.layout.hatches) {
       const g = hatchGeometry(this.layout, h);

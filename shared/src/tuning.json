@@ -105,6 +105,13 @@
     "ringRope": 22,
     "ringPullStroke": 1.4,
     "rescueWindow": 30,
-    "swimSpeed": 1.1
+    "swimSpeed": 1.1,
+    "rewardFactor": 1,
+    "bilgeRate": 0,
+    "hullArmor": 0,
+    "roleCarpenter": 0.65,
+    "roleEngineer": 1.3,
+    "roleLookout": 1.3,
+    "roleGunner": 0.6
   }
 }

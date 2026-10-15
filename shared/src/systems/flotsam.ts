@@ -13,7 +13,7 @@ export function updateFlotsam(ctx: SimContext): void {
   for (const f of s.flotsam) {
     if (f.spotted) continue;
     const ahead = f.x - s.ship.x;
-    if (ahead < G.rockSeeRange || (light && ctx.inBeam(light, f.x, seaSurfaceY(f.x, s.time, s.ship.seaState) - 0.3, 1, G.rockSpotRange))) {
+    if (ahead < G.rockSeeRange || (light && ctx.inBeam(light, f.x, seaSurfaceY(f.x, s.time, s.ship.seaState) - 0.3, 1, ctx.spotRange()))) {
       f.spotted = true;
       const st = s.stations.find((x) => x.kind === 'searchlight');
       const who = st?.occupant ? s.players.find((p) => p.id === st.occupant) : null;

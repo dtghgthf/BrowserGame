@@ -27,6 +27,7 @@ export {
   type SimulationOptions,
 } from './simulation';
 export * from './tuning';
+export * from './campaign';
 export { PLAYER_COLORS, type AddPlayerOptions } from './simulation';
 export * from './net/protocol';
 export * from './net/host';

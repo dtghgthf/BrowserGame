@@ -209,3 +209,32 @@ Format: **Entscheidung** – Begründung.
   mit.
 - **Brecher und Blitze nur im Sturm** (Seegang ≥ 1,0), mit 2 s Vorwarnung und Zuruf „Welle!“: Wer auf dem offenen Deck
   steht und sich nicht an einer Station festhält, wird Richtung Heck geschleudert – über die Heckwand heißt Mann über Bord.
+
+## Phase 6 – Kampagne, Hafen, Upgrades, Modifikatoren, Rollen
+- **Kampagne als Routen-Graph** (`shared/src/campaign.ts`): 6 Spalten = 6 Etappen, 2–3 Wahlmöglichkeiten pro Spalte, die
+  letzte Etappe ist immer die Sturmfront vor dem Leuchtturm. Jede Etappe ist eine kürzere Fahrt (560–1000 m) mit einem
+  Biom, das die Begegnungs-Gewichte und das Wetter verschiebt. Alles hängt am Seed: Server und jeder Client leiten daraus
+  dasselbe ab.
+- **Effektives Tuning wird berechnet statt gespeichert:** `base (tune-Befehle) ⊕ Modifikatoren ⊕ Biom ⊕ Upgrades`
+  (`effectiveTuning`). Die Simulation rechnet es bei jedem neuen Leg, Kauf, Tune-Befehl und `loadState` neu – so muss nichts
+  davon im Snapshot stehen und die Vorhersage nutzt automatisch dieselben Zahlen. Der Tuning-Regler bearbeitet die Basis.
+- **Modifikatoren und Upgrades als kleine Funktionen** auf dem Tuning (statt reiner JSON-Daten): Viele sind Faktoren
+  („× 1,35 Pumpenhub“), das ist als Code lesbarer und typgeprüft. Neue Tuning-Schlüssel nur, wo es vorher keinen Regler gab
+  (`bilgeRate`, `hullArmor`, `rewardFactor`, Rollen-Faktoren).
+- **Hafen an Bord statt eigenem Menü:** Status `harbor`, das Schiff liegt still vor einer Kaimauer. Die Route wählt, wer am
+  Kartentisch steht (A/D oder auf die Karte zeigen, F = sofort ablegen); ohne Wahl legt das Schiff nach 60 s mit der
+  ersten Möglichkeit ab. Kein Abstimmungssystem – ohne Sprache wäre eine Abstimmung schwer zu verstehen, und der Tisch ist
+  ein Ort, an den man zeigen (pingen) kann. Der Händler sind drei Stände auf dem Oberdeck (Kiste + Symbol + Preis), gekauft
+  wird mit E – wie jede andere Interaktion.
+- **Was weitergeht:** Münzen, Holz, Werkzeug, Upgrades und alle Statistiken. Was neu ist: Rumpf (Hafenarbeiter flicken
+  und lenzen), Kisten (neu gepackt), Gefahren. Holz wird im Hafen auf den Startwert aufgefüllt – sonst reicht es nach
+  zwei Etappen nicht mehr (Balance-Lauf: 4–8 Lecks pro Etappe).
+- **Gesunken = neuer Lauf** (Roguelite), in der Kampagne mit neuem Seed, die Tagesfahrt mit demselben (nochmal versuchen).
+- **Tagesfahrt:** Seed aus dem UTC-Datum, zwei Modifikatoren. Online wählt der Server den Seed (gleicher Tag für alle Räume).
+  Bestleistungen nur lokal (`localStorage`) – kein Server-Speicher, kostet nichts. Eine globale Rangliste wäre mit
+  Supabase möglich (Tabelle Tag/Crew/Etappen/Münzen, Eintrag vom Server), ist aber bewusst noch nicht eingebaut.
+- **Rollen sind kleine Boni** (Faktor 0,6–1,3) an einer Station, kein Muss: Jede Station bleibt für alle bedienbar. Die
+  Rolle steht als Buchstabe am Namensschild.
+- **Balance-Skript** (`npx tsx scripts/balance.ts [seeds] [good|average|slow]`): eine Bot-Crew mit Reaktionszeiten. Ergebnis
+  (8 Seeds, Etappe 3): alle Biome überlebbar, Riff und Krakengrund mit den meisten Lecks (≈8), Ruhige See ≈2–4. Die Bots
+  pumpen dauerhaft – echte Crews sind schwächer verteilt, deshalb wurde nichts härter gemacht.

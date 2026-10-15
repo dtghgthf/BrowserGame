@@ -83,7 +83,8 @@ export type MarkerType =
   | 'rack'
   | 'oilcan'
   | 'bucket'
-  | 'ring';
+  | 'ring'
+  | 'table';
 
 export interface MarkerDef {
   type: MarkerType;
@@ -141,6 +142,7 @@ const MARKERS: Record<string, MarkerType> = {
   o: 'oilcan',
   e: 'bucket',
   r: 'ring',
+  t: 'table',
 };
 
 export interface ParseOptions {

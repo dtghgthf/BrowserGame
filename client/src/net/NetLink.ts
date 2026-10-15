@@ -10,8 +10,7 @@ import {
   type SnapshotMessage,
   type SnapshotWire,
   type TuningPatch,
-  type WelcomeMessage,
-} from '@lw/shared';
+  type WelcomeMessage, type GameMode, type Role } from '@lw/shared';
 
 export type NetStatus = 'connected' | 'reconnecting' | 'closed';
 
@@ -96,13 +95,13 @@ export class NetLink {
     }
   }
 
-  static async create(url: string, name: string, color: number, lagMs = 0): Promise<NetLink> {
-    const opts: JoinOptions = { name, color, protocol: PROTOCOL_VERSION };
+  static async create(url: string, name: string, color: number, role: Role, mode: GameMode, lagMs = 0): Promise<NetLink> {
+    const opts: JoinOptions = { name, color, protocol: PROTOCOL_VERSION, role, mode };
     return new NetLink(await new Client(url).create(ROOM_NAME, opts), url, lagMs);
   }
 
-  static async join(url: string, code: string, name: string, color: number, lagMs = 0): Promise<NetLink> {
-    const opts: JoinOptions = { name, color, protocol: PROTOCOL_VERSION };
+  static async join(url: string, code: string, name: string, color: number, role: Role, lagMs = 0): Promise<NetLink> {
+    const opts: JoinOptions = { name, color, protocol: PROTOCOL_VERSION, role };
     return new NetLink(await new Client(url).joinById(code, opts), url, lagMs);
   }
 

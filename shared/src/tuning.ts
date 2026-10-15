@@ -131,6 +131,15 @@ export interface GameplayTuning {
   ringPullStroke: number;
   rescueWindow: number;
   swimSpeed: number;
+  /** Phase 6: coins for a leg x this, passive bilge pump (m^2/s), chance a hit makes no leak (copper). */
+  rewardFactor: number;
+  bilgeRate: number;
+  hullArmor: number;
+  /** Roles: carpenter action time x, engineer pump stroke x, lookout searchlight range x, gunner solo loading time x. */
+  roleCarpenter: number;
+  roleEngineer: number;
+  roleLookout: number;
+  roleGunner: number;
 }
 
 export interface Tuning {
@@ -251,6 +260,13 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     ringPullStroke: 1.4,
     rescueWindow: 30,
     swimSpeed: 1.1,
+    rewardFactor: 1,
+    bilgeRate: 0,
+    hullArmor: 0,
+    roleCarpenter: 0.65,
+    roleEngineer: 1.3,
+    roleLookout: 1.3,
+    roleGunner: 0.6,
   },
 };
 

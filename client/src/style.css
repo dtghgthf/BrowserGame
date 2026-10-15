@@ -145,6 +145,7 @@ body.lobby-open #help { display: none; }
   width: min(420px, 92vw); box-sizing: border-box; padding: 22px 22px 18px;
   background: rgba(8, 11, 18, 0.97); border: 2px solid #2c3a4c; box-shadow: 0 0 0 2px #05070d, 0 12px 40px rgba(0, 0, 0, 0.6);
   display: flex; flex-direction: column; gap: 12px;
+  max-height: 94vh; overflow-y: auto;
 }
 .lobby h1 {
   margin: 0 0 4px; font-size: 22px; letter-spacing: 0.18em; color: #e0b860; text-align: center;
@@ -164,6 +165,14 @@ body.lobby-open #help { display: none; }
   touch-action: manipulation;
 }
 .lobby-swatch.selected { outline: 3px solid #f0e6cc; }
+.lobby-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.lobby-seg-btn {
+  font: inherit; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
+  padding: 7px 9px; border: 2px solid #2c3a4c; background: #0b1018; color: #9aa6b4; touch-action: manipulation;
+}
+.lobby-seg-btn.selected { border-color: #c8963c; color: #f0cc72; background: #2a1e0c; }
+.lobby-role-desc, .lobby-mode-desc { font-size: 12px; color: #9aa6b4; margin-top: -6px; min-height: 1.2em; }
+.lobby-best { font-size: 12px; color: #e0b860; text-align: center; min-height: 1.2em; }
 .lobby-btn {
   font: inherit; font-size: 16px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
   padding: 12px 14px; border: 2px solid #4a5c74; background: #141c28; color: #d8dde6;

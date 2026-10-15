@@ -11,10 +11,13 @@ import {
   ShipHost,
   Simulation,
   decodeInputs,
+  dailySeed,
   diffTuning,
   makeRoomCode,
   packSnapshot,
   parseCommand,
+  parseMode,
+  parseRole,
   sanitizeName,
   type JoinOptions,
   type WelcomeMessage,
@@ -51,8 +54,11 @@ export class ShipRoom extends Room {
     this.roomId = code;
     this.setPatchRate(null);
     await this.setPrivate(true); // joined by code only, never by quick matchmaking
+    const mode = parseMode(options?.mode);
     const sim = await Simulation.create({
-      seed: Math.floor(Math.random() * 2 ** 31),
+      mode,
+      // the daily voyage is the same for every crew on the same day
+      seed: mode === 'daily' ? dailySeed(new Date()) : Math.floor(Math.random() * 2 ** 31),
       seaState: typeof options?.seaState === 'number' && Number.isFinite(options.seaState) ? options.seaState : undefined,
     });
     this.host = new ShipHost(sim);
@@ -90,7 +96,7 @@ export class ShipRoom extends Room {
 
   override onJoin(client: Client, options: Partial<JoinOptions>): void {
     const name = sanitizeName(options?.name) || `MATROSE ${this.clients.length}`;
-    this.host.join(client.sessionId, { name, color: typeof options?.color === 'number' ? options.color : undefined });
+    this.host.join(client.sessionId, { name, color: typeof options?.color === 'number' ? options.color : undefined, role: parseRole(options?.role) });
     if (!this.hostId) this.hostId = client.sessionId;
     this.welcome(client);
   }
@@ -117,7 +123,7 @@ export class ShipRoom extends Room {
   }
 
   private welcome(client: Client): void {
-    const msg: WelcomeMessage = { protocol: PROTOCOL_VERSION, code: this.roomId, tuning: diffTuning(DEFAULT_TUNING, this.host.sim.tuning) };
+    const msg: WelcomeMessage = { protocol: PROTOCOL_VERSION, code: this.roomId, tuning: diffTuning(DEFAULT_TUNING, this.host.sim.baseTuning) };
     client.send(MSG.welcome, msg);
     // a snapshot right away, so the client can start without waiting for the next broadcast
     client.send(MSG.snapshot, packSnapshot(this.host.snapshot(this.hostId, false)));

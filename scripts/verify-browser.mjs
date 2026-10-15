@@ -97,7 +97,7 @@ async function runBrowser(name, launcher) {
   });
   page.on('pageerror', (err) => result.errors.push(`pageerror: ${err.message}`));
 
-  await page.goto(`${url}?sea=0.8&quality=high&solo`, { waitUntil: 'load' });
+  await page.goto(`${url}?sea=0.8&quality=high&solo&mode=single`, { waitUntil: 'load' });
   await page.waitForFunction(() => !!window.__game, null, { timeout: 30000 });
   const info = await page.evaluate(() => {
     const g = window.__game;
@@ -279,7 +279,7 @@ async function runBrowser(name, launcher) {
   const touchCtx = await browser.newContext({ viewport: { width: 1080, height: 810 }, deviceScaleFactor: 2, hasTouch: true, isMobile: name === 'chromium' });
   const tp = await touchCtx.newPage();
   tp.on('pageerror', (err) => result.errors.push(`touch pageerror: ${err.message}`));
-  await tp.goto(`${url}?sea=0.8&quality=high&solo`, { waitUntil: 'load' });
+  await tp.goto(`${url}?sea=0.8&quality=high&solo&mode=single`, { waitUntil: 'load' });
   await tp.waitForFunction(() => !!window.__game, null, { timeout: 30000 });
   await sleep(2500);
   result.touch = await tp.evaluate(() => ({

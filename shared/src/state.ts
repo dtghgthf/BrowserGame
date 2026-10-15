@@ -1,3 +1,4 @@
+import type { CampaignState, Role, UpgradeKind } from './campaign';
 import type { PlayerInput } from './input';
 import type { Vec2 } from './math';
 
@@ -78,6 +79,8 @@ export interface PlayerState {
   name: string;
   /** Colour slot 0..3. */
   color: number;
+  /** Chosen in the lobby: small bonuses at one kind of job. */
+  role: Role;
   /** Disconnected, waiting for a reconnect (rendered faded). */
   away: boolean;
   x: number;
@@ -173,7 +176,7 @@ export interface LeakState {
   inflow: number;
 }
 
-export type StationKind = 'wheel' | 'pump' | 'searchlight' | 'cannon' | 'workshop' | 'rack' | 'ring';
+export type StationKind = 'wheel' | 'pump' | 'searchlight' | 'cannon' | 'workshop' | 'rack' | 'ring' | 'table';
 
 export interface StationState {
   id: number;
@@ -426,9 +429,15 @@ export type GameEvent =
   | { type: 'flotsamFished'; player: string; id: number }
   | { type: 'ringThrow'; player: string }
   | { type: 'ringCatch'; player: string }
-  | { type: 'rescued'; player: string };
+  | { type: 'rescued'; player: string }
+  | { type: 'harbor'; coins: number }
+  | { type: 'chooseLeg'; node: number }
+  | { type: 'depart'; node: number }
+  | { type: 'bought'; player: string; kind: UpgradeKind }
+  | { type: 'runOver'; won: boolean };
 
-export type GameStatus = 'sailing' | 'sunk' | 'arrived';
+/** sailing a leg, sunk (round over), arrived at the lighthouse (won), lying in a harbour between legs. */
+export type GameStatus = 'sailing' | 'sunk' | 'arrived' | 'harbor';
 
 export interface GameState {
   tick: number;
@@ -463,4 +472,6 @@ export interface GameState {
   shouts: ShoutCooldowns;
   /** Id counter for rocks, balls and pings. */
   nextId: number;
+  /** The run: route, current leg, modifiers, upgrades, harbour shop. */
+  campaign: CampaignState;
 }

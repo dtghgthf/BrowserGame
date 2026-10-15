@@ -37,7 +37,7 @@ export function updateRocks(ctx: SimContext, progress: number): void {
   for (const r of s.rocks) {
     const ahead = r.x - ship.x;
     if (!r.spotted) {
-      const byLight = light !== null && ctx.inBeam(light, r.x, seaSurfaceY(r.x, s.time, ship.seaState) - 0.6, r.radius, G.rockSpotRange);
+      const byLight = light !== null && ctx.inBeam(light, r.x, seaSurfaceY(r.x, s.time, ship.seaState) - 0.6, r.radius, ctx.spotRange());
       if (byLight || ahead < G.rockSeeRange) {
         r.spotted = true;
         ctx.emit({ type: 'rockSpotted', rock: r.id });

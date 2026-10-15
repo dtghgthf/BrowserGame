@@ -1,5 +1,5 @@
 import { Container, Graphics } from 'pixi.js';
-import type { GameState, Simulation } from '@lw/shared';
+import { BIOME_INFO, CAMPAIGN_LEGS, MODIFIER_INFO, currentNode, dailyLabel, nextLegs, type GameState, type Simulation } from '@lw/shared';
 import type { NetStatus } from '../net/NetLink';
 import { PixelFont, PixelText } from './PixelFont';
 import { SeaChart } from './SeaChart';
@@ -96,6 +96,19 @@ export class Hud {
     this.text('coins', `MÜNZEN ${v.coins}`, 44, 111, C.gold);
     this.text('tools', `${v.hammer ? 'H' : ''}${v.crowbar ? 'B' : ''}`, 88, 111, C.dim);
 
+    // ---- the run: leg, sea area, modifiers
+    const camp = state.campaign;
+    let panelBottom = 118;
+    if (camp.mode !== 'single') {
+      const cur = currentNode(camp);
+      const legNo = state.status === 'harbor' ? camp.leg : camp.leg + 1;
+      const where = state.status === 'harbor' ? 'IM HAFEN' : cur ? BIOME_INFO[cur.biome].name.toUpperCase() : '';
+      const lines = [`${camp.mode === 'daily' ? 'TAGESFAHRT' : 'ETAPPE'} ${Math.min(legNo, CAMPAIGN_LEGS)}/${CAMPAIGN_LEGS}`, where, ...camp.modifiers.map((m) => MODIFIER_INFO[m].name.toUpperCase())];
+      this.g.rect(4, 120, 92, lines.length * 7 + 4).fill({ color: C.panel, alpha: 0.75 });
+      lines.forEach((t, i) => this.text(`camp${i}`, t, 7, 122 + i * 7, i === 0 ? C.gold : i === 1 ? C.text : C.dim));
+      panelBottom = 120 + lines.length * 7 + 4;
+    }
+
     // ---- warnings (top centre, one line each)
     const warnings: [string, number][] = [];
     const leaks = state.leaks.filter((l) => l.active).length;
@@ -150,9 +163,9 @@ export class Hud {
       const label = `RAUM ${net.code}`;
       const crew = `${state.players.length}/4 AN BORD`;
       // under the course panel (the top right corner belongs to the menu buttons)
-      this.g.rect(4, 120, 92, 17).fill({ color: C.panel, alpha: 0.75 });
-      this.text('room', label, 7, 123, C.gold);
-      this.text('crew', crew, 7, 130, C.dim);
+      this.g.rect(4, panelBottom + 2, 92, 17).fill({ color: C.panel, alpha: 0.75 });
+      this.text('room', label, 7, panelBottom + 5, C.gold);
+      this.text('crew', crew, 7, panelBottom + 12, C.dim);
       const problem = !net.synced ? 'VERBINDE ...' : net.status === 'reconnecting' ? 'VERBINDUNG WEG - VERBINDE NEU ...' : '';
       if (problem && Math.floor(time * 2) % 2 === 0) {
         const pw = this.font.measure(problem);
@@ -161,10 +174,26 @@ export class Hud {
       }
     }
 
+    // ---- in the harbour: what to do and when the ship casts off
+    if (state.status === 'harbor') {
+      const legs = nextLegs(camp);
+      const chosen = camp.choice >= 0 ? camp.nodes[camp.choice] : legs[0];
+      const lines: [string, number][] = [
+        [camp.node < 0 ? 'IM HAFEN - GLEICH GEHT ES LOS' : 'IM HAFEN', C.gold],
+        [`ABLEGEN IN ${Math.ceil(state.statusTimer)}`, C.text],
+        [chosen ? `NÄCHSTE ETAPPE: ${BIOME_INFO[chosen.biome].name.toUpperCase()}` : '', C.text],
+        [camp.shop.some((o) => !o.sold) ? 'KARTENTISCH = ROUTE  ·  OBERDECK = HÄNDLER' : 'KARTENTISCH = ROUTE WÄHLEN', C.dim],
+      ];
+      const w = Math.max(...lines.map(([t]) => this.font.measure(t)));
+      const x0 = Math.round(width / 2 - w / 2);
+      this.g.rect(x0 - 5, 20, w + 10, lines.length * 8 + 6).fill({ color: C.panel, alpha: 0.85 });
+      lines.forEach(([t, col], i) => this.text(`harbor${i}`, t, Math.round(width / 2 - this.font.measure(t) / 2), 23 + i * 8, col));
+    }
+
     if (state.status === 'arrived') {
       const v = state.voyage;
       const lines: [string, number][] = [
-        ['LEUCHTTURM ERREICHT!', C.gold],
+        [camp.mode === 'single' ? 'LEUCHTTURM ERREICHT!' : camp.mode === 'daily' ? `TAGESFAHRT ${dailyLabel(new Date())} GESCHAFFT!` : 'KAMPAGNE GESCHAFFT! LEUCHTTURM ERREICHT!', C.gold],
         [`FELSEN: ${v.rocksPassed} UMSCHIFFT  ${v.rocksDestroyed} ZERSCHOSSEN  ${v.rocksHit} GERAMMT`, C.text],
         [`KRAKEN VERJAGT: ${v.monstersRepelled}   LECKS GEFLICKT: ${v.leaksRepaired}`, C.text],
         [`KISTEN GEÖFFNET: ${v.cratesOpened}   TREIBGUT: ${v.flotsamFished}   MÜNZEN: ${v.coins}`, C.text],
@@ -179,7 +208,10 @@ export class Hud {
     }
 
     if (state.status === 'sunk') {
-      const msg = `SCHIFF GESUNKEN - NEUSTART IN ${Math.ceil(state.statusTimer)}`;
+      const msg =
+        camp.mode === 'single'
+          ? `SCHIFF GESUNKEN - NEUSTART IN ${Math.ceil(state.statusTimer)}`
+          : `GESUNKEN AUF ETAPPE ${camp.leg + 1}/${CAMPAIGN_LEGS} · ${state.voyage.coins} MÜNZEN · NEUE FAHRT IN ${Math.ceil(state.statusTimer)}`;
       const w = this.font.measure(msg);
       this.g.rect(Math.round(width / 2 - w / 2) - 4, Math.round(height / 2) - 4, w + 8, 13).fill({ color: C.panel, alpha: 0.9 });
       this.text('sunk', msg, Math.round(width / 2 - w / 2), Math.round(height / 2), C.warn);

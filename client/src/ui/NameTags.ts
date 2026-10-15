@@ -1,5 +1,5 @@
 import { Container } from 'pixi.js';
-import { PIXELS_PER_METER, PLAYER_HALF_HEIGHT, shipToWorld, type GameState } from '@lw/shared';
+import { PIXELS_PER_METER, PLAYER_HALF_HEIGHT, ROLE_INFO, shipToWorld, type GameState } from '@lw/shared';
 import type { Snapshot } from '../game/snapshot';
 import { PLAYER_COLORS } from '../render/ShipView';
 import { PixelFont, PixelText } from './PixelFont';
@@ -35,7 +35,9 @@ export class NameTags {
         this.tags.set(p.id, t);
         this.root.addChild(t);
       }
-      t.text = p.away ? `${p.name}...` : p.name;
+      const badge = ROLE_INFO[p.role]?.badge;
+      const label = badge ? `${p.name} [${badge}]` : p.name;
+      t.text = p.away ? `${label}...` : label;
       // above the head; higher while a speech bubble is shown
       const lift = p.bubble ? 1.15 : 0.35;
       const w = shipToWorld(view.ship, { x: v.x, y: v.y - PLAYER_HALF_HEIGHT - lift });

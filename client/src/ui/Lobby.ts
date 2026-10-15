@@ -1,4 +1,5 @@
-import { MAX_NAME_LENGTH, isRoomCode, normalizeRoomCode, sanitizeName } from '@lw/shared';
+import { MAX_NAME_LENGTH, ROLES, ROLE_INFO, isRoomCode, normalizeRoomCode, sanitizeName, type GameMode, type Role } from '@lw/shared';
+import { bestLine } from './best';
 import { PLAYER_COLORS } from '../render/ShipView';
 
 /** What the menu needs from the sound engine. */
@@ -12,9 +13,9 @@ export interface VolumeControl {
 export interface LobbyActions {
   /** null = no game server configured (only local play). */
   serverUrl: string | null;
-  create(name: string, color: number): Promise<void>;
-  join(code: string, name: string, color: number): Promise<void>;
-  solo(): void;
+  create(name: string, color: number, role: Role, mode: GameMode): Promise<void>;
+  join(code: string, name: string, color: number, role: Role): Promise<void>;
+  solo(role: Role, mode: GameMode): void;
   /** Leaves the current online room. */
   leave(): Promise<void>;
 }
@@ -27,14 +28,27 @@ const COLOR_NAMES = ['Rot', 'Blau', 'Grün', 'Lila'];
 interface Profile {
   name: string;
   color: number;
+  role: Role;
+  mode: GameMode;
 }
+
+const MODE_LABELS: [GameMode, string, string][] = [
+  ['campaign', 'Kampagne', 'Sechs Etappen bis zum Leuchtturm, Häfen dazwischen.'],
+  ['daily', 'Tagesfahrt', 'Heute für alle dieselbe Route.'],
+  ['single', 'Einzelfahrt', 'Eine lange Fahrt wie früher.'],
+];
 
 function loadProfile(): Profile {
   try {
     const p = JSON.parse(localStorage.getItem(PROFILE_KEY) ?? '{}') as Partial<Profile>;
-    return { name: sanitizeName(p.name ?? ''), color: typeof p.color === 'number' ? p.color % 4 : Math.floor(Math.random() * 4) };
+    return {
+      name: sanitizeName(p.name ?? ''),
+      color: typeof p.color === 'number' ? p.color % 4 : Math.floor(Math.random() * 4),
+      role: ROLES.includes(p.role as Role) ? (p.role as Role) : 'none',
+      mode: MODE_LABELS.some(([m]) => m === p.mode) ? (p.mode as GameMode) : 'campaign',
+    };
   } catch {
-    return { name: '', color: 0 };
+    return { name: '', color: 0, role: 'none', mode: 'campaign' };
   }
 }
 
@@ -73,6 +87,8 @@ export class Lobby {
   private readonly gamePane: HTMLDivElement;
   private readonly roomLabel: HTMLDivElement;
   private readonly swatches: HTMLButtonElement[] = [];
+  private readonly roleButtons: HTMLButtonElement[] = [];
+  private readonly modeButtons: HTMLButtonElement[] = [];
   private busy = false;
   private syncSound: () => void = () => {};
   /** Current room code while online (for the in-game menu). */
@@ -94,6 +110,11 @@ export class Lobby {
             <input class="lobby-name" maxlength="${MAX_NAME_LENGTH}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="NAME" />
           </label>
           <div class="lobby-row">Mantelfarbe <div class="lobby-colors"></div></div>
+          <div class="lobby-row">Rolle <div class="lobby-roles lobby-seg"></div></div>
+          <div class="lobby-role-desc"></div>
+          <div class="lobby-row">Fahrt <div class="lobby-modes lobby-seg"></div></div>
+          <div class="lobby-mode-desc"></div>
+          <div class="lobby-best"></div>
           <div class="lobby-online">
             <button class="lobby-btn primary lobby-create">Neues Schiff</button>
             <div class="lobby-join">
@@ -141,6 +162,26 @@ export class Lobby {
       this.swatches.push(b);
     });
     this.setColor(this.profile.color);
+    const roles = q<HTMLDivElement>('.lobby-roles');
+    for (const r of ROLES) {
+      const b = document.createElement('button');
+      b.className = 'lobby-seg-btn';
+      b.textContent = ROLE_INFO[r].name;
+      b.addEventListener('click', () => this.setRole(r));
+      roles.appendChild(b);
+      this.roleButtons.push(b);
+    }
+    const modes = q<HTMLDivElement>('.lobby-modes');
+    for (const [m, label] of MODE_LABELS) {
+      const b = document.createElement('button');
+      b.className = 'lobby-seg-btn';
+      b.textContent = label;
+      b.addEventListener('click', () => this.setMode(m));
+      modes.appendChild(b);
+      this.modeButtons.push(b);
+    }
+    this.setRole(this.profile.role);
+    this.setMode(this.profile.mode);
     this.nameInput.value = this.profile.name;
     this.nameInput.addEventListener('input', () => {
       const clean = sanitizeName(this.nameInput.value);
@@ -157,7 +198,7 @@ export class Lobby {
     q<HTMLButtonElement>('.lobby-join-btn').addEventListener('click', () => void this.doJoin());
     q<HTMLButtonElement>('.lobby-solo').addEventListener('click', () => {
       this.hide();
-      actions.solo();
+      actions.solo(this.profile.role, this.profile.mode);
     });
     q<HTMLButtonElement>('.lobby-back').addEventListener('click', () => this.hide());
     q<HTMLButtonElement>('.lobby-share').addEventListener('click', () => void this.share());
@@ -209,6 +250,7 @@ export class Lobby {
     this.el.classList.remove('hidden');
     document.body.classList.add('lobby-open');
     this.syncSound();
+    (this.el.querySelector('.lobby-best') as HTMLDivElement).textContent = bestLine();
   }
 
   hide(): void {
@@ -227,6 +269,20 @@ export class Lobby {
     this.profile.color = i;
     saveProfile(this.profile);
     this.swatches.forEach((b, k) => b.classList.toggle('selected', k === i));
+  }
+
+  private setRole(r: Role): void {
+    this.profile.role = r;
+    saveProfile(this.profile);
+    this.roleButtons.forEach((b, k) => b.classList.toggle('selected', ROLES[k] === r));
+    (this.el.querySelector('.lobby-role-desc') as HTMLDivElement).textContent = ROLE_INFO[r].desc;
+  }
+
+  private setMode(m: GameMode): void {
+    this.profile.mode = m;
+    saveProfile(this.profile);
+    this.modeButtons.forEach((b, k) => b.classList.toggle('selected', MODE_LABELS[k]![0] === m));
+    (this.el.querySelector('.lobby-mode-desc') as HTMLDivElement).textContent = MODE_LABELS.find(([x]) => x === m)![2];
   }
 
   private setStatus(text: string, error = false): void {
@@ -261,7 +317,7 @@ export class Lobby {
   }
 
   private doCreate(): Promise<void> {
-    return this.run('Schiff wird klargemacht …', () => this.actions.create(this.name(), this.profile.color));
+    return this.run('Schiff wird klargemacht …', () => this.actions.create(this.name(), this.profile.color, this.profile.role, this.profile.mode));
   }
 
   private doJoin(): Promise<void> {
@@ -271,7 +327,7 @@ export class Lobby {
       this.codeInput.focus();
       return Promise.resolve();
     }
-    return this.run(`Gehe an Bord von ${code} …`, () => this.actions.join(code, this.name(), this.profile.color));
+    return this.run(`Gehe an Bord von ${code} …`, () => this.actions.join(code, this.name(), this.profile.color, this.profile.role));
   }
 
   private async share(): Promise<void> {

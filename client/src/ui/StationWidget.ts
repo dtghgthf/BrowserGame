@@ -4,6 +4,7 @@ import { frameOf, type Sheet } from '../render/assets';
 import type { GameRenderer } from '../render/GameRenderer';
 import type { Snapshot } from '../game/snapshot';
 import { PixelFont, PixelText } from './PixelFont';
+import { RouteMap } from './RouteMap';
 import { SeaChart } from './SeaChart';
 
 /** Visual wheel turns for full rudder (±270°). */
@@ -34,6 +35,7 @@ export class StationWidget {
   private readonly title: PixelText;
   private readonly sub: PixelText;
   private readonly chart: SeaChart;
+  private readonly route: RouteMap;
   private kind: StationKind | null = null;
   private center = { x: 0, y: 0 };
   private radius = 32;
@@ -65,7 +67,8 @@ export class StationWidget {
     this.title = new PixelText(font, '', 0xe0b860);
     this.sub = new PixelText(font, '', 0x9aa6b4);
     this.chart = new SeaChart(font, true);
-    this.root.addChild(this.g, this.wheel, this.dial, this.needle, this.pump, this.lever, this.title, this.sub, this.chart.root);
+    this.route = new RouteMap(props, font);
+    this.root.addChild(this.g, this.wheel, this.dial, this.needle, this.pump, this.lever, this.title, this.sub, this.chart.root, this.route.root);
     this.root.visible = false;
 
     // capture phase: a drag on the widget must not also start the touch stick
@@ -132,6 +135,10 @@ export class StationWidget {
         // pull the lever: up = -1, down = +1
         this.target = Math.max(-1, Math.min(1, (p.y - this.center.y) / 16));
         break;
+      case 'table':
+        // point left / right on the chart to pick a way
+        this.target = Math.max(-1, Math.min(1, (p.x - this.center.x) / 60));
+        break;
       case 'workshop':
         // push and pull the saw sideways
         this.target = Math.max(-1, Math.min(1, (p.x - this.center.x) / 20));
@@ -182,6 +189,7 @@ export class StationWidget {
     this.g.clear();
     for (const s of [this.wheel, this.dial, this.needle, this.pump, this.lever]) s.visible = false;
     this.chart.root.visible = false;
+    this.route.root.visible = false;
     // soft backing so the control reads against any background
     this.g.circle(cx, cy, 34).fill({ color: 0x05070d, alpha: 0.45 });
 
@@ -266,6 +274,16 @@ export class StationWidget {
         this.g.rect(cx - 20, cy + 32, Math.round(40 * frac), 3).fill(full ? 0x6cc070 : kind === 'cannon' ? 0xe0b860 : 0xe8584a);
         break;
       }
+      case 'table': {
+        this.radius = 90;
+        this.g.clear();
+        this.route.root.visible = true;
+        this.route.draw(state.campaign, cx - 100, cy - 70, 200, 104, this.time, 'SEEKARTE DER FAHRT');
+        title = 'KARTENTISCH';
+        if (state.status === 'harbor') sub = `ROUTE WÄHLEN: A/D ODER ZEIGEN · F = ABLEGEN (${Math.ceil(state.statusTimer)})`;
+        else sub = state.campaign.nodes.length ? 'UNTERWEGS - IM HAFEN WÄHLT IHR HIER DIE ROUTE' : '';
+        break;
+      }
       case 'ring': {
         this.radius = 30;
         title = 'RETTUNGSRING';
@@ -291,9 +309,10 @@ export class StationWidget {
         break;
     }
     this.title.text = title;
-    this.title.position.set(Math.round(cx - this.title.textWidth / 2), cy - 44);
+    const big = kind === 'table';
+    this.title.position.set(Math.round(cx - this.title.textWidth / 2), big ? cy - 80 : cy - 44);
     this.sub.text = sub;
-    this.sub.position.set(Math.round(cx - this.sub.textWidth / 2), cy - 37);
+    this.sub.position.set(Math.round(cx - this.sub.textWidth / 2), big ? cy + 37 : cy - 37);
     this.sub.visible = sub.length > 0;
   }
 }

@@ -63,7 +63,7 @@ export function updatePirates(ctx: SimContext, dt: number): void {
   const pos = pirateShip(s)!;
   if (!pr.spotted) {
     const light = ctx.searchlightRay();
-    if (pr.offset < 40 || (light && ctx.inBeam(light, pos.x, pos.y - 1.5, PIRATE_HALF_LENGTH, G.rockSpotRange))) {
+    if (pr.offset < 40 || (light && ctx.inBeam(light, pos.x, pos.y - 1.5, PIRATE_HALF_LENGTH, ctx.spotRange()))) {
       pr.spotted = true;
       const st = s.stations.find((x) => x.kind === 'searchlight');
       const who = (st?.occupant && s.players.find((p) => p.id === st.occupant)) || ctx.closestPlayer(10, -1);

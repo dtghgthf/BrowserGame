@@ -1,3 +1,4 @@
+import { BIOMES, GAME_MODES, MODIFIERS, ROLES, UPGRADES, type CampaignState, type RouteNode, type ShopOffer } from '../campaign';
 import type { PlayerInput } from '../input';
 import type { SnapshotMessage } from './protocol';
 import type {
@@ -75,13 +76,14 @@ const BUBBLES = [
 ] as const;
 const OBJECT_KINDS = ['crate', 'barrel', 'plank', 'bucket', 'oilcan', 'ball'] as const;
 const LOOT = ['plank', 'timber', 'ball', 'oilcan', 'bucket', 'coins', 'hammer', 'crowbar', 'rat'] as const;
-const STATION_KINDS = ['wheel', 'pump', 'searchlight', 'cannon', 'workshop', 'rack', 'ring'] as const;
+const STATION_KINDS = ['wheel', 'pump', 'searchlight', 'cannon', 'workshop', 'rack', 'ring', 'table'] as const;
 const PING_KINDS = ['here', 'help', 'danger', 'leak', 'hatch', 'plank', 'wheel', 'pump', 'searchlight', 'cannon', 'fire', 'crate', 'ring'] as const;
 
 const PLAYER = obj<PlayerState>({
   id: 'str',
   name: 'str',
   color: 'u8',
+  role: oneOf(ROLES),
   away: 'bool',
   x: 'pos',
   y: 'pos',
@@ -143,7 +145,7 @@ const STATE = obj<GameState>({
   tick: 'u32',
   time: 'f64',
   rng: 'u32',
-  status: oneOf(['sailing', 'sunk', 'arrived']),
+  status: oneOf(['sailing', 'sunk', 'arrived', 'harbor']),
   statusTimer: 'f32',
   ship: SHIP,
   players: array(PLAYER),
@@ -238,6 +240,20 @@ const STATE = obj<GameState>({
   ),
   shouts: obj<ShoutCooldowns>({ wheel: 'f32', water: 'f32', rock: 'f32', oil: 'f32', fire: 'f32' }),
   nextId: 'u32',
+  campaign: obj<CampaignState>({
+    mode: oneOf(GAME_MODES),
+    seed: 'u32',
+    nodes: array(
+      obj<RouteNode>({ id: 'u8', col: 'u8', row: 'u8', biome: oneOf(BIOMES), length: 'f32', reward: 'u16', next: array('u8') }),
+    ),
+    node: 'f32',
+    leg: 'u8',
+    modifiers: array(oneOf(MODIFIERS)),
+    upgrades: array(oneOf(UPGRADES)),
+    choice: 'f32',
+    shop: array(obj<ShopOffer>({ kind: oneOf(UPGRADES), price: 'u16', sold: 'bool' })),
+    run: 'u16',
+  }),
 });
 
 const QUANT = { pos: 1000, vel: 400, ang: 8000 } as const;

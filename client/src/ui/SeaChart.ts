@@ -72,7 +72,7 @@ export class SeaChart {
     g.rect(x, y, w, 1).fill(COL.edge).rect(x, y + h - 1, w, 1).fill(COL.edge).rect(x, y, 1, h).fill(COL.edge).rect(x + w - 1, y, 1, h).fill(COL.edge);
     this.title.position.set(x + 3, y + 2);
     const left = Math.max(0, Math.round(state.voyage.length - ship.x));
-    this.dist.text = `${left} M`;
+    this.dist.text = state.status === 'harbor' ? 'HAFEN' : `${left} M`;
     this.dist.position.set(x + w - 3 - this.dist.textWidth, y + 2);
 
     const cx = ax + Math.floor(aw / 2);

@@ -33,7 +33,7 @@ export class HazardView {
   private readonly rockAlbedo = new Container();
   /** Lighthouse and its island (same depth as the rocks, in front of the far sea). */
   readonly landmarks = new Container();
-  private readonly rockNormal = new Container();
+  readonly rockNormal = new Container();
   private readonly front = new Container();
   private readonly frontNormal = new Container();
   private readonly rocks = new Map<number, RockView>();

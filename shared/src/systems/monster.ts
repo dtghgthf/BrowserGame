@@ -30,7 +30,7 @@ export function updateMonster(ctx: SimContext, dt: number): void {
   const head = monsterHead(s)!;
   if (!m.spotted && m.depth < 0.6) {
     const light = ctx.searchlightRay();
-    if (m.offset < 26 || (light && ctx.inBeam(light, head.x, head.y, 2, G.rockSpotRange))) {
+    if (m.offset < 26 || (light && ctx.inBeam(light, head.x, head.y, 2, ctx.spotRange()))) {
       m.spotted = true;
       const st = s.stations.find((x) => x.kind === 'searchlight');
       const who = (st?.occupant && s.players.find((p) => p.id === st.occupant)) || ctx.closestPlayer(BOW_OFFSET, -1);
