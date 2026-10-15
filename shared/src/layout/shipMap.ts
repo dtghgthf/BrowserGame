@@ -18,7 +18,7 @@ export const SHIP_MAP: readonly string[] = [
   '                                                                        ',
   '                                                                        ',
   '                               |    s|                                  ',
-  '                               ###=###                                  ',
+  '                               |||=|||                                  ',
   '                                  H                                     ',
   '                                  H                                     ',
   '                                  H                                     ',
