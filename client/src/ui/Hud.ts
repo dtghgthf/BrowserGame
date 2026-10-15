@@ -43,6 +43,39 @@ export class Hud {
     return t;
   }
 
+  /** Seconds each tip has been shown (every tip disappears for good after a while). */
+  private readonly tipShown = new Map<string, number>();
+  private lastTime = 0;
+
+  /**
+   * One short beginner tip at a time, picked from what is going on. Each tip
+   * is shown for at most 25 s per page load, so experienced crews are not bothered.
+   */
+  private tip(state: GameState, me: string | undefined, width: number, height: number, time: number): void {
+    const dt = Math.min(0.1, Math.max(0, time - this.lastTime));
+    this.lastTime = time;
+    const p = state.players.find((pp) => pp.id === me);
+    if (!p || state.status !== 'sailing' || p.station !== null) return;
+    const free = (kind: string) => state.stations.some((st) => st.kind === kind && !st.occupant);
+    const tips: [string, boolean][] = [
+      ['TIPP: KRAKE! KANONE AM BUG - ZIELEN, F = FEUER', !!state.monster && state.monster.phase !== 'flee' && free('cannon')],
+      ['TIPP: LECK! PLANKE AN DER WERKBANK (F), AM LECK E', state.leaks.some((l) => l.active) && p.carrying === null],
+      ['TIPP: MIT PLANKE ZUM LECK GEHEN UND E DRÜCKEN', state.leaks.some((l) => l.active) && p.carrying !== null],
+      ['TIPP: STEUERRAD HINTEN AN DECK - DORT E DRÜCKEN', free('wheel') && Math.abs(state.ship.heading) > 0.3],
+      ['TIPP: OBEN IM MASTKORB: SCHEINWERFER SUCHT FELSEN', free('searchlight') && state.time > 15 && !state.rocks.some((r) => r.spotted)],
+      ['TIPP: Q / RECHTSKLICK / ! = STELLE MARKIEREN', state.time > 40],
+    ];
+    const pick = tips.find(([text, on]) => on && (this.tipShown.get(text) ?? 0) < 25);
+    if (!pick) return;
+    const [text] = pick;
+    this.tipShown.set(text, (this.tipShown.get(text) ?? 0) + dt);
+    const w = this.font.measure(text);
+    const x = Math.round(width / 2 - w / 2);
+    const y = height - 32;
+    this.g.rect(x - 4, y - 3, w + 8, 11).fill({ color: C.panel, alpha: 0.85 }).stroke({ color: C.gold, width: 1, pixelLine: true });
+    this.text('tip', text, x, y, C.gold);
+  }
+
   private bar(x: number, y: number, w: number, h: number, frac: number, color: number, bg = C.panel): void {
     this.g.rect(x - 1, y - 1, w + 2, h + 2).fill(C.edge);
     this.g.rect(x, y, w, h).fill(bg);
@@ -88,6 +121,8 @@ export class Hud {
     const prog = Math.min(1, s.x / Math.max(1, state.voyage.length));
     this.g.rect(4, 105, 92, 2).fill(C.edge);
     this.g.rect(4, 105, Math.round(92 * prog), 2).fill(C.gold);
+
+    this.tip(state, localIds[0], width, height, time);
 
     // ---- leak warning
     const leaks = state.leaks.filter((l) => l.active).length;
