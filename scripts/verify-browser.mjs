@@ -155,6 +155,44 @@ async function runBrowser(name, launcher) {
   await sleep(1800);
   await shot('07-scheinwerfer-nebel');
 
+  // leave the searchlight, then: interactive steering wheel (dragged with the mouse)
+  await key('KeyE');
+  await page.evaluate(() => {
+    const g = window.__game;
+    const st = g.sim.state.stations.find((s) => s.kind === 'wheel');
+    g.sim.teleportPlayer('p1', st.x, st.y - 0.66);
+  });
+  await sleep(500);
+  await key('KeyE');
+  await sleep(400);
+  const box = await page.evaluate(() => {
+    const r = window.__game.r;
+    const c = r.renderer.canvas.getBoundingClientRect();
+    return { x: c.left, y: c.top, w: c.width, h: c.height, lw: r.layout.width, lh: r.layout.height };
+  });
+  const at = (ix, iy) => ({ x: box.x + (ix / box.lw) * box.w, y: box.y + (iy / box.lh) * box.h });
+  const wc = { x: box.lw / 2, y: box.lh - 60 };
+  let a = -Math.PI / 2;
+  const p0 = at(wc.x + Math.cos(a) * 22, wc.y + Math.sin(a) * 22);
+  await page.mouse.move(p0.x, p0.y);
+  await page.mouse.down();
+  for (; a < 1.2; a += 0.15) {
+    const p = at(wc.x + Math.cos(a) * 22, wc.y + Math.sin(a) * 22);
+    await page.mouse.move(p.x, p.y);
+    await sleep(30);
+  }
+  await sleep(600);
+  await shot('09-steuerrad-widget');
+  await page.mouse.up();
+  result.wheelRudder = await page.evaluate(() => Math.round(window.__game.sim.state.ship.rudder * 100) / 100);
+  await key('KeyE');
+
+  // tuning panel (F9)
+  await key('F9');
+  await sleep(400);
+  await shot('10-einstellungen');
+  await key('F9');
+
   // 8) frame rate per quality level (top deck, 1920x1080)
   await placePlayer(page, 20, 12);
   result.fps = {};

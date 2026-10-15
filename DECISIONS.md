@@ -22,7 +22,7 @@ Format: **Entscheidung** – Begründung.
 - **Fester Timestep über `FixedStepper` (Accumulator, max. 6 Steps/Frame, Frame-Zeit auf 0,25 s begrenzt).** Verhindert die „Todesspirale“ auf langsamen Geräten.
 - **Rollen kommt aus der Wellen-Steigung, nicht aus Bug-/Heck-Höhen.** Ein 36 m-Schiff würde in realistischen Wellen kaum kippen. Ziel-Rollwinkel = −atan(gemittelte Wellensteigung) × Response, begrenzt auf ±15°, mit Feder-Dämpfer-Trägheit (≈ 4 s Periode). Wasser im Rumpf (Moment) und Ruder erzeugen zusätzlich Schlagseite (bis ±26° gesamt).
 - **Schwerkraft im Schiffs-Frame = R(−roll)·(0, g·(1 − a_heave·0,6/9,81)).** Die Heave-Beschleunigung lässt Sprünge auf Wellenbergen leicht anders wirken.
-- **Spieler-Controller: dynamischer Rapier-Body mit fester Rotation, Schwerkraft manuell (gravityScale 0).** Am Boden wird die Geschwindigkeit auf `Input × Tempo + Rutschtempo` geregelt, Rutschtempo = tangentiale Schwerkraft × 0,32 s (bei 15° ≈ 1,8 m/s, Laufen 4,2 m/s): spürbar, aber immer steuerbar. In der Luft wirkt die seitliche Schwerkraft voll. Vorteil gegenüber reiner Reibung: exakt tunebar und unabhängig vom Rapier-Reibungsmodell.
+- **Spieler-Controller: dynamischer Rapier-Body mit fester Rotation, Schwerkraft manuell (gravityScale 0).** Am Boden wird die Geschwindigkeit auf `Input × Tempo + Rutschtempo` geregelt, Rutschtempo = tangentiale Schwerkraft × 0,32 s (bei 15° ≈ 1,8 m/s, Laufen anfangs 4,2, jetzt 5,6 m/s): spürbar, aber immer steuerbar. In der Luft wirkt die seitliche Schwerkraft voll. Vorteil gegenüber reiner Reibung: exakt tunebar und unabhängig vom Rapier-Reibungsmodell.
 - **Spieler-Kapsel 0,44 × 1,28 m** – schmaler als eine Luke (0,5 m), sonst passt man nicht hindurch. Das Sprite darf breiter wirken.
 - **Spieler kollidieren nicht miteinander** (Koop im engen Schiff: sonst blockiert man sich an Leitern/Türen).
 - **Offene Luken mit Leiter sind One-Way-Plattformen** (eigene Kollisionsgruppe, pro Spieler über den Collision-Filter aktiviert, solange der Spieler nicht klettert und nicht in der Luke steckt). Offene Luken ohne Leiter (Frachtluke) sind echte Löcher. Geschlossene Luken sind solide, blockieren Wasser und Licht. Schließen ist blockiert, solange etwas in der Öffnung steckt.
@@ -56,3 +56,28 @@ Format: **Entscheidung** – Begründung.
 ## Verifikation
 - **Playwright 1.56.1 fest gepinnt**, passend zum vorinstallierten Chromium der Build-Umgebung. WebKit konnte hier nicht installiert werden (`playwright install` ist in der Umgebung untersagt); `scripts/verify-browser.mjs` testet WebKit automatisch mit, sobald es lokal installiert ist (`npx playwright install webkit`).
 - **Headless-Chromium rendert per SwiftShader (Software-GPU auf 4 CPU-Kernen).** Die dort gemessenen FPS sagen nichts über echte Geräte aus; dokumentiert sind sie trotzdem (README), zusammen mit der reinen CPU-Zeit pro Frame.
+
+## Feedback-Runde 1
+- **Alle Spielwerte als Daten (`shared/src/tuning.json` + `tuning.ts`), jede Simulation hat ihre eigene Kopie.** Änderungen
+  laufen als `SimCommand` `{ type: 'tune', patch }` – genau wie später übers Netzwerk. Feste Körpermaße (Kapselgröße) bleiben
+  Konstanten (`PLAYER_SHAPE`), weil der Collider nicht live umgebaut werden soll.
+- **Grafikwerte getrennt in `client/src/look.json`**, weil sie nur den Client betreffen (der Server braucht sie nicht).
+  Helligkeit wirkt als Exposure + Gamma im Composite, Mond- und Innenlicht skalieren feste Farbtöne.
+- **Speichern über einen Vite-Dev-Server-Endpunkt (`POST /__tuning`)** statt nur localStorage: so werden die Werte zu echten
+  Projekt-Defaults im Repo. Der Endpunkt schreibt ausschließlich in die beiden JSON-Dateien und übernimmt nur Schlüssel, die
+  dort schon existieren, und nur endliche Zahlen. Er existiert nur in `npm run dev`. Lokale, noch nicht gespeicherte
+  Änderungen merkt sich das Gerät in localStorage.
+- **Hellere Standardwerte:** Exposure 1,3, Gamma 0,85, mehr Mond- und Innenlicht, Laternen 2,1 statt 1,8 mit größerer
+  Reichweite. **Laufen 5,6 statt 4,2 m/s** (Beschleunigung 44).
+- **Analoger Stations-Input (`PlayerInput.target`)** statt Mausposition in der Simulation: Das UI-Widget erzeugt nur einen
+  Zielwert (Ruderlage, Hebelstellung, Winkel), die Simulation bewegt die Station mit begrenzter Geschwindigkeit dorthin.
+  Touch und Tastatur sind dadurch gleich stark, und der Input bleibt reine Daten fürs Netzwerk.
+- **Stations-Widgets im Low-Res-HUD (Pixel-Art, Pointer-Events im Capture-Modus)**, damit ein Ziehen am Steuerrad nicht
+  gleichzeitig den Touch-Stick startet. Steuerrad: ±270° Drehweg = volles Ruder; Kompass-Scheibe zeigt Weltrichtungen
+  (Rollwinkel wird ausgeglichen).
+- **Touch-Buttons als Pixel-Art im Spiel-Pixelraster** (Canvas-Elemente, CSS-Größe = Spielpixel × Skalierung) mit
+  **Kontext-Icons** aus der Simulation (`interactionHints` liefert sprachunabhängige Icon-Schlüssel) – wichtig, weil im
+  Unterricht nicht gesprochen wird.
+- **Zoom-Schutz für iOS:** Safari ignoriert `user-scalable=no`. `touchstart/touchmove/touchend` werden außerhalb von
+  Bereichen mit Klasse `allow-touch` (Einstellungs-Panel) per `preventDefault` blockiert, dazu `gesturestart` und `dblclick`.
+  Pointer-Events (Stick, Buttons, Widgets) sind davon nicht betroffen.

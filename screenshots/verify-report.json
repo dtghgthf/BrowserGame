@@ -12,22 +12,24 @@
       "/home/user/BrowserGame/screenshots/chromium-05-normal-buffer.png",
       "/home/user/BrowserGame/screenshots/chromium-06-light-buffer.png",
       "/home/user/BrowserGame/screenshots/chromium-07-scheinwerfer-nebel.png",
+      "/home/user/BrowserGame/screenshots/chromium-09-steuerrad-widget.png",
+      "/home/user/BrowserGame/screenshots/chromium-10-einstellungen.png",
       "/home/user/BrowserGame/screenshots/chromium-08-touch-ipad.png"
     ],
     "fps": {
       "high": {
-        "avg": 9.2,
-        "min": 8,
+        "avg": 10.3,
+        "min": 9,
         "samples": 8
       },
       "medium": {
-        "avg": 24.5,
-        "min": 10.3,
+        "avg": 20.4,
+        "min": 13.6,
         "samples": 9
       },
       "low": {
-        "avg": 25.6,
-        "min": 20.6,
+        "avg": 24.7,
+        "min": 21.3,
         "samples": 8
       }
     },
@@ -44,14 +46,15 @@
       "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
       "renderer": "WebKit WebGL"
     },
+    "wheelRudder": 0.57,
     "state": {
-      "tick": 2440,
+      "tick": 2798,
       "water": [
         0,
-        12.96
+        16.17
       ],
       "leaks": 1,
-      "roll": 11.2
+      "roll": 11.9
     },
     "touch": {
       "controlsVisible": true,

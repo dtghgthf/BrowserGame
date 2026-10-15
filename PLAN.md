@@ -69,3 +69,10 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Reling-Tiles (`|`), Buffer-Ansicht F7, Qualitätsstufen mit Auto-Fallback
 - [x] Asset-Generator schützt von Hand ersetzte Grafiken (`.generated.json`)
 - [x] Client-Tests (Sichtbarkeits-Polygone, Pixel-Skalierung, Input-Latching), Sink-/Neustart-Test
+
+## Feedback-Runde 1
+- [x] Laufen schneller (5,6 m/s), Grafik standardmäßig heller
+- [x] Einstellungs-Panel (F9 / ⚙): Spiel- und Grafikwerte live, lokal gemerkt, „Als Standard speichern“ schreibt `tuning.json` / `look.json`
+- [x] Stationen mit echten Bedienelementen: Steuerrad drehen, Pumpenhebel ziehen, Kompass-Scheibe für Scheinwerfer/Kanone
+- [x] Touch: Pixel-Art-Stick und -Buttons, Kontext-Icons für E/F, Doppeltipp-/Pinch-Zoom blockiert
+- [x] Tests: Tuning (Patch, Befehl, Datei vollständig), analoger Stations-Input, Look-Werte

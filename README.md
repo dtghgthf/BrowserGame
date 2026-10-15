@@ -13,6 +13,8 @@ Werkstatt, Kanone) und hält das Schiff zusammen weiter.
 | ![](screenshots/chromium-01-oberdeck.png) | ![](screenshots/chromium-02-unterdeck-leck.png) | ![](screenshots/chromium-04-licht-mitteldeck.png) |
 | **Debug-Overlay (F3)** | **Normal-Buffer (F7)** | **Touch (iPad-Viewport)** |
 | ![](screenshots/chromium-03-debug-overlay.png) | ![](screenshots/chromium-05-normal-buffer.png) | ![](screenshots/chromium-08-touch-ipad.png) |
+| **Steuerrad zum Drehen** | **Einstellungen (F9)** | |
+| ![](screenshots/chromium-09-steuerrad-widget.png) | ![](screenshots/chromium-10-einstellungen.png) | |
 
 ---
 
@@ -49,6 +51,7 @@ Weitere Befehle:
 | `?quality=high\|medium\|low` | Grafikstufe erzwingen (sonst automatisch, siehe unten) |
 | `?sea=0.3` | Seegang (0 = Flaute, 0,75 = Standard, 1,3 = Sturm) |
 | `?seed=42` | Zufalls-Seed der Simulation |
+| `?tune` | Einstellungs-Panel direkt öffnen (auch im Produktions-Build) |
 | `?h=300` | andere Ziel-Höhe der internen Auflösung |
 
 ---
@@ -65,8 +68,17 @@ Weitere Befehle:
 
 Allein spielend steuern auch die Pfeiltasten Spieler 1.
 
-**Stationen** (E): Steuerrad – A/D drehen das Ruder; Pumpe – A und D **im Wechsel** drücken, jeder volle Hub pumpt
-Wasser ab; Scheinwerfer – A/D schwenken; Kanone – A/D zielen (Feuern kommt später). E oder Leertaste verlässt die Station.
+**Stationen** (E): An jeder Station erscheint unten ein großes Bedienelement, das man mit Maus oder Finger benutzt
+(oder weiter mit A/D):
+- **Steuerrad:** am Rad entlang ziehen und drehen (±270°, die Messing-Speiche oben = Ruder mittig). Darunter Ruderlage und
+  Kursabweichung (grün = auf Kurs).
+- **Pumpe:** den Hebel rauf und runter ziehen (oder A und D **im Wechsel**). Jeder volle Hub pumpt Wasser ab.
+- **Scheinwerfer:** auf der Kompass-Scheibe in die Richtung zeigen, in die der Kegel leuchten soll. Das Rollen des Schiffs
+  wird ausgeglichen, solange man festhält.
+- **Kanone:** zielen wie beim Scheinwerfer (Feuern kommt später).
+
+E oder Leertaste verlässt die Station. Auf Touch-Geräten zeigen die Buttons E und F als Icon, was sie gerade tun würden
+(Steuerrad, Pumpe, Luke, Hammer, Planke, Aufheben …). Ist ein Button grau, gibt es dort gerade nichts zu tun.
 
 **Debug-Tasten**
 
@@ -80,6 +92,7 @@ Wasser ab; Scheinwerfer – A/D schwenken; Kanone – A/D zielen (Feuern kommt s
 | F6 | Nebel an/aus |
 | F2 | zweiten lokalen Spieler hinzufügen/entfernen |
 | F8 | Neustart |
+| F9 | Einstellungen (auch über ⚙ oben rechts im Dev-Server) |
 
 ### Einmal durchspielen (Testablauf)
 1. **L** drücken → „LECK!“, die nächste Figur ruft per Sprechblase, im Unterdeck spritzt Wasser herein.
@@ -91,11 +104,29 @@ Wasser ab; Scheinwerfer – A/D schwenken; Kanone – A/D zielen (Feuern kommt s
 
 ---
 
+## Werte live einstellen (F9 / ⚙)
+
+Das Einstellungs-Panel ändert Spiel- und Grafikwerte **während des Spiels**: Helligkeit, Gamma, Mondlicht, Grundlicht unter
+Deck, Laternen, Scheinwerfer, Nebel, Licht-Stufen, Laufgeschwindigkeit, Beschleunigung, Sprungkraft, Schwerkraft, Rutschen,
+Seegang, Rollverhalten, Leck-Einstrom, Pumpe und mehr.
+
+- Geänderte Werte werden **gold** markiert, ↺ setzt einen Wert zurück.
+- Änderungen merkt sich das Gerät (localStorage), auch nach dem Neuladen.
+- **„Als Standard speichern“** schreibt alle Werte über den Dev-Server (`npm run dev`) in
+  `shared/src/tuning.json` (Spielwerte) und `client/src/look.json` (Grafik). Die Seite lädt dann mit den neuen
+  Standardwerten neu – committen, fertig. Das funktioniert auch vom iPad aus, wenn es per WLAN auf den Dev-Server zugreift.
+- Ohne Dev-Server (Produktions-Build) gibt es stattdessen „JSON kopieren“.
+- Die Spielwerte laufen als Befehl durch die Simulation (`{ type: 'tune' }`) – in Phase 3 kann der Server sie genauso
+  übernehmen, damit alle Geräte mit denselben Werten spielen.
+
+---
+
 ## Projektstruktur
 
 ```
 shared/   Simulation: Physik (Rapier2D), Regeln, State – kein DOM, kein Rendering
   src/layout/shipMap.ts      das Schiff als ASCII-Karte (hier umbauen!)
+  src/tuning.json            alle Spielwerte (vom Einstellungs-Panel gespeichert)
   src/layout/parseLayout.ts  leitet Collider, Licht-Occluder, Leitern, Luken, Wasserräume ab
   src/simulation.ts          Simulation-Klasse: sim.step(inputs, dt, commands) → sim.state
   src/ship.ts, sea.ts        Wellenfunktion, Rollen/Heave, rotierte Schwerkraft
@@ -106,6 +137,9 @@ client/   Rendering (PixiJS v8), Input, HUD
   src/render/lighting/       Sichtbarkeits-Polygone + Light-System
   src/render/shaders.ts      alle GLSL-Shader (Licht, Composite/Nebel, Meer, Rumpfwasser)
   src/render/ShipView.ts     alles auf dem Schiff (inkl. schwingender Laternen als Deko-Physik)
+  src/look.json              Grafikwerte: Helligkeit, Licht, Nebel (vom Einstellungs-Panel gespeichert)
+  src/ui/StationWidget.ts    Steuerrad, Pumpenhebel, Kompass-Scheibe
+  src/ui/TuningPanel.ts      Einstellungs-Panel (F9)
   public/assets/             Platzhalter-Grafiken (+ README zum Austausch gegen Aseprite-Exporte)
 server/   leer – Phase 3 (Colyseus)
 scripts/  Asset-Generator, Browser-Verifikation
@@ -126,7 +160,7 @@ Begründung stehen in [`DECISIONS.md`](DECISIONS.md), der Arbeitsplan in [`PLAN.
   verändert das Gewicht
 - Spieler: Laufen, Springen (Coyote-Time + Sprung-Puffer), Klettern, durch offene Luken klettern/fallen, Tragen (verlangsamt),
   Schwimmen bei hohem Wasserstand, Mann-über-Bord mit Respawn
-- Spürbares, aber steuerbares Rutschen bei Schlagseite (bei 15° ca. 1,8 m/s Drift, Laufen 4,2 m/s)
+- Spürbares, aber steuerbares Rutschen bei Schlagseite (bei 15° ca. 1,8 m/s Drift, Laufen 5,6 m/s)
 - Kisten, Fässer, Planken rutschen und kippen, schwimmen auf Wasser
 - Stationen: Steuerrad (Kurs + Rollverhalten + Krängung), Pumpe, Scheinwerfer, Werkstatt, Kanone (nur Zielen)
 - Test-Leck (L), Einstrom abhängig von der Tiefe unter der echten Wasserlinie, Reparatur mit Planke
@@ -201,10 +235,12 @@ Debug-Overlay (F3 bzw. `?debug`).
 - [ ] **iPad + Safari:** Seite per WLAN öffnen, `?debug` anhängen → FPS ablesen (Ziel: stabil 60, Qualität bleibt „high“).
       Falls die Stufe auf medium/low fällt: Ist das Bild trotzdem pixelscharf (CSS `image-rendering: pixelated`)?
 - [ ] **Safari am Mac** und **Chrome auf den Schul-Laptops** (1366×768 → intern 455×256 ×3): Darstellung, FPS, Konsole.
-- [ ] **Touch:** Stick (laufen, Leiter hoch/runter), Buttons ⤒/E/F, Pumpe per Stick links/rechts im Wechsel, Steuerrad.
-      Kein Zoomen/Scrollen beim Spielen? Mehrere Finger gleichzeitig (Stick + Springen)?
+- [ ] **Touch:** Stick (laufen, Leiter hoch/runter), Buttons ⤒/E/F mit Kontext-Icons, Steuerrad mit dem Finger drehen,
+      Pumpenhebel ziehen, Scheinwerfer-Scheibe. **Doppeltippen auf einen Button darf nicht mehr zoomen** (iOS ignoriert
+      `user-scalable=no`, deshalb werden die Touch-Gesten jetzt per Skript blockiert – nur auf einem echten iPad prüfbar).
+      Mehrere Finger gleichzeitig (Stick + Springen)? Lässt sich das Einstellungs-Panel noch scrollen?
 - [ ] **Gefühl:** Rutschen bei Schlagseite (F4 fixiert ±15°), Sprunghöhe, Tempo beim Tragen, Pumpen vs. Leck-Einstrom –
-      alle Werte stehen gesammelt in `shared/src/player.ts`, `shared/src/simulation.ts` (`GAMEPLAY`) und `shared/src/ship.ts`.
+      alles im Einstellungs-Panel (F9) live justieren und als Standard speichern.
 - [ ] **Licht:** Schatten der Laternen an Schotten/Decken, Scheinwerfer im Nebel (F6 schaltet den Nebel zum Vergleich ab).
 - [ ] **Zwei Spieler lokal** (F2): beide Steuerungen gleichzeitig, Kamera.
 - [ ] Optional: `npx playwright install webkit` und `npm run verify` für die WebKit-Screenshots.
