@@ -85,4 +85,4 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Lobby (Name, Mantelfarbe, Neues Schiff / Code / Allein), Menü (Esc / ☰), Einladungslink, Weiterspielen nach Neuladen
 - [x] Namensschilder, Raumcode im HUD, Verbindungsstatus, getrennte Spieler halb durchsichtig
 - [x] `npm run dev` startet Server + Client; Dockerfile + `fly.toml`; Verifikation mit 2 Browsern
-- [ ] Hosting einrichten (Fly.io-Konto, `VITE_SERVER_URL` in Vercel) – braucht dein Konto, Anleitung im README
+- [x] Hosting eingerichtet: Server auf Fly.io, Client auf Vercel mit `VITE_SERVER_URL`
