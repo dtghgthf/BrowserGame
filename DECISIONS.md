@@ -32,3 +32,27 @@ Format: **Entscheidung** – Begründung.
 - **Pumpe: A/D (oder W/S) abwechselnd, jeder volle Hub entfernt 0,16 m².** Ein Spieler im Takt (~3–4 Hübe/s) schafft etwas mehr als ein Leck (~0,43 m²/s) – Pumpen hilft, ersetzt aber nicht die Reparatur.
 - **Automatische Sprechblasen** (`player.bubble`) als Architektur-Hook für die Kommunikation ohne Sprache: Der nächstgelegene Spieler „ruft“ bei einem neuen Leck, wer ohne Planke reparieren will, zeigt „Planke!“.
 - **Determinismus:** Seeded PRNG im State, keine `Math.random`-Aufrufe in `shared/`. Test: zwei Simulationen mit identischen Inputs ergeben byte-identischen State.
+
+## Rendering (`client/`)
+- **WebGL2 erzwungen (`preference: 'webgl'`), Shader in GLSL ES 3.00.** Ein Shader-Dialekt statt GLSL + WGSL; WebGL2 gibt es in Safari ab 15 (iPadOS 15 läuft auch auf alten iPads wie Air 2 / 5. Gen.). WebGPU bringt für 480×270 Pixel nichts.
+- **Interne Auflösung: Höhe ≈ 270 px, ganzzahliger Skalierungsfaktor, Breite folgt dem Seitenverhältnis (240–640 px).** 1080p → 480×270 ×4, iPad (2048×1536) → 360×270 ×6 bzw. 341×256 – nie unscharfe, ungleich breite Pixel; kein Letterboxing bei 16:9 und 4:3. `?h=300` erzwingt eine andere Zielhöhe.
+- **Sechs Pässe:** Albedo → Normalen → Maske (r = Schiff, g = innen, b = Meer + Wassertiefe) → Licht (additiv) → Composite (+ unbeleuchtete Ebene + HUD) → Upscale. Jeder Pass hat dieselbe Hierarchie (Welt-Container mit Kamera, Schiffs-Container mit Rollwinkel), damit alle Buffer pixelgenau übereinanderliegen.
+- **Light-Buffer = volle interne Auflösung (480×270 ≈ 130 k Pixel), Fallback halbe Auflösung.** Bei 130 k Pixeln ist selbst eine alte iPad-GPU unterfordert; volle Auflösung gibt pixelgenaue Schattenkanten. Fällt die Framerate unter 50 fps, schaltet das Spiel automatisch auf CSS-Upscaling und dann auf einen halb so großen Light-Buffer (2×2-Lichtzellen, sieht weiterhin „pixelig“ aus). `?quality=high|medium|low` erzwingt eine Stufe.
+- **Licht wird in RGBA8 mit halber Skalierung gespeichert** (×2 im Composite) – überhelle Lichter ohne Float-Render-Targets, die auf älterem iOS nicht verlässlich sind. Der Alpha-Kanal enthält die farblose Streuung für den Nebel.
+- **Sichtbarkeits-Polygone im Schiffs-Koordinatensystem** (Winkel-Raycasting gegen die Occluder-Kanten aus der Tilemap, nur Kanten im Lichtradius). Sie hängen nicht vom Rollwinkel ab und werden gecacht, solange sich das Licht nicht bewegt; Strahlen dringen 4 px in Wände ein, damit Wandflächen beleuchtet werden.
+- **Normal Maps: eigener Normal-Pass mit Mesh-Quads pro Sprite.** Der Shader dreht/spiegelt die Normalen mit der Weltmatrix des Sprites (Schiffsrolle, gekippte Kisten, nach links schauende Figuren). Konvention: G = oben (Laigter/SpriteIlluminator-Standard). Sprites ohne `_n.png` gelten als flach.
+- **Lichtstufen (Posterisierung) mit 4×4-Bayer-Dithering, Nebel ebenfalls quantisiert.** Licht und Nebel bleiben „pixelig“; es gibt keine weichen Sub-Pixel-Verläufe.
+- **Himmel, Mond und Sterne prozedural im Composite** (wo der Albedo-Buffer leer ist) – unbeleuchtet, immer hinter allem, kein Overdraw.
+- **Meer: Wellenhöhe pro 2-px-Spalte auf der CPU** (exakt dieselbe Funktion wie in `shared/`), als Vertex-Attribut an den Shader. Im Software-Renderer kostete die Sinus-Summe pro Pixel ~25 % der Framezeit. Die Wassertiefe landet in der Maske und treibt die Reflexions-Andeutung im Composite.
+- **Unbeleuchtete „Emissive“-Ebene** für Laternenflammen, Scheinwerferlinse, Leuchtturmlampe, Leck-Wasser, Wasser-Glanzlinie und Sprechblasen. Lesbarkeit geht vor Realismus: Ohne Sprache müssen Leck und Wasserstand auch im dunklen Laderaum erkennbar sein.
+- **Reling-Tile `|`:** solide für die Physik, aber kein Licht-Occluder (sonst verschluckten die Pfosten im Mastkorb den Scheinwerferkegel).
+- **Kamera folgt dem Spieler in Weltkoordinaten**, das Schiff dreht sich darunter. Die Kameraposition wird auf ganze Pixel gerundet, Sprites im Schiff auf ganze Schiffs-Pixel. Das Drehen von Pixel-Art mit Nearest-Sampling erzeugt leichtes „Pixelkriechen“ – bewusst akzeptiert (klassischer Rotsprite-Look, kein Blur).
+- **Interpolation über Snapshots** (vorheriger/aktueller Sim-State, `alpha` aus dem Accumulator); Teleports (> 2 m) werden nicht interpoliert.
+- **Input-Latching:** Ein Tastendruck bleibt bis zum nächsten Sim-Tick erhalten, auch wenn er zwischen zwei Ticks schon wieder losgelassen wurde.
+- **Touch-Steuerung als DOM-Overlay** (Pointer Events), schwebender Stick links, Buttons rechts. Erscheint bei `pointer: coarse` oder beim ersten Touch.
+- **Debug-Text als DOM** (scharf lesbar), Debug-Linien im Low-Res-Buffer. F7 zeigt Zwischenbuffer.
+- **Uniform-Namen nicht mit Pixis eingebauten kollidieren lassen** (`uColor`, `uTransformMatrix`, …): Pixi setzt diese pro Mesh automatisch – ein eigenes `uColor` (vec3) erzeugte GL-Fehler und überschrieb die Lichtfarbe.
+
+## Verifikation
+- **Playwright 1.56.1 fest gepinnt**, passend zum vorinstallierten Chromium der Build-Umgebung. WebKit konnte hier nicht installiert werden (`playwright install` ist in der Umgebung untersagt); `scripts/verify-browser.mjs` testet WebKit automatisch mit, sobald es lokal installiert ist (`npx playwright install webkit`).
+- **Headless-Chromium rendert per SwiftShader (Software-GPU auf 4 CPU-Kernen).** Die dort gemessenen FPS sagen nichts über echte Geräte aus; dokumentiert sind sie trotzdem (README), zusammen mit der reinen CPU-Zeit pro Frame.

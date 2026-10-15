@@ -16,18 +16,18 @@
     ],
     "fps": {
       "high": {
-        "avg": 8.9,
-        "min": 7.7,
+        "avg": 9.2,
+        "min": 8,
         "samples": 8
       },
       "medium": {
-        "avg": 21.7,
+        "avg": 24.5,
         "min": 10.3,
         "samples": 9
       },
       "low": {
-        "avg": 25.3,
-        "min": 23.2,
+        "avg": 25.6,
+        "min": 20.6,
         "samples": 8
       }
     },
@@ -45,13 +45,13 @@
       "renderer": "WebKit WebGL"
     },
     "state": {
-      "tick": 2322,
+      "tick": 2440,
       "water": [
         0,
-        12.11
+        12.96
       ],
       "leaks": 1,
-      "roll": -5.1
+      "roll": 11.2
     },
     "touch": {
       "controlsVisible": true,

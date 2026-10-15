@@ -61,6 +61,11 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Partikel: Gischt, Tropfen am Leck
 
 ## Schritt 10 – Verifikation & Doku
-- [ ] Playwright: Screenshots (Oberdeck, Unterdeck, Debug, Licht) Chromium (+ WebKit falls verfügbar), Konsole prüfen
-- [ ] FPS-Messung headless, dokumentiert
-- [ ] `README.md` (Deutsch): Start, Steuerung, Stand, bekannte Probleme, manuelle Tests, Vorschlag Phase 3
+- [x] Playwright: Screenshots (Oberdeck, Unterdeck, Debug, Licht) Chromium (+ WebKit falls verfügbar), Konsole prüfen — WebKit in der Build-Umgebung nicht installierbar, Skript unterstützt es
+- [x] FPS-Messung headless, dokumentiert
+- [x] `README.md` (Deutsch): Start, Steuerung, Stand, bekannte Probleme, manuelle Tests, Vorschlag Phase 3
+
+## Zusätzlich erledigt
+- [x] Reling-Tiles (`|`), Buffer-Ansicht F7, Qualitätsstufen mit Auto-Fallback
+- [x] Asset-Generator schützt von Hand ersetzte Grafiken (`.generated.json`)
+- [x] Client-Tests (Sichtbarkeits-Polygone, Pixel-Skalierung, Input-Latching), Sink-/Neustart-Test

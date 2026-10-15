@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit -p shared && tsc --noEmit -p shared/tsconfig.test.json && tsc --noEmit -p client && tsc --noEmit -p server && tsc --noEmit -p scripts",
     "test": "npm run test -w @lw/shared && npm run test -w @lw/client",
     "assets": "tsx scripts/generate-assets.ts",
+    "assets:force": "tsx scripts/generate-assets.ts --force",
     "preview": "npm run preview -w @lw/client",
     "verify": "node scripts/verify-browser.mjs"
   },
