@@ -581,19 +581,26 @@ export class Simulation {
 
   // ---------------------------------------------------------------- interactions
 
-  private interact(p: PlayerState, rt: PlayerRuntime): void {
+  /** All interactions (E) available to a player, nearest first. Pure query - nothing happens until `run`. */
+  private interactionCandidates(p: PlayerState, rt: PlayerRuntime): { d: number; label: string; run: () => void }[] {
     const feetY = p.y + PLAYER_HALF_HEIGHT;
-    type Candidate = { d: number; run: () => void };
-    const candidates: Candidate[] = [];
+    const candidates: { d: number; label: string; run: () => void }[] = [];
+    const STATION_LABEL: Record<StationKind, string> = {
+      wheel: 'Steuerrad',
+      pump: 'Pumpe',
+      searchlight: 'Scheinwerfer',
+      cannon: 'Kanone',
+      workshop: 'Planke holen',
+    };
 
     for (const st of this.state.stations) {
       const dx = Math.abs(st.x - p.x);
       const dy = Math.abs(st.y - feetY);
       if (dy > 0.6) continue;
       if (st.kind === 'workshop') {
-        if (dx < 1.0 && p.carrying === null) candidates.push({ d: dx, run: () => this.takePlank(p) });
+        if (dx < 1.0 && p.carrying === null) candidates.push({ d: dx, label: STATION_LABEL.workshop, run: () => this.takePlank(p) });
       } else if (OPERABLE.has(st.kind) && st.occupant === null && dx < PLAYER.stationRange) {
-        candidates.push({ d: dx, run: () => this.enterStation(p, rt, st) });
+        candidates.push({ d: dx, label: STATION_LABEL[st.kind], run: () => this.enterStation(p, rt, st) });
       }
     }
     for (const h of this.layout.hatches) {
@@ -603,25 +610,54 @@ export class Simulation {
       const headY = p.y - PLAYER_HALF_HEIGHT;
       const fromAbove = Math.abs(feetY - g.top) < 0.4;
       const fromBelow = headY > g.bottom - 0.1 && headY - g.bottom < 1.4;
-      if (fromAbove || fromBelow) candidates.push({ d: dx + 0.25, run: () => this.toggleHatch(h.id) });
+      const open = this.state.hatches[h.id]!.open;
+      if (fromAbove || fromBelow) {
+        candidates.push({ d: dx + 0.25, label: open ? 'Luke schließen' : 'Luke öffnen', run: () => this.toggleHatch(h.id) });
+      }
     }
     for (const leak of this.state.leaks) {
       if (!leak.active) continue;
       const lp = this.leakInteriorPoint(leak.point);
       const d = Math.hypot(lp.x - p.x, lp.y - p.y);
       if (d < PLAYER.leakRange) {
+        const obj = p.carrying !== null ? this.state.objects.find((o) => o.id === p.carrying) : undefined;
+        const hasPlank = obj?.kind === 'plank';
         candidates.push({
           d: d - 0.5,
+          label: hasPlank ? 'Leck reparieren' : 'Planke nötig!',
           run: () => {
-            const obj = p.carrying !== null ? this.state.objects.find((o) => o.id === p.carrying) : undefined;
-            if (obj && obj.kind === 'plank') p.action = { kind: 'repair', target: leak.id, progress: 0 };
+            if (hasPlank) p.action = { kind: 'repair', target: leak.id, progress: 0 };
             else this.say(p, 'plank');
           },
         });
       }
     }
-    candidates.sort((a, b) => a.d - b.d);
-    candidates[0]?.run();
+    return candidates.sort((a, b) => a.d - b.d);
+  }
+
+  private interact(p: PlayerState, rt: PlayerRuntime): void {
+    this.interactionCandidates(p, rt)[0]?.run();
+  }
+
+  /** What E and F would do right now for this player (for UI prompts). */
+  interactionHints(id: string): { interact: string | null; pick: string | null } {
+    const p = this.state.players.find((pp) => pp.id === id);
+    const rt = this.players.get(id);
+    if (!p || !rt || p.overboard > 0) return { interact: null, pick: null };
+    if (p.station !== null) return { interact: 'Verlassen', pick: null };
+    if (p.action) return { interact: 'Abbrechen', pick: null };
+    const interact = this.interactionCandidates(p, rt)[0]?.label ?? null;
+    let pick: string | null = null;
+    if (p.carrying !== null) pick = 'Ablegen';
+    else {
+      const near = this.state.objects.find((o) => !o.carriedBy && Math.hypot(o.x - p.x, (o.y - p.y) * 0.8) < PLAYER.pickRange);
+      if (near) pick = near.kind === 'crate' ? 'Kiste nehmen' : near.kind === 'barrel' ? 'Fass nehmen' : 'Planke nehmen';
+      else {
+        const ws = this.state.stations.find((st) => st.kind === 'workshop');
+        if (ws && Math.abs(ws.x - p.x) < 1.0 && Math.abs(ws.y - (p.y + PLAYER_HALF_HEIGHT)) < 0.6) pick = 'Planke holen';
+      }
+    }
+    return { interact, pick };
   }
 
   private enterStation(p: PlayerState, rt: PlayerRuntime, st: StationState): void {

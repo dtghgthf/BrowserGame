@@ -1,0 +1,42 @@
+[
+  {
+    "browser": "chromium",
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "screenshots": [
+      "/home/user/BrowserGame/screenshots/chromium-01-oberdeck.png",
+      "/home/user/BrowserGame/screenshots/chromium-02-unterdeck-leck.png",
+      "/home/user/BrowserGame/screenshots/chromium-03-debug-overlay.png",
+      "/home/user/BrowserGame/screenshots/chromium-04-licht-mitteldeck.png",
+      "/home/user/BrowserGame/screenshots/chromium-05-scheinwerfer-nebel.png"
+    ],
+    "fps": {
+      "avg": 10.3,
+      "min": 8.8,
+      "samples": 4
+    },
+    "info": {
+      "layout": {
+        "width": 480,
+        "height": 270,
+        "scale": 4,
+        "deviceWidth": 1920,
+        "deviceHeight": 1080,
+        "cssWidth": 1920,
+        "cssHeight": 1080
+      },
+      "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "renderer": "WebKit WebGL"
+    },
+    "state": {
+      "tick": 1448,
+      "water": [
+        0,
+        6.4
+      ],
+      "leaks": 1,
+      "roll": 6.5
+    }
+  }
+]

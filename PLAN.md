@@ -37,28 +37,28 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Rumpf (3 Decks), Rückwand, Spielerfigur (Lauf-Animation + Mantel-Layer zum Einfärben), Kiste, Fass, Planke, Laterne, Steuerrad, Pumpe, Scheinwerfer, Kanone, Werkbank, Pixel-Font
 
 ## Schritt 6 – Client Phase 1 (spielbar)
-- [ ] PixiJS v8 (WebGL), Low-Res-RenderTexture, ganzzahliges Nearest-Upscaling
-- [ ] Game-Loop: fester Timestep + Interpolation
-- [ ] Schiffs-Container rotiert um Rollwinkel, Meer im Weltkoordinatensystem
-- [ ] Kamera: sanft, pixelgenau
-- [ ] Tastatur-Input → Input-Daten, Stations-UI, HUD
+- [x] PixiJS v8 (WebGL), Low-Res-RenderTexture, ganzzahliges Nearest-Upscaling
+- [x] Game-Loop: fester Timestep + Interpolation
+- [x] Schiffs-Container rotiert um Rollwinkel, Meer im Weltkoordinatensystem
+- [x] Kamera: sanft, pixelgenau
+- [x] Tastatur-Input → Input-Daten, Stations-UI, HUD
 
 ## Schritt 7 – Debug-Overlay, Touch, lokaler 2-Spieler-Modus
-- [ ] F3: FPS, Collider, Schwerkraftvektor, Wasserstände, Licht-Polygone
-- [ ] Touch: virtueller Stick + Buttons, automatisch auf Touch-Geräten
-- [ ] Optional: zweiter Spieler auf Pfeiltasten
+- [x] F3: FPS, Collider, Schwerkraftvektor, Wasserstände, Licht-Polygone
+- [x] Touch: virtueller Stick + Buttons, automatisch auf Touch-Geräten
+- [x] Optional: zweiter Spieler auf Pfeiltasten
 
 ## Schritt 8 – Lighting-Pipeline (Phase 2)
-- [ ] Albedo-Pass, Normal-Pass, Masken-Pass
-- [ ] Sichtbarkeits-Polygone pro Licht gegen Occluder, additiver Light-Buffer mit Normal Mapping
-- [ ] ≥ 3 schwingende Laternen (Client-Deko-Physik), Scheinwerferkegel
-- [ ] Composite-Shader: Ambient + Lichter, Licht-Quantisierung/Dithering
+- [x] Albedo-Pass, Normal-Pass, Masken-Pass
+- [x] Sichtbarkeits-Polygone pro Licht gegen Occluder, additiver Light-Buffer mit Normal Mapping
+- [x] ≥ 3 schwingende Laternen (Client-Deko-Physik), Scheinwerferkegel
+- [x] Composite-Shader: Ambient + Lichter, Licht-Quantisierung/Dithering
 
 ## Schritt 9 – Nebel, Meer, Rumpfwasser, Partikel
-- [ ] Nebel als animierter Noise-Shader, vom Scheinwerfer aufgehellt
-- [ ] Meer mit Wellen + Reflexions-Andeutung
-- [ ] Wasser im Rumpf mit Wellen-Shader
-- [ ] Partikel: Gischt, Tropfen am Leck
+- [x] Nebel als animierter Noise-Shader, vom Scheinwerfer aufgehellt
+- [x] Meer mit Wellen + Reflexions-Andeutung
+- [x] Wasser im Rumpf mit Wellen-Shader
+- [x] Partikel: Gischt, Tropfen am Leck
 
 ## Schritt 10 – Verifikation & Doku
 - [ ] Playwright: Screenshots (Oberdeck, Unterdeck, Debug, Licht) Chromium (+ WebKit falls verfügbar), Konsole prüfen

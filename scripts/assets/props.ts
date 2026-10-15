@@ -157,10 +157,12 @@ function pump(): PropSprite[] {
 }
 
 function searchlight(): PropSprite[] {
-  const base = new Canvas(10, 8);
-  base.rect(4, 0, 2, 5, IRON_M, 2.5);
-  base.line(4, 4, 1, 7, IRON, 2);
-  base.line(5, 4, 8, 7, IRON, 2);
+  // tall pedestal so the lens clears the crow's nest railing
+  const base = new Canvas(10, 13);
+  base.rect(4, 0, 2, 10, IRON_M, 2.5);
+  base.rect(4, 0, 1, 10, IRON_L, 2.8);
+  base.line(4, 9, 1, 12, IRON, 2);
+  base.line(5, 9, 8, 12, IRON, 2);
   base.rect(3, 0, 4, 2, IRON_L, 3);
   const head = new Canvas(12, 8);
   for (let y = 0; y < 8; y++) {
@@ -177,7 +179,7 @@ function searchlight(): PropSprite[] {
   glow.rect(10, 1, 2, 6, hex('#fff6d8'));
   glow.rect(11, 2, 1, 4, hex('#ffffff'));
   return [
-    { name: 'searchlight_base', canvas: base, pivot: { x: 5, y: 7 } },
+    { name: 'searchlight_base', canvas: base, pivot: { x: 5, y: 12 } },
     { name: 'searchlight_head', canvas: head, pivot: { x: 4, y: 4 } },
     { name: 'searchlight_glow', canvas: glow, pivot: { x: 4, y: 4 } },
   ];
@@ -325,28 +327,29 @@ function bubbles(): PropSprite[] {
 }
 
 function lighthouse(): PropSprite[] {
-  const c = new Canvas(18, 60);
-  for (let y = 12; y < 60; y++) {
-    const t = (y - 12) / 48;
-    const half = Math.round(4 + t * 4);
-    const stripe = Math.floor((y - 12) / 8) % 2 === 0;
-    for (let x = 9 - half; x < 9 + half; x++) {
-      const edge = (x - (9 - half)) / (half * 2);
+  // small: it stands far away on the horizon
+  const c = new Canvas(9, 30);
+  for (let y = 7; y < 30; y++) {
+    const t = (y - 7) / 23;
+    const half = 2 + t * 2;
+    const stripe = Math.floor((y - 7) / 5) % 2 === 0;
+    for (let x = Math.round(4.5 - half); x < Math.round(4.5 + half); x++) {
+      const edge = (x - (4.5 - half)) / (half * 2);
       const base = stripe ? hex('#8a3a34') : hex('#b8b0a4');
-      c.set(x, y, shade(base, 0.6 + Math.sin(edge * Math.PI) * 0.4), 1 + Math.sin(edge * Math.PI) * 3);
+      c.set(x, y, shade(base, 0.6 + Math.sin(edge * Math.PI) * 0.4), 1 + Math.sin(edge * Math.PI) * 2);
     }
   }
-  c.rect(3, 10, 12, 2, IRON_M, 2);
-  c.rect(5, 4, 8, 6, hex('#2a3038'), 1);
-  c.rect(6, 5, 6, 4, hex('#c8a860'), 1.5);
-  c.rect(5, 2, 8, 2, IRON, 2);
-  c.rect(8, 0, 2, 2, IRON, 2);
-  const glow = new Canvas(18, 60);
-  glow.rect(6, 5, 6, 4, hex('#fff0c0'));
-  glow.rect(7, 6, 4, 2, hex('#ffffff'));
+  c.rect(1, 6, 7, 1, IRON_M, 2);
+  c.rect(2, 3, 5, 3, hex('#2a3038'), 1);
+  c.rect(3, 3, 3, 3, hex('#c8a860'), 1.5);
+  c.rect(2, 2, 5, 1, IRON, 2);
+  c.set(4, 1, IRON, 2);
+  const glow = new Canvas(9, 30);
+  glow.rect(3, 3, 3, 3, hex('#fff0c0'));
+  glow.set(4, 4, hex('#ffffff'));
   return [
-    { name: 'lighthouse', canvas: c, pivot: { x: 9, y: 59 } },
-    { name: 'lighthouse_glow', canvas: glow, pivot: { x: 9, y: 59 } },
+    { name: 'lighthouse', canvas: c, pivot: { x: 4, y: 29 } },
+    { name: 'lighthouse_glow', canvas: glow, pivot: { x: 4, y: 29 } },
   ];
 }
 
