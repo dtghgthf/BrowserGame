@@ -6,7 +6,9 @@ import {
   type InputMessage,
   type JoinOptions,
   type SimCommand,
+  unpackSnapshot,
   type SnapshotMessage,
+  type SnapshotWire,
   type TuningPatch,
   type WelcomeMessage,
 } from '@lw/shared';
@@ -37,8 +39,9 @@ export class NetLink {
   status: NetStatus = 'connected';
   /** Round-trip time in ms (measured every 2 s, includes the simulated lag). */
   rtt = 0;
-  /** Received snapshot bytes per second are not exposed by the SDK; count messages instead. */
   snapshotsReceived = 0;
+  /** Bytes of encoded game state received (debug overlay shows the rate). */
+  snapshotBytes = 0;
   private readonly pingTimer: number;
   private readonly early: { type: string; msg: unknown }[] = [];
   private ready = false;
@@ -56,7 +59,8 @@ export class NetLink {
       }
       if (type === MSG.snapshot) {
         this.snapshotsReceived++;
-        this.onSnapshot(msg as SnapshotMessage);
+        this.snapshotBytes += (msg as SnapshotWire).s.byteLength;
+        this.onSnapshot(unpackSnapshot(msg as SnapshotWire));
       } else if (type === MSG.tuning) this.onTuning(msg as TuningPatch);
       else if (type === MSG.welcome) {
         this.save((msg as WelcomeMessage).code);
@@ -83,7 +87,7 @@ export class NetLink {
   start(): void {
     this.ready = true;
     for (const e of this.early.splice(0)) {
-      if (e.type === MSG.snapshot) this.onSnapshot(e.msg as SnapshotMessage);
+      if (e.type === MSG.snapshot) this.onSnapshot(unpackSnapshot(e.msg as SnapshotWire));
       else if (e.type === MSG.tuning) this.onTuning(e.msg as TuningPatch);
       else if (e.type === MSG.welcome) {
         this.save((e.msg as WelcomeMessage).code);

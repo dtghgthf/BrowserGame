@@ -13,6 +13,7 @@ import {
   decodeInputs,
   diffTuning,
   makeRoomCode,
+  packSnapshot,
   parseCommand,
   sanitizeName,
   type JoinOptions,
@@ -119,7 +120,7 @@ export class ShipRoom extends Room {
     const msg: WelcomeMessage = { protocol: PROTOCOL_VERSION, code: this.roomId, tuning: diffTuning(DEFAULT_TUNING, this.host.sim.tuning) };
     client.send(MSG.welcome, msg);
     // a snapshot right away, so the client can start without waiting for the next broadcast
-    client.send(MSG.snapshot, this.host.snapshot(this.hostId, false));
+    client.send(MSG.snapshot, packSnapshot(this.host.snapshot(this.hostId, false)));
   }
 
   private update(): void {
@@ -128,7 +129,7 @@ export class ShipRoom extends Room {
     this.lastUpdate = now;
     this.stepper.advance(seconds, (dt) => {
       this.host.tick(dt);
-      if (++this.ticks % SNAPSHOT_EVERY === 0) this.broadcast(MSG.snapshot, this.host.snapshot(this.hostId));
+      if (++this.ticks % SNAPSHOT_EVERY === 0) this.broadcast(MSG.snapshot, packSnapshot(this.host.snapshot(this.hostId)));
     });
   }
 }

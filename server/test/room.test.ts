@@ -7,7 +7,9 @@ import {
   PROTOCOL_VERSION,
   ROOM_NAME,
   encodeInputs,
+  unpackSnapshot,
   type SnapshotMessage,
+  type SnapshotWire,
   type TuningPatch,
   type WelcomeMessage,
 } from '@lw/shared';
@@ -35,8 +37,8 @@ interface Peer {
 function watch(room: Room): Peer {
   const peer: Peer = { room, welcome: null, last: null, snapshots: 0, tuning: [] };
   room.onMessage(MSG.welcome, (m: WelcomeMessage) => (peer.welcome = m));
-  room.onMessage(MSG.snapshot, (m: SnapshotMessage) => {
-    peer.last = m;
+  room.onMessage(MSG.snapshot, (m: SnapshotWire) => {
+    peer.last = unpackSnapshot(m);
     peer.snapshots++;
   });
   room.onMessage(MSG.tuning, (m: TuningPatch) => peer.tuning.push(m));

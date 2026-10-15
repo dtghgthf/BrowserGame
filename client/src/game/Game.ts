@@ -77,6 +77,7 @@ export class Game {
   onNetClosed: (reason: string) => void = () => {};
   private readonly corrections = emptyCorrections();
   private readonly before = emptySnapshot();
+  private readonly netRate = { t: 0, bytes: 0, kbps: 0 };
   private readonly locals: LocalPlayer[] = [];
   private readonly commands: SimCommand[] = [];
   private prev: Snapshot = emptySnapshot();
@@ -483,8 +484,13 @@ export class Game {
     }
     this.stats.particles = this.spray.count + this.shipView.leakParticles.count;
     this.stats.lightPolys = this.shipView.lights.polygonsComputed;
+    if (this.net && now - this.netRate.t > 1000) {
+      this.netRate.kbps = ((this.net.link.snapshotBytes - this.netRate.bytes) / 1024) * (1000 / (now - this.netRate.t));
+      this.netRate.bytes = this.net.link.snapshotBytes;
+      this.netRate.t = now;
+    }
     this.stats.net = this.net
-      ? `NET ${this.net.link.code} ${this.net.status} rtt ${Math.round(this.net.link.rtt)} ms · pending ${this.net.predictor.stats.pending} · replay ${this.net.predictor.stats.replayed} · server tick ${this.net.predictor.stats.serverTick} · korrektur ${(this.net.correction * 100).toFixed(1)} cm · host ${this.net.predictor.host === this.net.link.sessionId ? 'ja' : 'nein'}`
+      ? `NET ${this.net.link.code} ${this.net.status} rtt ${Math.round(this.net.link.rtt)} ms · ${this.netRate.kbps.toFixed(1)} KB/s · pending ${this.net.predictor.stats.pending} · replay ${this.net.predictor.stats.replayed} · server tick ${this.net.predictor.stats.serverTick} · korrektur ${(this.net.correction * 100).toFixed(1)} cm · host ${this.net.predictor.host === this.net.link.sessionId ? 'ja' : 'nein'}`
       : '';
     this.debug.update(this.sim, s, this.shipView.lights, this.stats, ids[0] ?? 'p1', now);
     r.render(this.time);
