@@ -39,6 +39,8 @@ export class StationWidget {
   private radius = 32;
   private drag: Drag | null = null;
   private roll = 0;
+  /** Ring station: the ring is in the water, the control pulls the line. */
+  private pulling = false;
   private value = 0;
   private time = 0;
   /** Last pointer position (internal px) of the active drag, re-applied every frame. */
@@ -134,6 +136,11 @@ export class StationWidget {
         // push and pull the saw sideways
         this.target = Math.max(-1, Math.min(1, (p.x - this.center.x) / 20));
         break;
+      case 'ring':
+        // the ring in the water: pull the line sideways; otherwise aim the throw like the cannon
+        if (this.pulling) this.target = Math.max(-1, Math.min(1, (p.x - this.center.x) / 20));
+        else if (Math.hypot(dx, dy) > 3) this.target = Math.atan2(dy, dx) - this.roll;
+        break;
       case 'searchlight':
       case 'cannon':
         // the dial shows world directions: compensate the ship's roll
@@ -159,7 +166,13 @@ export class StationWidget {
     this.time = view.time;
     this.value = view.stations[st.id]?.value ?? st.value;
     // a held dial keeps pointing at the same screen direction while the ship rolls
-    if (this.drag && this.lastPointer && (kind === 'searchlight' || kind === 'cannon')) this.applyPointer(this.lastPointer);
+    const pulling = kind === 'ring' && state.ring !== null && state.ring.phase !== 'flying';
+    if (pulling !== this.pulling) {
+      this.pulling = pulling;
+      this.drag = null;
+      this.target = null;
+    }
+    if (this.drag && this.lastPointer && (kind === 'searchlight' || kind === 'cannon' || (kind === 'ring' && !pulling))) this.applyPointer(this.lastPointer);
 
     const W = this.r.layout.width;
     const H = this.r.layout.height;
@@ -251,6 +264,27 @@ export class StationWidget {
         this.g.rect(cx - 20, cy + 32, 40, 3).fill(0x2c3a4c);
         const full = kind === 'cannon' ? frac >= 1 : frac > 0.25;
         this.g.rect(cx - 20, cy + 32, Math.round(40 * frac), 3).fill(full ? 0x6cc070 : kind === 'cannon' ? 0xe0b860 : 0xe8584a);
+        break;
+      }
+      case 'ring': {
+        this.radius = 30;
+        title = 'RETTUNGSRING';
+        if (this.pulling) {
+          // hand over hand: the line between the hands
+          const hx = cx + Math.round(st.charge * 16);
+          this.g.rect(cx - 30, cy, 60, 1).fill(0xd8c8a0);
+          this.g.rect(hx - 3, cy - 4, 6, 8).fill(0xe0b090);
+          this.g.rect(hx - 2, cy - 3, 4, 6).fill(0xc89878);
+          const held = state.ring?.holder !== null;
+          sub = held ? 'EINHOLEN: HIN UND HER / A-D' : 'NIEMAND DRAN - F = EINHOLEN';
+        } else {
+          this.dial.visible = true;
+          this.needle.visible = true;
+          this.dial.position.set(cx, cy);
+          this.needle.position.set(cx, cy);
+          this.needle.rotation = this.value + this.roll;
+          sub = state.ring ? 'FLIEGT ...' : this.drag ? '' : 'ZIELEN, F = WERFEN!';
+        }
         break;
       }
       default:

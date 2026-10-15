@@ -136,6 +136,99 @@ export class GameAudio {
         a.play('arrive', { volume: 0.9 });
         a.play('foghorn', { volume: 0.8, delay: 1.2 });
         break;
+      case 'sawStroke': {
+        const st = state.stations[e.station];
+        if (st) a.play('saw', { ...this.at(st, 0.7), rate: rate() });
+        break;
+      }
+      case 'plankMade': {
+        const st = state.stations[e.station];
+        if (st) a.play('drop', { ...this.at(st, 0.8), rate: 1.2 });
+        break;
+      }
+      case 'crateOpen': {
+        const o = state.objects.find((ob) => ob.id === e.object);
+        const pos = o ? this.at(o, 0.9) : { volume: 0.6, pan: 0 };
+        a.play('crate_open', { ...pos, rate: rate() });
+        if (e.loot.includes('coins')) a.play('coins', { ...pos, delay: 0.5 });
+        if (e.loot.includes('rat')) a.play('rat', { ...pos, delay: 0.45 });
+        break;
+      }
+      case 'breakUp': {
+        const p = this.player(state, e.player);
+        if (p) a.play('rock_break', { ...this.at(p, 0.4), rate: 1.6 });
+        break;
+      }
+      case 'cannonLoad': {
+        const st = state.stations[e.station];
+        if (st) a.play('cannon_load', { ...this.at(st, 0.8), rate: e.charge >= 2 ? 1.15 : 0.9 });
+        break;
+      }
+      case 'refill': {
+        const p = this.player(state, e.player);
+        if (p) a.play('glug', this.at(p, 0.8));
+        break;
+      }
+      case 'fire':
+        a.play('fire_start', { ...this.at({ x: e.x, y: e.y }, 0.9, 40), rate: rate() });
+        break;
+      case 'extinguish':
+        a.play('steam', { ...this.at({ x: e.x, y: e.y }, 0.9, 40), rate: rate() });
+        break;
+      case 'bucket': {
+        const p = this.player(state, e.player);
+        if (p) a.play(e.what === 'scoop' ? 'splash_small' : 'splash_big', { ...this.at(p, e.what === 'scoop' ? 0.6 : 0.8), rate: e.what === 'scoop' ? 1.3 : 1.1 });
+        break;
+      }
+      case 'waveWarn':
+        a.play('creak', { volume: 0.8, rate: 0.6 });
+        break;
+      case 'wave':
+        a.play('wave_crash', { volume: 1 });
+        break;
+      case 'lightning':
+        a.play('thunder', { volume: 1, rate: 0.9 + Math.random() * 0.2 });
+        break;
+      case 'pirateAppear':
+        a.play('foghorn', { volume: 0.5, rate: 1.5 });
+        break;
+      case 'pirateFire':
+        a.play('cannon', { ...this.atWorld(state, e.x, e.y, 0.9, 80), rate: 0.8 + Math.random() * 0.1 });
+        break;
+      case 'pirateHit':
+        a.play('rock_break', { volume: 0.8, pan: 0.6, rate: 0.8 });
+        break;
+      case 'pirateFlee':
+        a.play('repaired', { volume: 0.6 });
+        break;
+      case 'shipHit':
+        a.play('rock_hit', { ...this.at({ x: e.x, y: e.y }, 0.8, 50), rate: 1.2 });
+        break;
+      case 'hook':
+        a.play(e.on ? 'hook' : 'hammer', { volume: 0.9, pan: 0.6 });
+        break;
+      case 'whirlAppear':
+        break;
+      case 'whirlHit':
+      case 'iceHit':
+        a.play('rock_hit', { volume: 0.8, rate: e.type === 'iceHit' ? 1.5 : 0.8 });
+        break;
+      case 'flotsamFished': {
+        const p = this.player(state, e.player);
+        if (p) a.play('pickup', this.at(p, 1));
+        break;
+      }
+      case 'ringThrow': {
+        const p = this.player(state, e.player);
+        if (p) a.play('ring_throw', this.at(p, 0.9));
+        break;
+      }
+      case 'ringCatch':
+        a.play('splash_small', { volume: 0.7 });
+        break;
+      case 'rescued':
+        a.play('repaired', { volume: 0.9 });
+        break;
       default:
         break;
     }
@@ -191,6 +284,12 @@ export class GameAudio {
       leak += this.at(this.sim.leakInteriorPoint(l.point), Math.min(1, l.inflow * 2 + 0.3), 25).volume;
     }
     a.loop('loop_leak', Math.min(1, leak) * 0.8);
+    let fire = 0;
+    for (const f of state.fires) {
+      const c = { x: (f.tx + 0.5 - this.sim.layout.origin.x) * this.sim.layout.tileSize, y: (f.ty + 0.5 - this.sim.layout.origin.y) * this.sim.layout.tileSize };
+      fire += this.at(c, 0.25 + f.heat * 0.35, 25).volume;
+    }
+    a.loop('loop_fire', Math.min(1, fire) * 0.9);
   }
 
   thunder(strength: number): void {

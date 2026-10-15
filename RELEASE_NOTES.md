@@ -1,3 +1,28 @@
+# Leuchtturmwärter – 2.0 (in Arbeit)
+
+Noch nicht online – das hier kommt mit dem nächsten Update.
+
+## Mehr zu tun an Bord
+- **Kisten haben Inhalt:** Mit E aufhebeln (dauert kurz) – drin sind Planken, Holz, Kanonenkugeln, Ölkannen, Eimer, Münzen oder Werkzeug. Manchmal springt auch eine Ratte raus und frisst Holz.
+- **Planken muss man sägen:** Die Werkbank ist jetzt eine Station. Hin und her sägen (A/D oder ziehen), jede Planke kostet ein Holz. Leere Kisten an der Werkbank zerlegen gibt neues Holz.
+- **Kanone laden:** Nach jedem Schuss ist sie leer. Allein lädt man selbst (langsam) – schneller geht's, wenn jemand eine Kugel vom Kugelgestell holt, mit E einlegt und festdrückt.
+- **Der Scheinwerfer braucht Öl:** Er flackert, wenn es knapp wird. Ölkanne aus dem Mitteldeck holen, am Ölfass im Laderaum nachfüllen.
+- **Werkzeug für alle:** Hammer = schneller flicken, Brecheisen = schneller Kisten öffnen.
+
+## Neue Gefahren
+- **Feuer:** Blitze und Piratenkugeln setzen Decks in Brand. Feuer breitet sich aus und frisst Lecks in den Rumpf. Löschen mit dem Eimer: im gefluteten Raum oder über die Reling schöpfen, dann mit E ins Feuer kippen. Ein Eimer hilft auch beim Lenzen.
+- **Piraten:** Ihre Schaluppe beschießt euch und wirft einen Enterhaken an den Bug – dann wird das Schiff langsamer, bis jemand den Haken kappt. Vier Kanonentreffer verjagen sie, und sie werfen Beute über Bord.
+- **Eisfelder:** Eisschollen brauchen zwei Treffer.
+- **Strudel:** ziehen das Schiff zur Seite. Wer mittendurch fährt, bekommt ein Leck im Kiel.
+- **Treibgut:** Kisten im Wasser – auf der Seekarte gold. Hinsteuern und vom Oberdeck mit E herausfischen.
+- **Brecher im Sturm:** „Welle!“ – zwei Sekunden später spült eine Welle übers Oberdeck. Wer an einer Station steht, hält sich fest.
+- **Mann über Bord:** Ist noch jemand an Bord, kann er den Rettungsring am Heck werfen. Der Schwimmer greift zu, dann Hand über Hand einholen.
+
+## Abwechslung
+- Unterwegs wird bei jeder Fahrt neu ausgewürfelt, was passiert: Krake, Piraten, Eis, Strudel oder Treibgut.
+
+---
+
 # Leuchtturmwärter – Release 1.0
 
 **Jetzt spielen: https://game.echterhofflabs.me**

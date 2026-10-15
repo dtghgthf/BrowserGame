@@ -7,8 +7,8 @@ import type { GameState } from '../state';
 import type { SimContext } from './context';
 
 /** Where the pirates' sloop settles ahead of the pivot (m); closer while the hook holds. */
-const FIGHT_OFFSET = 30;
-const HOOKED_OFFSET = 24;
+const FIGHT_OFFSET = 23;
+const HOOKED_OFFSET = 19.5;
 /** Half length and height of the sloop's hull (hit box for cannon balls). */
 export const PIRATE_HALF_LENGTH = 3.4;
 export const PIRATE_HEIGHT = 3.2;

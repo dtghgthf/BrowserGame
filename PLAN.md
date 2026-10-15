@@ -97,3 +97,15 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Regen, Blitze, dichterer Nebel, Leuchtturm-Insel
 - [x] Platzhalter-Sounds (Generator) + Audio-Engine + Lautstärke im Menü
 - [x] Tests (Fahrt, Felsen, Scheinwerfer, Kanone, Krake, Pings, Zurufe, Codec), Browser-Verifikation, Balance-Simulation
+
+## Phase 5 – Mehr zu tun an Bord, neue Gefahren
+- [x] Gefahren-Logik in `shared/src/systems/*` (Felsen, Krake, Kanone, Zurufe) – ohne Verhaltensänderung
+- [x] Kisten mit Inhalt (seed-bestimmt), Aufhebeln als Aktion, Werkzeuge für die Crew, Ratte
+- [x] Werkbank als Säge-Station, Holzvorrat, leere Kisten zerlegen
+- [x] Kanone laden (allein langsam / Helfer mit Kugel vom Gestell + Stopfen), Scheinwerfer-Öl mit Ölkanne und Ölfass
+- [x] Begegnungs-Tabelle: Krake, Piraten (Beschuss, Enterhaken), Eisfeld, Strudel, Treibgut
+- [x] Feuer (breitet sich aus, brennt Lecks), Eimer (schöpfen, löschen, lenzen)
+- [x] Brecher und Blitze im Sturm, Mann über Bord mit Rettungsring-Station
+- [x] Client: Flammen + Feuerlicht + Rauch, Schaluppe, Haken-Seil, Strudel, Eisschollen, Treibgut, Schwimmer, Ring mit Leine,
+      Seekarte (Strudel, Treibgut, Piraten, Eis), Warnungen im HUD, Popups beim Kisten öffnen, neue Platzhalter-Sounds
+- [x] Tests: Kisten, Laden, Öl, Feuer, Eimer, Brecher, Begegnungen, Piraten, Strudel, Eis, Treibgut, Rettung, Codec

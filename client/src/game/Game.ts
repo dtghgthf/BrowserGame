@@ -4,6 +4,7 @@ import {
   DEFAULT_TUNING,
   LIGHTHOUSE_ISLAND,
   PLAYER_HALF_HEIGHT,
+  LOOT_NAMES,
   monsterHead,
   worldToShip,
   EMPTY_INPUT,
@@ -40,6 +41,7 @@ import type { TuningPanel } from '../ui/TuningPanel';
 import type { PixelFont } from '../ui/PixelFont';
 import { NameTags } from '../ui/NameTags';
 import { PingView } from '../ui/PingView';
+import { Popups } from '../ui/Popups';
 import {
   applyCorrections,
   clearCorrections,
@@ -83,6 +85,7 @@ export class Game {
   readonly hazards: HazardView;
   readonly storm: StormView;
   private readonly pingView: PingView;
+  private readonly popups: Popups;
   /** Unlit particles (muzzle flash, fireworks). */
   private readonly fx: Particles;
   private readonly island: Sprite;
@@ -171,7 +174,7 @@ export class Game {
     });
 
     // hazards live between the far and the near sea; the lighthouse stands in the same layer
-    this.hazards = new HazardView(r, assets.props);
+    this.hazards = new HazardView(r, assets.props, sim.layout);
     this.island = new Sprite(frameOf(assets.props, 'rock_a').texture);
     this.island.anchor.set(0.5, 1);
     this.island.scale.set(2);
@@ -180,6 +183,8 @@ export class Game {
     this.fx = new Particles(r.final.world, 400);
     this.pingView = new PingView(assets.props);
     r.hud.addChildAt(this.pingView.root, 0);
+    this.popups = new Popups(font);
+    r.hud.addChildAt(this.popups.root, 1);
     this.setupPingInput();
 
     this.addLocalPlayer('primary');
@@ -524,6 +529,50 @@ export class Game {
         }
       } else if (e.type === 'arrived') {
         this.fireworks();
+      } else if (e.type === 'pirateFire') {
+        this.muzzle(e.x * PPM, e.y * PPM, e.angle);
+      } else if (e.type === 'shipHit') {
+        // splinters fly where the pirates' ball hits
+        const w = shipToWorld(s.ship, { x: e.x, y: e.y });
+        for (let i = 0; i < 22; i++) {
+          this.spray.spawn(w.x * PPM, w.y * PPM, (Math.random() - 0.5) * 120, -40 - Math.random() * 90, 0.6 + Math.random() * 0.5, Math.random() > 0.5 ? 0x8a5a32 : 0x5a3a20, 0, 260, 0.2);
+        }
+        this.shake = Math.max(this.shake, 5);
+      } else if (e.type === 'pirateHit') {
+        const sl = s.pirate ? s.ship.x + s.pirate.offset : null;
+        if (sl !== null) {
+          const y = seaSurfaceY(sl, s.time, s.ship.seaState) * PPM - 20;
+          for (let i = 0; i < 24; i++) this.spray.spawn(sl * PPM + (Math.random() - 0.5) * 30, y, (Math.random() - 0.5) * 100, -50 - Math.random() * 80, 0.8, Math.random() > 0.5 ? 0x8a5a32 : 0x3a2414, 0, 260, 0.2);
+        }
+      } else if (e.type === 'wave') {
+        // a wall of water over the bow
+        const bow = shipToWorld(s.ship, { x: BOW_OFFSET - 2, y: -1 });
+        this.splash(bow.x * PPM, seaSurfaceY(bow.x, s.time, s.ship.seaState) * PPM, 70);
+        for (let i = 0; i < 60; i++) {
+          this.spray.spawn(bow.x * PPM - Math.random() * 40, bow.y * PPM - Math.random() * 20, -60 - Math.random() * 140, -20 - Math.random() * 60, 0.8 + Math.random() * 0.6, Math.random() > 0.4 ? 0xdcecf2 : 0x9fc4d8, 0, 200, 0.3);
+        }
+        this.shake = Math.max(this.shake, 6);
+      } else if (e.type === 'lightning') {
+        this.r.flash = 1;
+        this.shake = Math.max(this.shake, 3);
+      } else if (e.type === 'extinguish') {
+        const w = shipToWorld(s.ship, { x: e.x, y: e.y });
+        for (let i = 0; i < 18; i++) this.spray.spawn(w.x * PPM + (Math.random() - 0.5) * 10, w.y * PPM, (Math.random() - 0.5) * 20, -20 - Math.random() * 30, 1.2, 0xc8ccd4, 0, -10, 0.8);
+      } else if (e.type === 'crateOpen') {
+        const o = s.objects.find((ob) => ob.id === e.object);
+        if (o) this.popups.add(e.loot.map((l) => (l === 'rat' ? LOOT_NAMES.rat : `+ ${LOOT_NAMES[l]}`)), o.x, o.y - 0.6, e.loot[0] === 'rat' ? 0xe8584a : 0xe0b860);
+      } else if (e.type === 'plankMade') {
+        const st = s.stations[e.station];
+        if (st) this.popups.add([`+ PLANKE (HOLZ ${s.voyage.timber})`], st.x, st.y - 1.2);
+      } else if (e.type === 'breakUp') {
+        const p = s.players.find((pp) => pp.id === e.player);
+        if (p) this.popups.add(['+ HOLZ'], p.x, p.y - 1);
+      } else if (e.type === 'flotsamFished') {
+        const p = s.players.find((pp) => pp.id === e.player);
+        if (p) this.popups.add(['TREIBGUT!'], p.x, p.y - 1);
+      } else if (e.type === 'rescued') {
+        const p = s.players.find((pp) => pp.id === e.player);
+        if (p) this.popups.add(['GERETTET!'], p.x, p.y - 1, 0x6cc070);
       }
     }
   }
@@ -653,6 +702,7 @@ export class Game {
     this.station.update(s, v, ids[0], this.sim.tuning);
     this.names.update(s, v, ids, left, top, this.time);
     this.pingView.update(s, v, left, top, width, height, this.time);
+    this.popups.update(dt, v, left, top);
     this.audio?.update(dt, s, ids[0]);
     this.hud.update(this.sim, s, ids, width, height, this.time, this.net ? { code: this.net.link.code, status: this.net.status, synced: this.net.predictor.synced } : null);
     if (this.touch.isEnabled && ids[0]) {

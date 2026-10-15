@@ -1,4 +1,5 @@
 import { Canvas, hash, hex, mix, shade, type RGBA } from './canvas';
+import { drawEncounters } from './encounters';
 import { drawHazards } from './hazards';
 import { drawUi } from './ui';
 
@@ -280,11 +281,6 @@ function supplies(): PropSprite[] {
   can.set(5, 0, IRON_L, 2.4);
   can.innerOutline(hex('#2a1008'));
 
-  const ball = new Canvas(5, 5);
-  ball.disc(2, 2, 2, IRON, 2.5);
-  ball.set(1, 1, IRON_L, 3.5);
-  ball.set(2, 1, IRON_M, 3.2);
-
   // rack: a low wooden frame holding a pyramid of balls
   const rack = new Canvas(14, 9);
   rack.rect(0, 6, 14, 3, WOOD, 2);
@@ -302,7 +298,6 @@ function supplies(): PropSprite[] {
     { name: 'bucket', canvas: bucket(false), pivot: { x: 3, y: 4 } },
     { name: 'bucket_full', canvas: bucket(true), pivot: { x: 3, y: 4 } },
     { name: 'oilcan', canvas: can, pivot: { x: 3, y: 4 } },
-    { name: 'ball', canvas: ball, pivot: { x: 2, y: 2 } },
     { name: 'ball_rack', canvas: rack, pivot: { x: 7, y: 9 } },
     ...lifeRing(),
   ];
@@ -494,6 +489,7 @@ export function drawProps(): PropSprite[] {
     moon(),
     ...drawUi(),
     ...drawHazards(),
+    ...drawEncounters(),
   ];
 }
 

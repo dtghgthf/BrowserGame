@@ -14,6 +14,10 @@ const COL = {
   danger: 0xff5a44,
   dangerDim: 0xa8302a,
   kraken: 0xc05a9a,
+  ice: 0xa8dcf4,
+  whirl: 0x5aa8e6,
+  flotsam: 0xe0b860,
+  pirate: 0xe8584a,
   ship: 0xf2eee2,
   text: 0xd8dde6,
   dim: 0x7a8696,
@@ -44,6 +48,7 @@ export class SeaChart {
       for (const [text, color] of [
         ['GELB = DEIN KURS', COL.course],
         ['ROT = FELS IM WEG', COL.danger],
+        ['GOLD = TREIBGUT', COL.flotsam],
       ] as const) {
         const t = new PixelText(font, text, color);
         this.legend.push(t);
@@ -106,12 +111,55 @@ export class SeaChart {
       const size = Math.max(1, Math.round(r.radius * scaleX));
       if (t.danger && (!nearest || ahead < nearest.ahead)) nearest = { ahead, steer: t.steer };
       if (!inside(px, py)) continue;
-      const col = t.danger ? (blink ? COL.danger : COL.dangerDim) : COL.rock;
+      const col = t.danger ? (blink ? COL.danger : COL.dangerDim) : r.kind === 'ice' ? COL.ice : COL.rock;
       // a little rock: wider at the bottom
       g.rect(px - size, py, size * 2 + 1, 2).fill(col);
       g.rect(px - Math.max(0, size - 1), py - 1, Math.max(1, size * 2 - 1), 1).fill(col);
       // a little "!" above rocks in the way
       if (t.danger && py - 6 > ay) g.rect(px, py - 6, 1, 2).fill(COL.danger).rect(px, py - 3, 1, 1).fill(COL.danger);
+    }
+
+    // a whirlpool: a blue ring, red when the course runs into it
+    const wh = state.whirl;
+    if (wh && wh.spotted) {
+      const ahead = wh.x - ship.x;
+      if (ahead > -wh.radius && ahead < ROCK_LOOKAHEAD) {
+        const px = toX(wh.lateral, Math.max(0, ahead));
+        const py = toY(Math.max(0, ahead));
+        const off = wh.lateral - courseLateralAt(course, Math.max(0, ahead));
+        const danger = Math.abs(off) < wh.radius * 0.5 + beam;
+        if (danger && (!nearest || ahead < nearest.ahead)) nearest = { ahead, steer: off > 0 ? -1 : 1 };
+        const rad = Math.max(2, Math.round(wh.radius * 0.6 * scaleX));
+        const col = danger && blink ? COL.danger : COL.whirl;
+        for (let a = 0; a < 16; a++) {
+          const ang = (a / 16) * Math.PI * 2 + time * 2;
+          const rr = rad * (0.4 + 0.6 * ((a % 8) / 8));
+          const qx = px + Math.round(Math.cos(ang) * rr);
+          const qy = py + Math.round(Math.sin(ang) * rr * 0.6);
+          if (inside(qx, qy)) g.rect(qx, qy, 1, 1).fill(col);
+        }
+      }
+    }
+
+    // flotsam: gold crates to steer towards
+    let target: { ahead: number; off: number } | null = null;
+    for (const f of state.flotsam) {
+      if (!f.spotted) continue;
+      const ahead = f.x - ship.x;
+      if (ahead < -2 || ahead > ROCK_LOOKAHEAD) continue;
+      const px = toX(f.lateral, Math.max(0, ahead));
+      const py = toY(Math.max(0, ahead));
+      const off = f.lateral - courseLateralAt(course, Math.max(0, ahead));
+      if (ahead > 0 && (!target || ahead < target.ahead)) target = { ahead, off };
+      if (inside(px, py)) g.rect(px - 1, py - 1, 3, 3).fill(COL.flotsam).rect(px, py, 1, 1).fill(0x6a4a20);
+    }
+
+    // the pirates' sloop ahead
+    const pr = state.pirate;
+    if (pr && pr.spotted && pr.phase !== 'flee') {
+      const py = toY(Math.max(0, pr.offset - 16));
+      const col = blink ? COL.pirate : COL.dangerDim;
+      g.rect(cx - 3, py + 1, 7, 2).fill(col).rect(cx, py - 4, 1, 5).fill(col).rect(cx + 1, py - 4, 2, 3).fill(0xe6e2d8);
     }
 
     // the kraken (straight ahead, in the ship's path)
@@ -137,6 +185,15 @@ export class SeaChart {
       this.hint.text = nearest.steer < 0 ? '< LENKEN' : 'LENKEN >';
       this.hint.setColor(COL.danger);
       this.hint.visible = blink || nearest.ahead > 60;
+    } else if (target && Math.abs(target.off) > beam * 0.6) {
+      // nothing in the way: steer onto the flotsam to fish it out
+      this.hint.text = target.off < 0 ? '< TREIBGUT' : 'TREIBGUT >';
+      this.hint.setColor(COL.flotsam);
+      this.hint.visible = true;
+    } else if (target) {
+      this.hint.text = 'TREIBGUT IN DER SPUR';
+      this.hint.setColor(COL.flotsam);
+      this.hint.visible = true;
     } else {
       this.hint.text = seen > 0 ? 'KURS FREI' : 'NICHTS GESICHTET';
       this.hint.setColor(seen > 0 ? COL.good : COL.dim);

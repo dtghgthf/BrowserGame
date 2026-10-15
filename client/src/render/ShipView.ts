@@ -16,6 +16,7 @@ import type { GameRenderer } from './GameRenderer';
 import { LightSystem, type LightDef } from './lighting/LightSystem';
 import type { Segment } from './lighting/visibility';
 import { LitSprite } from './LitSprite';
+import { FireView } from './FireView';
 import { Particles } from './Particles';
 import { WaterView } from './WaterView';
 import type { Snapshot } from '../game/snapshot';
@@ -66,6 +67,9 @@ export class ShipView {
   readonly water: WaterView;
   readonly waterGlint: WaterView;
   readonly leakParticles: Particles;
+  /** Smoke of fires (lit, in the ship). */
+  readonly smoke: Particles;
+  private readonly fires: FireView;
   private readonly layers: Record<'back' | 'stations' | 'objects' | 'players' | 'hull' | 'front' | 'water', { a: Container; n: Container }>;
   private readonly lanterns: Lantern[] = [];
   private readonly hatchClosed: LitSprite[][] = [];
@@ -196,6 +200,8 @@ export class ShipView {
     this.leakParticles = new Particles(r.final.ship, 400);
     this.bubbleLayer = new Container();
     r.final.world.addChild(this.bubbleLayer);
+    this.smoke = new Particles(r.albedo.ship, 300);
+    this.fires = new FireView(r.final.ship, assets.props, this.lights, this.smoke, L);
   }
 
   private createStation(st: StationState): StationView {
@@ -340,6 +346,13 @@ export class ShipView {
       this.searchlight.y = pose.y;
       this.searchlight.cone!.direction = pose.angle;
     }
+
+    // the life ring hangs on its post until it is thrown
+    state.stations.forEach((st, i) => {
+      if (st.kind === 'ring') this.stations[i]!.parts[0]!.setFrame(frameOf(this.assets.props, state.ring ? 'ring_post_empty' : 'ring_post'));
+    });
+    this.fires.update(state, dt);
+    this.smoke.update(dt);
 
     this.updateObjects(state, view);
     this.updatePlayers(state, view);

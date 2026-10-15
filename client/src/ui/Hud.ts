@@ -96,11 +96,18 @@ export class Hud {
     this.text('coins', `MÜNZEN ${v.coins}`, 44, 111, C.gold);
     this.text('tools', `${v.hammer ? 'H' : ''}${v.crowbar ? 'B' : ''}`, 88, 111, C.dim);
 
-    // ---- leak warning
+    // ---- warnings (top centre, one line each)
+    const warnings: [string, number][] = [];
     const leaks = state.leaks.filter((l) => l.active).length;
-    if (leaks > 0 && Math.floor(time * 2.5) % 2 === 0) {
-      const msg = leaks > 1 ? `${leaks} LECKS!` : 'LECK!';
-      this.text('leak', msg, Math.round(width / 2 - this.font.measure(msg) / 2), 6, C.warn);
+    if (leaks > 0) warnings.push([leaks > 1 ? `${leaks} LECKS!` : 'LECK!', C.warn]);
+    if (state.fires.length > 0) warnings.push([state.fires.length > 3 ? 'FEUER AN BORD!' : 'FEUER!', 0xff9a40]);
+    if (v.waveWarn > 0) warnings.push(['BRECHER! FESTHALTEN!', 0x9ccaf2]);
+    if (state.pirate && state.pirate.hook > 0) warnings.push(['ENTERHAKEN AM BUG! KAPPEN!', C.warn]);
+    if (state.players.some((p) => p.overboard > 0 && !localIds.includes(p.id)) && state.stations.some((st) => st.kind === 'ring')) {
+      warnings.push(['MANN ÜBER BORD! RETTUNGSRING!', C.warn]);
+    }
+    if (Math.floor(time * 2.5) % 2 === 0 || v.waveWarn > 0) {
+      warnings.forEach(([msg, col], i) => this.text(`warn${i}`, msg, Math.round(width / 2 - this.font.measure(msg) / 2), 6 + i * 8, col));
     }
 
     // ---- per local player: station UI, prompts, repair progress
@@ -131,8 +138,10 @@ export class Hud {
         this.text(`st${i}`, `P${i + 1}: ${st.kind.toUpperCase()}`, Math.round(width / 2 - 30), baseY - 10, C.gold);
       }
       if (p.overboard > 0) {
-        const msg = 'MANN ÜBER BORD!';
-        this.text(`ob${i}`, msg, Math.round(width / 2 - this.font.measure(msg) / 2), Math.round(height / 2) - 20 - i * 10, C.warn);
+        const held = state.ring?.holder === p.id;
+        const wait = p.overboard > sim.tuning.gameplay.overboardTime + 0.1;
+        const msg = held ? 'FESTHALTEN - SIE ZIEHEN DICH RAN!' : wait ? `MANN ÜBER BORD! ZUM RING SCHWIMMEN (${Math.ceil(p.overboard)})` : 'MANN ÜBER BORD!';
+        this.text(`ob${i}`, msg, Math.round(width / 2 - this.font.measure(msg) / 2), Math.round(height / 2) - 20 - i * 10, held ? C.good : C.warn);
       }
     });
 
@@ -158,7 +167,8 @@ export class Hud {
         ['LEUCHTTURM ERREICHT!', C.gold],
         [`FELSEN: ${v.rocksPassed} UMSCHIFFT  ${v.rocksDestroyed} ZERSCHOSSEN  ${v.rocksHit} GERAMMT`, C.text],
         [`KRAKEN VERJAGT: ${v.monstersRepelled}   LECKS GEFLICKT: ${v.leaksRepaired}`, C.text],
-        [`KISTEN GEÖFFNET: ${v.cratesOpened}   MÜNZEN: ${v.coins}`, C.text],
+        [`KISTEN GEÖFFNET: ${v.cratesOpened}   TREIBGUT: ${v.flotsamFished}   MÜNZEN: ${v.coins}`, C.text],
+        [`FEUER GELÖSCHT: ${v.firesPut}   PIRATEN VERJAGT: ${v.piratesBeaten}   GERETTET: ${v.rescues}`, C.text],
         [`NEUE FAHRT IN ${Math.ceil(state.statusTimer)}`, C.dim],
       ];
       const w = Math.max(...lines.map(([t]) => this.font.measure(t)));

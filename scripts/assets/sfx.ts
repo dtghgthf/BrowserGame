@@ -186,6 +186,38 @@ function effects(): Sound[] {
   }
   add('sink', reverb(mix(gain(env(osc(2.2, (t) => 220 * Math.exp(-t * 0.9), 'tri'), ad(0.05, 0.9)), 0.6), gain(splash(190, 1.4), 0.8)), 0.4, 1.4, 1), 0.8);
 
+  // phase 5: saw, crates, coins, rat, fire, steam, wave, hook, ring, loading, oil
+  for (let i = 1; i <= 2; i++) {
+    const rasp = env(biquad(white(0.32, 400 + i), 'bandpass', (t) => 2600 + (i === 1 ? 1 : -1) * t * 1800, 2.5), (t) => Math.sin(Math.min(1, t / 0.32) * Math.PI) * (0.6 + 0.4 * Math.sin(t * 220) ** 2));
+    add(`saw_${i}`, mix(gain(rasp, 1), gain(knock(402 + i, 1.4, 0.02, 0.4), 0.3)), 0.5);
+  }
+  {
+    const squeal = env(biquad(osc(0.35, (t) => 1500 + 900 * Math.sin(t * 30) + t * 800, 'saw'), 'bandpass', 2200, 6), ad(0.02, 0.12));
+    add('crate_open', mix(gain(creak(410, 0.5, 160), 0.7), [gain(squeal, 0.35), 0.25], [thud(411, 0.9), 0.5], [knock(412, 0.9, 0.06, 1), 0.52]), 0.75);
+    const r = rng(413);
+    const clinks: [Buf, number][] = [];
+    for (let i = 0; i < 9; i++) {
+      const f = 2800 + r() * 2200;
+      clinks.push([gain(mix(env(osc(0.25, () => f), ad(0.001, 0.05)), gain(env(osc(0.25, () => f * 1.52), ad(0.001, 0.03)), 0.5)), 0.4 + r() * 0.3), r() * 0.35]);
+    }
+    add('coins', reverb(mix(...clinks), 0.2, 0.6, 0.3), 0.55);
+    add('rat', mix(gain(env(osc(0.12, (t) => 3200 + Math.sin(t * 160) * 600, 'tri'), ad(0.005, 0.05)), 0.6), [gain(env(osc(0.1, (t) => 3600 - t * 4000, 'tri'), ad(0.005, 0.04)), 0.5), 0.15]), 0.45);
+  }
+  {
+    const whoosh = env(biquad(white(0.7, 420), 'bandpass', (t) => 400 + t * 1600, 0.8), ad(0.05, 0.25));
+    add('fire_start', mix(gain(whoosh, 1), [gain(env(biquad(brown(0.6, 421), 'lowpass', 600), ad(0.02, 0.2)), 0.8), 0.05]), 0.7);
+    add('steam', env(biquad(white(0.9, 422), 'highpass', (t) => 2000 + t * 2000), (t) => Math.min(1, t / 0.02) * Math.exp(-t / 0.3)), 0.55);
+  }
+  add('wave_crash', reverb(mix(gain(splash(430, 2.2), 1.2), gain(env(biquad(brown(2, 431), 'lowpass', 400), ad(0.05, 0.6)), 1)), 0.35, 1.2, 0.9), 0.9);
+  add('hook', mix(gain(env(osc(0.5, () => 1320), ad(0.001, 0.12)), 0.4), gain(env(osc(0.5, () => 1980), ad(0.001, 0.06)), 0.25), knock(440, 1.6, 0.04, 1), [thud(441, 0.6), 0.03]), 0.7);
+  add('ring_throw', env(biquad(white(0.45, 450), 'bandpass', (t) => 900 + 1200 * Math.sin(t * 6), 1.2), ad(0.03, 0.18)), 0.5);
+  add('cannon_load', mix(gain(env(osc(0.4, () => 620), ad(0.001, 0.08)), 0.3), knock(460, 0.7, 0.07, 1.2), [thud(461, 1), 0.08]), 0.7);
+  {
+    const glug: [Buf, number][] = [];
+    for (let i = 0; i < 6; i++) glug.push([gain(env(osc(0.12, (t) => 260 + i * 25 + t * 900), ad(0.005, 0.05)), 0.5), i * 0.11]);
+    add('glug', mix(...glug), 0.55);
+  }
+
   // ship creaks (random one-shots over the sea)
   for (let i = 1; i <= 4; i++) add(`creak_${i}`, creak(200 + i, 0.6 + i * 0.25, 70 + i * 22), 0.5);
   return out;
@@ -230,6 +262,15 @@ function loops(): Sound[] {
     for (let i = 0; i < 40; i++) {
       const f = 300 + r() * 500;
       bubbles.push([gain(env(osc(0.08, (t) => f * (1 + t * 12)), ad(0.002, 0.02)), 0.3 + r() * 0.3), r() * len]);
+    }
+    // fire: crackle (random pops) over a soft roar
+    {
+      const len2 = 3;
+      const r2 = rng(470);
+      const pops: [Buf, number][] = [];
+      for (let i = 0; i < 70; i++) pops.push([gain(env(biquad(white(0.02, 471 + i), 'bandpass', 1500 + r2() * 3000, 1.5), ad(0.0005, 0.006)), 0.3 + r2() * 0.7), r2() * (len2 - 0.05)]);
+      const roar = biquad(brown(len2 + 1, 472), 'lowpass', 500);
+      out.push({ name: 'loop_fire', data: finish(loopable(mix(gain(roar, 0.8), ...pops), 0.5, 0.5), 0.6) });
     }
     out.push({ name: 'loop_leak', data: loopable(mix(gain(hiss, 0.8), ...bubbles), 0.5, 0.55) });
   }
