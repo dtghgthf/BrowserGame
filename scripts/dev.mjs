@@ -4,7 +4,8 @@
  * server (port 5173) together, with prefixed output. Ctrl+C stops both.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, rmSync, statSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -29,9 +30,39 @@ function ensureDependencies() {
   console.log(`[dev] Abhängigkeiten fehlen oder sind veraltet${missing.length ? ` (${missing.map((m) => m[1]).join(', ')})` : ''} – führe npm install aus …`);
   const r = spawnSync('npm', ['install'], { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' });
   if (r.status !== 0) process.exit(r.status ?? 1);
+  // Vite's pre-bundled dependencies are rebuilt from scratch
+  rmSync(join(root, 'node_modules', '.vite'), { recursive: true, force: true });
+  rmSync(join(root, 'client', 'node_modules', '.vite'), { recursive: true, force: true });
+}
+
+/** Resolves true if nothing listens on the port yet. */
+function portFree(port) {
+  return new Promise((resolve) => {
+    const srv = createServer();
+    srv.once('error', () => resolve(false));
+    srv.once('listening', () => srv.close(() => resolve(true)));
+    srv.listen(port, '0.0.0.0');
+  });
+}
+
+/**
+ * An old `npm run dev` still running (e.g. in another terminal tab) keeps
+ * serving the old code - with errors like "Failed to resolve import" after a
+ * pull. Stop with a clear message instead of starting a second copy.
+ */
+async function ensurePortsFree() {
+  const busy = [];
+  for (const port of [5173, 2567]) if (!(await portFree(port))) busy.push(port);
+  if (busy.length === 0) return;
+  console.error(`\n[dev] Port ${busy.join(' und ')} ist schon belegt – da läuft noch ein alter Dev-Server.`);
+  console.error('[dev] Alten Server beenden (Strg+C im anderen Terminal) oder:');
+  console.error(`[dev]   lsof -ti ${busy.map((p) => `:${p}`).join(' ')} | xargs kill`);
+  console.error('[dev] Danach npm run dev erneut starten.\n');
+  process.exit(1);
 }
 
 ensureDependencies();
+await ensurePortsFree();
 
 const procs = [
   { name: 'server', color: 36, args: ['run', 'dev', '-w', '@lw/server'] },

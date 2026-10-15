@@ -69,6 +69,8 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // never silently move to 5174: an old dev server on 5173 would keep serving stale code
+    strictPort: true,
   },
   build: {
     target: 'es2022',
