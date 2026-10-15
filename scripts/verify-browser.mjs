@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * Browser verification: starts the Vite dev server (or `--preview` for the
- * production build), opens the game headless in Chromium (and WebKit if it is
- * installed), checks the console for errors, takes screenshots of several
- * scenes into screenshots/ and measures the frame rate.
+ * Browser verification: starts the game server and the Vite dev server (or
+ * `--preview` for the production build), opens the game headless in Chromium
+ * (and WebKit if it is installed), checks the console for errors, takes
+ * screenshots of several scenes into screenshots/, plays a two-player online
+ * round and measures the frame rate.
  *
  *   npm run verify               # dev server
  *   npm run verify -- --preview  # built client (run `npm run build` first)
@@ -24,11 +25,20 @@ const browsersArg = args.find((a) => a.startsWith('--browsers='));
 const wanted = browsersArg ? browsersArg.split('=')[1].split(',') : ['chromium', 'webkit'];
 const fpsSeconds = Number(args.find((a) => a.startsWith('--fps-seconds='))?.split('=')[1] ?? 8);
 const port = preview ? 4173 : 5179;
+const gamePort = 2599;
 const url = `http://localhost:${port}/`;
+const serverParam = `server=ws://localhost:${gamePort}`;
 
 function startServer() {
   const cmd = preview ? ['vite', 'preview', '--port', String(port), '--strictPort'] : ['vite', '--port', String(port), '--strictPort'];
   const proc = spawn('npx', cmd, { cwd: join(root, 'client'), stdio: ['ignore', 'pipe', 'pipe'] });
+  proc.stdout.on('data', () => {});
+  proc.stderr.on('data', (d) => process.stderr.write(d));
+  return proc;
+}
+
+function startGameServer() {
+  const proc = spawn('npx', ['tsx', 'src/main.ts'], { cwd: join(root, 'server'), stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, PORT: String(gamePort), HOST: '127.0.0.1' } });
   proc.stdout.on('data', () => {});
   proc.stderr.on('data', (d) => process.stderr.write(d));
   return proc;
@@ -87,7 +97,7 @@ async function runBrowser(name, launcher) {
   });
   page.on('pageerror', (err) => result.errors.push(`pageerror: ${err.message}`));
 
-  await page.goto(`${url}?sea=0.8&quality=high`, { waitUntil: "load" });
+  await page.goto(`${url}?sea=0.8&quality=high&solo`, { waitUntil: 'load' });
   await page.waitForFunction(() => !!window.__game, null, { timeout: 30000 });
   const info = await page.evaluate(() => {
     const g = window.__game;
@@ -224,7 +234,7 @@ async function runBrowser(name, launcher) {
   const touchCtx = await browser.newContext({ viewport: { width: 1080, height: 810 }, deviceScaleFactor: 2, hasTouch: true, isMobile: name === 'chromium' });
   const tp = await touchCtx.newPage();
   tp.on('pageerror', (err) => result.errors.push(`touch pageerror: ${err.message}`));
-  await tp.goto(`${url}?sea=0.8&quality=high`, { waitUntil: 'load' });
+  await tp.goto(`${url}?sea=0.8&quality=high&solo`, { waitUntil: 'load' });
   await tp.waitForFunction(() => !!window.__game, null, { timeout: 30000 });
   await sleep(2500);
   result.touch = await tp.evaluate(() => ({
@@ -236,11 +246,58 @@ async function runBrowser(name, launcher) {
   result.screenshots.push(tpath);
   await touchCtx.close();
 
+  // 10) online: lobby, one player opens a ship, a second one comes aboard with the code
+  result.online = await playOnline(browser, name, result);
+
   await browser.close();
   result.ok = result.errors.length === 0;
   return result;
 }
 
+async function playOnline(browser, name, result) {
+  const open = async (who) => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+    const page = await ctx.newPage();
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') result.errors.push(`${who}: ${msg.text()}`);
+    });
+    page.on('pageerror', (err) => result.errors.push(`${who} pageerror: ${err.message}`));
+    await page.goto(`${url}?quality=medium&${serverParam}`, { waitUntil: 'load' });
+    await page.waitForFunction(() => !!window.__game && !!window.__lobby, null, { timeout: 30000 });
+    return { ctx, page };
+  };
+  const a = await open('A');
+  await a.page.fill('.lobby-name', 'Anna');
+  await sleep(600);
+  const lobbyShot = join(outDir, `${name}-11-lobby.png`);
+  await a.page.screenshot({ path: lobbyShot });
+  result.screenshots.push(lobbyShot);
+  await a.page.click('.lobby-create');
+  await a.page.waitForFunction(() => window.__game.net?.predictor.synced, null, { timeout: 15000 });
+  const code = await a.page.evaluate(() => window.__game.net.link.code);
+  const b = await open('B');
+  await b.page.fill('.lobby-name', 'Ben');
+  await b.page.fill('.lobby-code', code);
+  await b.page.click('.lobby-join-btn');
+  await b.page.waitForFunction(() => window.__game.net?.predictor.synced, null, { timeout: 15000 });
+  await sleep(1500);
+  await a.page.keyboard.down('KeyD');
+  await sleep(500);
+  await a.page.keyboard.up('KeyD');
+  await sleep(1200);
+  const shot = join(outDir, `${name}-12-mehrspieler.png`);
+  await b.page.screenshot({ path: shot });
+  result.screenshots.push(shot);
+  const seen = await b.page.evaluate(() => {
+    const g = window.__game;
+    return { players: g.sim.state.players.map((p) => p.name), rtt: g.net.link.rtt, stats: g.net.predictor.stats };
+  });
+  await a.ctx.close();
+  await b.ctx.close();
+  return { code, ...seen };
+}
+
+const gameServer = startGameServer();
 const server = startServer();
 let exitCode = 0;
 try {
@@ -260,5 +317,6 @@ try {
   exitCode = 1;
 } finally {
   server.kill('SIGTERM');
+  gameServer.kill('SIGTERM');
 }
 process.exit(exitCode);

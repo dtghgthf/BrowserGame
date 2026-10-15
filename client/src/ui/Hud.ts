@@ -1,5 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
 import type { GameState, Simulation } from '@lw/shared';
+import type { NetStatus } from '../net/NetLink';
 import { PixelFont, PixelText } from './PixelFont';
 
 const C = {
@@ -44,7 +45,15 @@ export class Hud {
     if (f > 0) this.g.rect(x, y, Math.max(1, Math.round(w * f)), h).fill(color);
   }
 
-  update(sim: Simulation, state: GameState, localIds: readonly string[], width: number, height: number, time: number): void {
+  update(
+    sim: Simulation,
+    state: GameState,
+    localIds: readonly string[],
+    width: number,
+    height: number,
+    time: number,
+    net: { code: string; status: NetStatus; synced: boolean } | null = null,
+  ): void {
     this.g.clear();
     for (const t of this.texts.values()) t.visible = false;
     const s = state.ship;
@@ -108,6 +117,22 @@ export class Hud {
         this.text(`ob${i}`, msg, Math.round(width / 2 - this.font.measure(msg) / 2), Math.round(height / 2) - 20 - i * 10, C.warn);
       }
     });
+
+    // ---- online: room code (top right) so others can join, connection problems
+    if (net) {
+      const label = `RAUM ${net.code}`;
+      const crew = `${state.players.length}/4 AN BORD`;
+      // under the course panel (the top right corner belongs to the menu buttons)
+      this.g.rect(4, 46, 92, 17).fill({ color: C.panel, alpha: 0.75 });
+      this.text('room', label, 7, 49, C.gold);
+      this.text('crew', crew, 7, 56, C.dim);
+      const problem = !net.synced ? 'VERBINDE ...' : net.status === 'reconnecting' ? 'VERBINDUNG WEG - VERBINDE NEU ...' : '';
+      if (problem && Math.floor(time * 2) % 2 === 0) {
+        const pw = this.font.measure(problem);
+        this.g.rect(Math.round(width / 2 - pw / 2) - 4, 20, pw + 8, 12).fill({ color: C.panel, alpha: 0.9 });
+        this.text('net', problem, Math.round(width / 2 - pw / 2), 23, C.warn);
+      }
+    }
 
     if (state.status === 'sunk') {
       const msg = `SCHIFF GESUNKEN - NEUSTART IN ${Math.ceil(state.statusTimer)}`;

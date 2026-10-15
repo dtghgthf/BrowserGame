@@ -378,6 +378,10 @@ export class ShipView {
       pv.coat.anchor.copyFrom(pv.body.albedo.anchor);
       pv.coat.position.set(x, y);
       pv.coat.scale.set(p.facing, 1);
+      // a disconnected player (waiting for a reconnect) is drawn see-through
+      const alpha = p.away ? 0.45 : 1;
+      pv.body.albedo.alpha = alpha;
+      pv.coat.alpha = alpha;
 
       // automatic speech bubble (unlit, world space so it never rotates)
       pv.bubble.visible = visible && p.bubble !== null;

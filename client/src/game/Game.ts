@@ -1,16 +1,21 @@
 import { Sprite } from 'pixi.js';
 import {
+  DEFAULT_TUNING,
   EMPTY_INPUT,
   FixedStepper,
   PIXELS_PER_METER,
+  Predictor,
   SIM_DT,
+  applyTuningPatch,
   clamp,
   seaSurfaceY,
   shipToWorld,
+  type GameEvent,
   type PlayerInput,
   type SimCommand,
   type Simulation,
 } from '@lw/shared';
+import type { NetLink, NetStatus } from '../net/NetLink';
 import { InputSampler } from '../input/InputSampler';
 import type { Keyboard } from '../input/Keyboard';
 import type { TouchControls } from '../input/TouchControls';
@@ -25,7 +30,17 @@ import { Hud } from '../ui/Hud';
 import { StationWidget } from '../ui/StationWidget';
 import type { TuningPanel } from '../ui/TuningPanel';
 import type { PixelFont } from '../ui/PixelFont';
-import { emptySnapshot, interpolate, takeSnapshot, type Snapshot } from './snapshot';
+import { NameTags } from '../ui/NameTags';
+import {
+  applyCorrections,
+  clearCorrections,
+  emptyCorrections,
+  emptySnapshot,
+  interpolate,
+  recordCorrection,
+  takeSnapshot,
+  type Snapshot,
+} from './snapshot';
 
 const PPM = PIXELS_PER_METER;
 
@@ -33,6 +48,15 @@ interface LocalPlayer {
   id: string;
   sampler: InputSampler;
   scheme: 'primary' | 'secondary';
+}
+
+/** Online state: the connection plus client-side prediction. */
+export interface NetState {
+  link: NetLink;
+  predictor: Predictor;
+  status: NetStatus;
+  /** Largest correction of the last reconciliation (m), for the debug overlay. */
+  correction: number;
 }
 
 /** Glues simulation, input and rendering together; owns the main loop. */
@@ -46,6 +70,13 @@ export class Game {
   tuningPanel: TuningPanel | null = null;
   readonly debug: DebugOverlay;
   private readonly spray: Particles;
+  private readonly names: NameTags;
+  /** Set while playing online (see goOnline). */
+  net: NetState | null = null;
+  /** Called when an online session ends for good (room closed, reconnect failed). */
+  onNetClosed: (reason: string) => void = () => {};
+  private readonly corrections = emptyCorrections();
+  private readonly before = emptySnapshot();
   private readonly locals: LocalPlayer[] = [];
   private readonly commands: SimCommand[] = [];
   private prev: Snapshot = emptySnapshot();
@@ -60,7 +91,7 @@ export class Game {
   private readonly lighthouseGlow: Sprite;
   private readonly lighthouseLight: LightDef;
   private readonly sprayState = [0, 0];
-  private stats: FrameStats = { fps: 60, frameMs: 16.7, worstMs: 16.7, steps: 1, dropped: 0, particles: 0, lightPolys: 0 };
+  private stats: FrameStats = { fps: 60, frameMs: 16.7, worstMs: 16.7, steps: 1, dropped: 0, particles: 0, lightPolys: 0, net: '' };
   private fpsFrames = 0;
   private fpsTime = 0;
   private worst = 0;
@@ -85,6 +116,8 @@ export class Game {
     this.shipView = new ShipView(r, assets, sim);
     this.spray = new Particles(r.albedo.world, 500);
     this.hud = new Hud(font);
+    this.names = new NameTags(font);
+    r.hud.addChild(this.names.root);
     this.station = new StationWidget(r, assets.props, font);
     r.hud.addChild(this.station.root);
     r.hud.addChild(this.hud.root);
@@ -134,9 +167,50 @@ export class Game {
     this.sim.removePlayer(id);
   }
 
-  /** Queues a command for the next simulation step (debug keys, tests). */
+  /** Queues a command for the next simulation step (debug keys, tests). Online it goes to the server. */
   command(c: SimCommand): void {
-    this.commands.push(c);
+    if (this.net) this.net.link.sendCommand(c);
+    else this.commands.push(c);
+  }
+
+  /**
+   * Switches from local play to an online room. The simulation keeps running
+   * here for prediction, but the server's snapshots are the truth.
+   */
+  goOnline(link: NetLink): void {
+    for (const l of this.locals.splice(0)) this.sim.removePlayer(l.id);
+    this.commands.length = 0;
+    const net: NetState = { link, predictor: new Predictor(this.sim, link.sessionId), status: 'connected', correction: 0 };
+    this.net = net;
+    this.locals.push({ id: link.sessionId, sampler: new InputSampler(), scheme: 'primary' });
+    link.onSnapshot = (m) => net.predictor.receive(m);
+    link.onWelcome = (w) => {
+      // everybody predicts with the server's numbers
+      applyTuningPatch(this.sim.tuning, DEFAULT_TUNING);
+      applyTuningPatch(this.sim.tuning, w.tuning);
+    };
+    link.onTuning = (patch) => applyTuningPatch(this.sim.tuning, patch);
+    link.onStatus = (st, reason) => {
+      net.status = st;
+      if (st === 'closed' && this.net === net) {
+        this.goOffline();
+        this.onNetClosed(reason ?? '');
+      }
+    };
+    link.start();
+  }
+
+  /** Back to local single player (after leaving or losing the room). */
+  goOffline(): void {
+    if (!this.net) return;
+    this.net = null;
+    this.locals.length = 0;
+    for (const p of [...this.sim.state.players]) this.sim.removePlayer(p.id);
+    this.sim.reset();
+    this.addLocalPlayer('primary');
+    clearCorrections(this.corrections);
+    takeSnapshot(this.sim.state, this.prev);
+    takeSnapshot(this.sim.state, this.cur);
   }
 
   private onKey(code: string): void {
@@ -164,6 +238,7 @@ export class Game {
         this.r.fogEnabled = !this.r.fogEnabled;
         break;
       case 'F2':
+        if (this.net) break; // online everybody has their own device
         if (this.locals.some((l) => l.id === 'p2')) this.removeLocalPlayer('p2');
         else this.addLocalPlayer('secondary');
         break;
@@ -228,17 +303,34 @@ export class Game {
     for (const l of this.locals) l.sampler.setHeld(this.readDevices(l));
     this.keyboard.consumePresses();
 
+    const net = this.net;
+    if (net) this.reconcile(net);
+
     const droppedBefore = this.stepper.droppedSteps;
     const steps = this.stepper.advance(dt, (stepDt) => {
+      // online: nothing to predict until the first snapshot has arrived
+      if (net && !net.predictor.synced) return;
       takeSnapshot(this.sim.state, this.prev);
-      const inputs: Record<string, PlayerInput> = {};
-      for (const l of this.locals) inputs[l.id] = l.sampler.sample();
-      this.sim.step(inputs, stepDt, this.commands.splice(0));
-      for (const l of this.locals) l.sampler.consumed();
-      this.handleEvents();
+      if (net) {
+        const l = this.locals[0]!;
+        const events = net.predictor.predict(l.sampler.sample(), stepDt);
+        l.sampler.consumed();
+        this.handleEvents(events);
+      } else {
+        const inputs: Record<string, PlayerInput> = {};
+        for (const l of this.locals) inputs[l.id] = l.sampler.sample();
+        this.sim.step(inputs, stepDt, this.commands.splice(0));
+        for (const l of this.locals) l.sampler.consumed();
+        this.handleEvents(this.sim.state.events);
+      }
       takeSnapshot(this.sim.state, this.cur);
     });
+    if (net) {
+      const out = net.predictor.takeOutgoing();
+      if (out) net.link.sendInputs(out);
+    }
     interpolate(this.prev, this.cur, this.stepper.alpha, this.angularStations, this.view);
+    applyCorrections(this.view, this.corrections, dt);
     this.renderFrame(dt, now);
 
     // stats
@@ -279,14 +371,33 @@ export class Game {
     }
   }
 
-  private handleEvents(): void {
+  /** Applies the newest server snapshot; the visible jump is turned into a fading offset. */
+  private reconcile(net: NetState): void {
+    const wasSynced = net.predictor.synced;
+    const events = net.predictor.reconcile();
+    if (!events) return;
+    takeSnapshot(this.sim.state, this.before);
+    if (!wasSynced) {
+      takeSnapshot(this.sim.state, this.prev);
+      takeSnapshot(this.sim.state, this.cur);
+      return;
+    }
+    // this.cur is what was predicted before; this.before now holds the corrected state
+    net.correction = recordCorrection(this.cur, this.before, this.prev, this.corrections);
+    takeSnapshot(this.sim.state, this.cur);
+    this.handleEvents(events);
+  }
+
+  private handleEvents(events: readonly GameEvent[]): void {
     const s = this.sim.state;
-    for (const e of s.events) {
+    for (const e of events) {
       if (e.type === 'reset') {
         takeSnapshot(s, this.prev);
+        clearCorrections(this.corrections);
       } else if (e.type === 'pumpStroke') {
         // a gush of water out of the pump spout
-        const st = s.stations[e.station]!;
+        const st = s.stations[e.station];
+        if (!st) continue;
         const local = { x: st.x + 0.75, y: st.y - 0.65 };
         for (let i = 0; i < 6; i++) {
           this.shipView.leakParticles.spawn(local.x * PPM, local.y * PPM, 10 + Math.random() * 25, -5 - Math.random() * 15, 0.5, 0x9cc8e0, s.ship.gravity.x * PPM * 0.5, s.ship.gravity.y * PPM * 0.5, 0.5, st.y * PPM - 1);
@@ -364,13 +475,17 @@ export class Game {
     this.spray.update(dt);
     const ids = this.locals.map((l) => l.id);
     this.station.update(s, v, ids[0]);
-    this.hud.update(this.sim, s, ids, width, height, this.time);
+    this.names.update(s, v, ids, left, top, this.time);
+    this.hud.update(this.sim, s, ids, width, height, this.time, this.net ? { code: this.net.link.code, status: this.net.status, synced: this.net.predictor.synced } : null);
     if (this.touch.isEnabled && ids[0]) {
       const h = this.sim.interactionHints(ids[0]);
       this.touch.setContext(h.interact?.icon ?? null, h.pick?.icon ?? null);
     }
     this.stats.particles = this.spray.count + this.shipView.leakParticles.count;
     this.stats.lightPolys = this.shipView.lights.polygonsComputed;
+    this.stats.net = this.net
+      ? `NET ${this.net.link.code} ${this.net.status} rtt ${Math.round(this.net.link.rtt)} ms · pending ${this.net.predictor.stats.pending} · replay ${this.net.predictor.stats.replayed} · server tick ${this.net.predictor.stats.serverTick} · korrektur ${(this.net.correction * 100).toFixed(1)} cm · host ${this.net.predictor.host === this.net.link.sessionId ? 'ja' : 'nein'}`
+      : '';
     this.debug.update(this.sim, s, this.shipView.lights, this.stats, ids[0] ?? 'p1', now);
     r.render(this.time);
   }

@@ -1,9 +1,12 @@
-import { Simulation } from '@lw/shared';
+import { DEFAULT_TUNING, Simulation, diffTuning, normalizeRoomCode, type TuningPatch } from '@lw/shared';
 import { Game } from './game/Game';
+import { resolveServerUrl } from './net/config';
+import { NetLink } from './net/NetLink';
 import { Keyboard } from './input/Keyboard';
 import { TouchControls } from './input/TouchControls';
 import { configureTextureDefaults, loadImageLayer, loadSheet } from './render/assets';
 import { GameRenderer, type Quality } from './render/GameRenderer';
+import { Lobby } from './ui/Lobby';
 import { PixelFont } from './ui/PixelFont';
 import { TuningPanel } from './ui/TuningPanel';
 
@@ -55,11 +58,79 @@ async function boot(): Promise<void> {
     status.remove();
     setupHelp();
     game.start();
+    await setupOnline(game, sim, params);
   } catch (err) {
     console.error(err);
     status.textContent = `Fehler beim Start: ${err instanceof Error ? err.message : String(err)}. WebGL2 wird benötigt.`;
     status.classList.add('error');
   }
+}
+
+/** Lobby, room code in the URL, reconnect after a reload. */
+async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams): Promise<void> {
+  const serverUrl = resolveServerUrl(params, import.meta.env, location);
+  const lag = Number(params.get('lag')) || 0;
+  const setRoomInUrl = (code: string | null) => {
+    const url = new URL(location.href);
+    if (code) url.searchParams.set('room', code);
+    else url.searchParams.delete('room');
+    history.replaceState(null, '', url);
+  };
+  const hasKeys = (p: TuningPatch) => Object.values(p).some((g) => g && Object.keys(g).length > 0);
+
+  const enter = (link: NetLink, opened: boolean) => {
+    // values tuned on this device travel with the person who opens the ship
+    const local = diffTuning(DEFAULT_TUNING, sim.tuning);
+    game.goOnline(link);
+    if (opened && hasKeys(local)) link.sendCommand({ type: 'tune', patch: local });
+    lobby.roomCode = link.code;
+    setRoomInUrl(link.code);
+    lobby.hide();
+  };
+
+  const lobby = new Lobby(
+    document.body,
+    {
+      serverUrl,
+      create: async (name, color) => enter(await NetLink.create(serverUrl!, name, color, lag), true),
+      join: async (code, name, color) => enter(await NetLink.join(serverUrl!, code, name, color, lag), false),
+      solo: () => setRoomInUrl(null),
+      leave: async () => {
+        const link = game.net?.link;
+        game.goOffline();
+        setRoomInUrl(null);
+        await link?.leave();
+      },
+    },
+    normalizeRoomCode(params.get('room') ?? '') || null,
+  );
+  game.onNetClosed = (reason) => {
+    setRoomInUrl(null);
+    lobby.show('start', `Verbindung zum Schiff verloren${reason ? ` (${reason})` : ''}.`, true);
+  };
+
+  // menu: Escape or the ☰ button
+  const menu = document.createElement('button');
+  menu.className = 'menu-btn allow-touch';
+  menu.textContent = '☰';
+  menu.title = 'Menü (Esc)';
+  menu.addEventListener('click', () => lobby.toggle(game.net !== null));
+  document.body.appendChild(menu);
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !e.repeat) lobby.toggle(game.net !== null);
+  });
+  (window as { __lobby?: Lobby }).__lobby = lobby;
+
+  if (params.has('solo')) return;
+  if (serverUrl) {
+    // a reload in the middle of a game: continue the same seat
+    const resumed = await NetLink.resume(serverUrl, lag);
+    if (resumed) {
+      enter(resumed, false);
+      return;
+    }
+  }
+  lobby.show('start');
 }
 
 function setupHelp(): void {

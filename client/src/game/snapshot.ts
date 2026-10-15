@@ -56,3 +56,125 @@ export function interpolate(a: Snapshot, b: Snapshot, t: number, angular: Readon
   });
   return out;
 }
+
+/**
+ * Visual offsets that hide network corrections: when a server snapshot moves an
+ * entity, it is drawn at its old place plus an offset that fades out quickly,
+ * instead of jumping.
+ */
+export interface Corrections {
+  players: Map<string, { x: number; y: number }>;
+  objects: Map<number, { x: number; y: number; angle: number }>;
+  ship: { x: number; y: number; roll: number };
+}
+
+export function emptyCorrections(): Corrections {
+  return { players: new Map(), objects: new Map(), ship: { x: 0, y: 0, roll: 0 } };
+}
+
+/** Corrections larger than this (m) are real jumps (respawn, reset) and are not smoothed. */
+const MAX_SMOOTH = 2;
+
+/**
+ * Records the change from `before` to `after` (the state right before / after a
+ * reconciliation) as offsets and shifts `prev` by the same amount, so the
+ * interpolated view does not move at the moment of the correction.
+ * Returns the largest position correction in meters (for the debug overlay).
+ */
+export function recordCorrection(before: Snapshot, after: Snapshot, prev: Snapshot, c: Corrections): number {
+  let largest = 0;
+  for (const [id, b] of before.players) {
+    const a = after.players.get(id);
+    if (!a) continue;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const d = Math.abs(dx) + Math.abs(dy);
+    if (d > MAX_SMOOTH) {
+      c.players.delete(id);
+      continue;
+    }
+    largest = Math.max(largest, Math.hypot(dx, dy));
+    const o = c.players.get(id) ?? { x: 0, y: 0 };
+    o.x += dx;
+    o.y += dy;
+    c.players.set(id, o);
+    const p = prev.players.get(id);
+    if (p) {
+      p.x -= dx;
+      p.y -= dy;
+    }
+  }
+  for (const [id, b] of before.objects) {
+    const a = after.objects.get(id);
+    if (!a) continue;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    if (Math.abs(dx) + Math.abs(dy) > MAX_SMOOTH) {
+      c.objects.delete(id);
+      continue;
+    }
+    const da = Math.atan2(Math.sin(b.angle - a.angle), Math.cos(b.angle - a.angle));
+    const o = c.objects.get(id) ?? { x: 0, y: 0, angle: 0 };
+    o.x += dx;
+    o.y += dy;
+    o.angle += da;
+    c.objects.set(id, o);
+    const p = prev.objects.get(id);
+    if (p) {
+      p.x -= dx;
+      p.y -= dy;
+      p.angle -= da;
+    }
+  }
+  const sx = before.ship.x - after.ship.x;
+  const sy = before.ship.y - after.ship.y;
+  const sr = before.ship.roll - after.ship.roll;
+  if (Math.abs(sx) < MAX_SMOOTH * 4) {
+    c.ship.x += sx;
+    c.ship.y += sy;
+    c.ship.roll += sr;
+    prev.ship.x -= sx;
+    prev.ship.y -= sy;
+    prev.ship.roll -= sr;
+  }
+  return largest;
+}
+
+/** Adds the offsets to the interpolated view and lets them fade (time constant `tau` s). */
+export function applyCorrections(view: Snapshot, c: Corrections, dt: number, tau = 0.12): void {
+  const k = Math.exp(-dt / tau);
+  for (const [id, o] of c.players) {
+    const v = view.players.get(id);
+    if (v) {
+      v.x += o.x;
+      v.y += o.y;
+    }
+    o.x *= k;
+    o.y *= k;
+    if (Math.abs(o.x) + Math.abs(o.y) < 1e-4) c.players.delete(id);
+  }
+  for (const [id, o] of c.objects) {
+    const v = view.objects.get(id);
+    if (v) {
+      v.x += o.x;
+      v.y += o.y;
+      v.angle += o.angle;
+    }
+    o.x *= k;
+    o.y *= k;
+    o.angle *= k;
+    if (Math.abs(o.x) + Math.abs(o.y) + Math.abs(o.angle) < 1e-4) c.objects.delete(id);
+  }
+  view.ship.x += c.ship.x;
+  view.ship.y += c.ship.y;
+  view.ship.roll += c.ship.roll;
+  c.ship.x *= k;
+  c.ship.y *= k;
+  c.ship.roll *= k;
+}
+
+export function clearCorrections(c: Corrections): void {
+  c.players.clear();
+  c.objects.clear();
+  c.ship.x = c.ship.y = c.ship.roll = 0;
+}

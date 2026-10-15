@@ -5,7 +5,13 @@ import type { GameEvent, PlayerState } from '../state';
 import type { SnapshotMessage } from './protocol';
 
 /** Inputs waiting longer than this many ticks are dropped (the client runs ahead / lag burst). */
-const MAX_QUEUE = 8;
+const MAX_QUEUE = 12;
+/**
+ * Jitter buffer: after the queue ran dry, wait until this many inputs are
+ * there before consuming again. Inputs arrive in bursts (WLAN, frame rate);
+ * every tick without a fresh input costs the client a small correction.
+ */
+const JITTER_BUFFER = 2;
 /** Without fresh input for this many ticks a player stops (tab in the background, connection stall). */
 const IDLE_TICKS = 15;
 
@@ -18,6 +24,8 @@ interface InputQueue {
   /** Highest sequence number received (duplicates are ignored). */
   lastReceived: number;
   idle: number;
+  /** Waiting for the jitter buffer to fill. */
+  buffering: boolean;
 }
 
 /**
@@ -34,7 +42,7 @@ export class ShipHost {
   constructor(readonly sim: Simulation) {}
 
   join(id: string, options: AddPlayerOptions = {}): PlayerState {
-    if (!this.inputs.has(id)) this.inputs.set(id, { queue: [], last: { ...EMPTY_INPUT }, lastSeq: -1, lastReceived: -1, idle: 0 });
+    if (!this.inputs.has(id)) this.inputs.set(id, { queue: [], last: { ...EMPTY_INPUT }, lastSeq: -1, lastReceived: -1, idle: 0, buffering: true });
     const p = this.sim.addPlayer(id, options);
     p.away = false;
     return p;
@@ -84,7 +92,9 @@ export class ShipHost {
           next.pick ||= d.input.pick;
         }
       }
-      const f = q.queue.shift();
+      if (q.queue.length === 0) q.buffering = true;
+      else if (q.buffering && q.queue.length >= JITTER_BUFFER) q.buffering = false;
+      const f = q.buffering ? undefined : q.queue.shift();
       if (f) {
         copyInput(f.input, q.last);
         q.lastSeq = f.seq;

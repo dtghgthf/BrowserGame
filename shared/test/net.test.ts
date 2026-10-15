@@ -112,7 +112,7 @@ describe('Simulation.loadState', () => {
 });
 
 /** A client and the server, connected through queues with a fixed delay in ticks. */
-async function network(delayTicks: number) {
+async function network(delayTicks: number, sendEvery = 1) {
   const server = new ShipHost(await Simulation.create({ seaState: 0.6 }));
   server.join('me', { name: 'ICH' });
   server.join('other', { name: 'DU' });
@@ -138,7 +138,8 @@ async function network(delayTicks: number) {
     if (client.synced) {
       client.predict(mine);
       clientX.set(client.sim.state.tick, client.sim.state.players.find((p) => p.id === 'me')!.x);
-      const out = client.takeOutgoing();
+      // a slow or bursty client sends several inputs at once
+      const out = tick % sendEvery === 0 ? client.takeOutgoing() : null;
       if (out) up.push({ at: tick + delayTicks, msg: out });
     }
   };
@@ -175,6 +176,24 @@ describe('prediction and reconciliation', () => {
     expect(net.client.stats.pending).toBeLessThanOrEqual(16);
   });
 
+  it('stays in sync with a bursty client (inputs arrive three at a time)', async () => {
+    const net = await network(3, 3);
+    for (let i = 0; i < 90; i++) net.step(input());
+    let mismatches = 0;
+    let compared = 0;
+    for (let i = 0; i < 240; i++) {
+      net.step(input({ right: Math.floor(i / 50) % 2 === 0, left: Math.floor(i / 50) % 2 === 1 }));
+      const t = net.server.sim.state.tick;
+      if (net.clientX.has(t)) {
+        compared++;
+        if (Math.abs(net.clientX.get(t)! - net.serverX.get(t)!) > 0.01) mismatches++;
+      }
+    }
+    expect(compared).toBeGreaterThan(200);
+    // the jitter buffer absorbs the bursts: prediction and server agree almost always
+    expect(mismatches / compared).toBeLessThan(0.05);
+  });
+
   it('reports only the local player events from prediction', async () => {
     const net = await network(4);
     for (let i = 0; i < 90; i++) net.step(input());
@@ -203,6 +222,14 @@ describe('prediction and reconciliation', () => {
     host.tick();
     host.tick();
     expect(host.snapshot('a').acks.a).toBe(1);
+    // after running dry, a single late input waits for the jitter buffer (2) before it is used
+    host.tick();
+    host.receiveInputs('a', decodeInputs(encodeInputs(2, [input({ right: true })])));
+    host.tick();
+    expect(host.snapshot('a').acks.a).toBe(1);
+    host.receiveInputs('a', decodeInputs(encodeInputs(3, [input({ right: true })])));
+    host.tick();
+    expect(host.snapshot('a').acks.a).toBe(2);
     // the last input is repeated for a moment, then the player stops
     for (let i = 0; i < 40; i++) host.tick();
     const p = host.sim.state.players[0]!;

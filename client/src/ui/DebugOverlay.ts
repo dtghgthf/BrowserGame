@@ -13,6 +13,8 @@ export interface FrameStats {
   dropped: number;
   particles: number;
   lightPolys: number;
+  /** Network line (empty when playing locally). */
+  net?: string;
 }
 
 /**
@@ -108,6 +110,7 @@ export class DebugOverlay {
       `render ${this.r.layout.width}x${this.r.layout.height} x${this.r.layout.scale}  quality ${this.r.quality}  light buffer ${this.r.lightWidth}x${this.r.lightHeight}`,
       `lights ${lights.count}  polys rebuilt ${stats.lightPolys}  particles ${stats.particles}`,
       `rapier bodies ${phys.bodies}  colliders ${phys.colliders}`,
+      ...(stats.net ? [stats.net] : []),
       ``,
       `gravity (${grav.x.toFixed(2)}, ${grav.y.toFixed(2)})  |g| ${Math.hypot(grav.x, grav.y).toFixed(2)}  dir ${deg(Math.atan2(grav.x, grav.y))}°`,
       `roll ${deg(s.roll)}°  list ${deg(s.list)}°  heave ${s.y.toFixed(2)} m  sea ${s.seaState.toFixed(2)}`,
@@ -117,7 +120,7 @@ export class DebugOverlay {
       ...state.compartments.map((c, i) => `  ${sim.layout.compartments[i]!.name.padEnd(11)} ${c.volume.toFixed(2).padStart(6)} m²  slope ${c.slope.toFixed(3)}`),
       ...state.leaks.filter((l) => l.active).map((l) => `  leak #${l.id} inflow ${l.inflow.toFixed(3)} m²/s`),
       ``,
-      ...state.players.map((pp) => `${pp.id} ${pp.anim.padEnd(7)} (${pp.x.toFixed(2)}, ${pp.y.toFixed(2)}) v(${pp.vx.toFixed(1)}, ${pp.vy.toFixed(1)}) ${pp.grounded ? 'G' : '-'}${pp.climbing !== null ? 'L' : ''} water ${pp.inWater.toFixed(2)}`),
+      ...state.players.map((pp) => `${pp.name || pp.id} ${pp.anim.padEnd(7)} (${pp.x.toFixed(2)}, ${pp.y.toFixed(2)}) v(${pp.vx.toFixed(1)}, ${pp.vy.toFixed(1)}) ${pp.grounded ? 'G' : '-'}${pp.climbing !== null ? 'L' : ''} water ${pp.inWater.toFixed(2)}`),
       ``,
       `F3 debug  F7 buffer view (${this.r.debugView})  L leak  [ ] sea  F4 fix roll  F6 fog  F2 2 players  F8 reset`,
     ];

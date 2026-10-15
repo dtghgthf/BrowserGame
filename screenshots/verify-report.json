@@ -14,23 +14,25 @@
       "/home/user/BrowserGame/screenshots/chromium-07-scheinwerfer-nebel.png",
       "/home/user/BrowserGame/screenshots/chromium-09-steuerrad-widget.png",
       "/home/user/BrowserGame/screenshots/chromium-10-einstellungen.png",
-      "/home/user/BrowserGame/screenshots/chromium-08-touch-ipad.png"
+      "/home/user/BrowserGame/screenshots/chromium-08-touch-ipad.png",
+      "/home/user/BrowserGame/screenshots/chromium-11-lobby.png",
+      "/home/user/BrowserGame/screenshots/chromium-12-mehrspieler.png"
     ],
     "fps": {
       "high": {
-        "avg": 10.3,
-        "min": 9,
-        "samples": 8
+        "avg": 6.5,
+        "min": 5.5,
+        "samples": 12
       },
       "medium": {
-        "avg": 20.4,
-        "min": 13.6,
-        "samples": 9
+        "avg": 13.9,
+        "min": 6,
+        "samples": 15
       },
       "low": {
-        "avg": 24.7,
-        "min": 21.3,
-        "samples": 8
+        "avg": 16,
+        "min": 15,
+        "samples": 14
       }
     },
     "info": {
@@ -48,13 +50,13 @@
     },
     "wheelRudder": 0.57,
     "state": {
-      "tick": 2798,
+      "tick": 2754,
       "water": [
         0,
-        16.17
+        16.26
       ],
       "leaks": 1,
-      "roll": 11.9
+      "roll": 16.2
     },
     "touch": {
       "controlsVisible": true,
@@ -67,17 +69,20 @@
         "cssWidth": 1080,
         "cssHeight": 810
       }
+    },
+    "online": {
+      "code": "FPUA",
+      "players": [
+        "ANNA",
+        "BEN"
+      ],
+      "rtt": 7,
+      "stats": {
+        "pending": 6,
+        "replayed": 0,
+        "snapshots": 24,
+        "serverTick": 957
+      }
     }
-  },
-  {
-    "browser": "webkit",
-    "ok": false,
-    "errors": [
-      "could not launch webkit: browserType.launch: Executable doesn't exist at /opt/pw-browsers/webkit-2215/pw_run.sh"
-    ],
-    "warnings": [],
-    "screenshots": [],
-    "fps": null,
-    "skipped": true
   }
 ]
