@@ -1,3 +1,3 @@
-import { GAME_NAME } from '@lw/shared';
+import { SIM_HZ } from '@lw/shared';
 
-document.title = GAME_NAME;
+document.title = `Leuchtturmwärter (${SIM_HZ} Hz)`;

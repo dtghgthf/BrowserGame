@@ -8,29 +8,29 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Root-Skripte: `dev`, `build`, `typecheck`, `test`, `assets`, `verify`
 
 ## Schritt 1 – Schiffs-Layout (shared)
-- [ ] ASCII-Karte des Schiffs (3 Decks, Mast + Mastkorb, Leitern, Luken, Wände, Marker)
-- [ ] Parser: Kollisions-Rechtecke (gemergt), Occluder-Kanten für Licht, Leitern, Luken, Kompartimente (Wasserräume), Marker
-- [ ] Tests: Parser, Kompartimente, keine DOM/Pixi-Abhängigkeit in `shared/`
+- [x] ASCII-Karte des Schiffs (3 Decks, Mast + Mastkorb, Leitern, Luken, Wände, Marker)
+- [x] Parser: Kollisions-Rechtecke (gemergt), Occluder-Kanten für Licht, Leitern, Luken, Kompartimente (Wasserräume), Marker
+- [x] Tests: Parser, Kompartimente, keine DOM/Pixi-Abhängigkeit in `shared/`
 
 ## Schritt 2 – Wellen, Schiffsbewegung, Schwerkraft, fester Timestep (shared)
-- [ ] Wellenfunktion (Summe von Sinuswellen), Roll ±15°, Heave
-- [ ] Schwerkraftvektor im Schiffs-Frame entgegengesetzt rotiert (+ Heave-Beschleunigung)
-- [ ] `FixedStepper` (Accumulator, 60 Hz, Alpha für Interpolation)
-- [ ] Tests: Schwerkraftrotation, fester Timestep
+- [x] Wellenfunktion (Summe von Sinuswellen), Roll ±15°, Heave
+- [x] Schwerkraftvektor im Schiffs-Frame entgegengesetzt rotiert (+ Heave-Beschleunigung)
+- [x] `FixedStepper` (Accumulator, 60 Hz, Alpha für Interpolation)
+- [x] Tests: Schwerkraftrotation, fester Timestep
 
 ## Schritt 3 – Physik & Spieler (shared, Rapier)
-- [ ] Rapier-Welt im Schiffs-Frame, statische Collider aus Layout, Luken als schaltbare Collider
-- [ ] Spieler: Laufen, Springen, Rutschen bei Schlagseite, Leitern, Durchfallen durch Luken, One-Way-Plattformen
-- [ ] Lose Objekte (Kisten, Fässer, Planken), Aufheben/Tragen/Ablegen (Tragen verlangsamt)
-- [ ] Tests: Spieler landet auf Deck, rutscht bei Schräglage, Leiter
+- [x] Rapier-Welt im Schiffs-Frame, statische Collider aus Layout, Luken als schaltbare Collider
+- [x] Spieler: Laufen, Springen, Rutschen bei Schlagseite, Leitern, Durchfallen durch Luken, One-Way-Plattformen
+- [x] Lose Objekte (Kisten, Fässer, Planken), Aufheben/Tragen/Ablegen (Tragen verlangsamt)
+- [x] Tests: Spieler landet auf Deck, rutscht bei Schräglage, Leiter
 
 ## Schritt 4 – Wasser, Leck, Stationen (shared)
-- [ ] Füllstand pro Kompartiment, geneigte Oberfläche, Fluss durch offene Luken
-- [ ] Leck (Debug-Taste), Einströmung abhängig von Tiefe unter Wasserlinie
-- [ ] Pumpe (Stationsmodus, abwechselnd links/rechts pumpen)
-- [ ] Steuerrad (Kurs, Rollverhalten), Scheinwerfer (Winkel), Werkstatt (Planke holen)
-- [ ] Reparatur mit Planke; Schlagseite durch Wassermoment; Sinken → Neustart
-- [ ] Tests: Wasserfluss, Pumpe, Leck-Reparatur
+- [x] Füllstand pro Kompartiment, geneigte Oberfläche, Fluss durch offene Luken
+- [x] Leck (Debug-Taste), Einströmung abhängig von Tiefe unter Wasserlinie
+- [x] Pumpe (Stationsmodus, abwechselnd links/rechts pumpen)
+- [x] Steuerrad (Kurs, Rollverhalten), Scheinwerfer (Winkel), Werkstatt (Planke holen)
+- [x] Reparatur mit Planke; Schlagseite durch Wassermoment; Sinken → Neustart
+- [x] Tests: Wasserfluss, Pumpe, Leck-Reparatur
 
 ## Schritt 5 – Assets (Platzhalter-Pixel-Art)
 - [ ] Generator-Skript: eigener PNG-Encoder, Normal Maps (`_n.png`), Aseprite-kompatibles Spritesheet-JSON
