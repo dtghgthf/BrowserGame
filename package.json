@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "npm run dev -w @lw/client",
     "build": "npm run build -w @lw/shared && npm run build -w @lw/server && npm run build -w @lw/client",
-    "typecheck": "tsc --noEmit -p shared && tsc --noEmit -p client && tsc --noEmit -p server && tsc --noEmit -p scripts",
+    "typecheck": "tsc --noEmit -p shared && tsc --noEmit -p shared/tsconfig.test.json && tsc --noEmit -p client && tsc --noEmit -p server && tsc --noEmit -p scripts",
     "test": "npm run test -w @lw/shared && npm run test -w @lw/client",
     "assets": "tsx scripts/generate-assets.ts",
     "preview": "npm run preview -w @lw/client",
