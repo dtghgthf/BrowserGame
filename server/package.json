@@ -3,13 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Authoritative game server (Colyseus) - Phase 3. Empty for now.",
+  "description": "Authoritative game server (Colyseus): runs the shared Simulation, one room per ship.",
   "scripts": {
-    "build": "tsc --noEmit -p ."
+    "dev": "tsx watch --clear-screen=false src/main.ts",
+    "start": "tsx src/main.ts",
+    "build": "tsc --noEmit -p .",
+    "test": "vitest run"
   },
   "dependencies": {
     "@colyseus/core": "^0.18.18",
-    "@colyseus/schema": "^5.0.40",
-    "@colyseus/ws-transport": "^0.18.4"
+    "@colyseus/schema": "^5.0.8",
+    "@colyseus/ws-transport": "^0.18.4",
+    "@lw/shared": "^0.1.0"
   }
 }

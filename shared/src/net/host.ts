@@ -98,12 +98,16 @@ export class ShipHost {
     for (const e of this.sim.state.events) this.events.push(e);
   }
 
-  /** Builds the next snapshot and clears the collected events. */
-  snapshot(host: string): SnapshotMessage {
+  /**
+   * Builds a snapshot. With `takeEvents` the events collected since the last
+   * snapshot are included and cleared (regular broadcasts); without, none are
+   * included (an extra snapshot for a single joining client).
+   */
+  snapshot(host: string, takeEvents = true): SnapshotMessage {
     const acks: Record<string, number> = {};
     for (const [id, q] of this.inputs) acks[id] = q.lastSeq;
-    const msg: SnapshotMessage = { state: { ...this.sim.state, events: [] }, acks, events: this.events, host };
-    this.events = [];
+    const msg: SnapshotMessage = { state: { ...this.sim.state, events: [] }, acks, events: takeEvents ? this.events : [], host };
+    if (takeEvents) this.events = [];
     return msg;
   }
 

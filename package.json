@@ -9,14 +9,17 @@
     "server"
   ],
   "scripts": {
-    "dev": "npm run dev -w @lw/client",
+    "dev": "node scripts/dev.mjs",
     "build": "npm run build -w @lw/shared && npm run build -w @lw/server && npm run build -w @lw/client",
     "typecheck": "tsc --noEmit -p shared && tsc --noEmit -p shared/tsconfig.test.json && tsc --noEmit -p client && tsc --noEmit -p client/tsconfig.node.json && tsc --noEmit -p server && tsc --noEmit -p scripts",
-    "test": "npm run test -w @lw/shared && npm run test -w @lw/client",
+    "test": "npm run test -w @lw/shared && npm run test -w @lw/client && npm run test -w @lw/server",
     "assets": "tsx scripts/generate-assets.ts",
     "assets:force": "tsx scripts/generate-assets.ts --force",
     "preview": "npm run preview -w @lw/client",
-    "verify": "node scripts/verify-browser.mjs"
+    "verify": "node scripts/verify-browser.mjs",
+    "dev:client": "npm run dev -w @lw/client",
+    "dev:server": "npm run dev -w @lw/server",
+    "start:server": "npm run start -w @lw/server"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
