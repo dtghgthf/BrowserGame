@@ -52,7 +52,7 @@ describe('voyage', () => {
     expect(events.some((e) => e.type === 'arrived')).toBe(true);
     expect(events.some((e) => e.type === 'reset')).toBe(true);
     expect(sim.state.status).toBe('sailing');
-    expect(sim.state.ship.x).toBeLessThan(20);
+    expect(sim.state.ship.x).toBeLessThan(40);
   });
 
   it('a rock in the lane is hit at the bow and makes a leak; one beside the lane is passed', async () => {
@@ -171,5 +171,29 @@ describe('pings and shouts', () => {
     const events = run(sim, 0.2);
     expect(events.some((e) => e.type === 'shout' && e.key === 'wheel' && e.player === 'a')).toBe(true);
     expect(sim.state.players[0]!.bubble?.key).toBe('wheel');
+  });
+});
+
+describe('navigation (sea chart)', () => {
+  it('the course is the line along the heading; turning away clears a rock', async () => {
+    const { courseLateralAt, predictCourse, rockThreat } = await import('../src');
+    const sim = await calm();
+    const ship = sim.state.ship;
+    ship.heading = 0;
+    const rock = { id: 1, x: ship.x + 80, lateral: ship.lateral + 1, radius: 2.5, spotted: true, hit: false };
+    const straight = predictCourse(sim.state, sim.tuning, 120);
+    expect(courseLateralAt(straight, 80)).toBeCloseTo(ship.lateral, 6);
+    expect(rockThreat(rock, ship.x, straight, 2.6)).toEqual({ danger: true, steer: -1 });
+    // heading to starboard: the rock ends up left of the course and is missed
+    ship.heading = 0.15;
+    const turned = predictCourse(sim.state, sim.tuning, 120);
+    expect(rockThreat(rock, ship.x, turned, 2.6).danger).toBe(false);
+
+    // over a short distance the prediction matches what the ship really does
+    ship.rudder = 0;
+    const pred = predictCourse(sim.state, sim.tuning, 20);
+    const x0 = ship.x;
+    while (sim.state.ship.x - x0 < 10) sim.step({});
+    expect(Math.abs(sim.state.ship.lateral - courseLateralAt(pred, sim.state.ship.x - x0))).toBeLessThan(1);
   });
 });

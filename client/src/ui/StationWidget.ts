@@ -1,10 +1,10 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
-import { wrapAngle, type GameState, type StationKind } from '@lw/shared';
+import { wrapAngle, type GameState, type StationKind, type Tuning } from '@lw/shared';
 import { frameOf, type Sheet } from '../render/assets';
 import type { GameRenderer } from '../render/GameRenderer';
 import type { Snapshot } from '../game/snapshot';
 import { PixelFont, PixelText } from './PixelFont';
-import { drawSeaChart } from './SeaChart';
+import { SeaChart } from './SeaChart';
 
 /** Visual wheel turns for full rudder (±270°). */
 const WHEEL_TURNS = Math.PI * 1.5;
@@ -33,6 +33,7 @@ export class StationWidget {
   private readonly lever: Sprite;
   private readonly title: PixelText;
   private readonly sub: PixelText;
+  private readonly chart: SeaChart;
   private kind: StationKind | null = null;
   private center = { x: 0, y: 0 };
   private radius = 32;
@@ -61,7 +62,8 @@ export class StationWidget {
     this.lever = mk('ui_lever');
     this.title = new PixelText(font, '', 0xe0b860);
     this.sub = new PixelText(font, '', 0x9aa6b4);
-    this.root.addChild(this.g, this.wheel, this.dial, this.needle, this.pump, this.lever, this.title, this.sub);
+    this.chart = new SeaChart(font, true);
+    this.root.addChild(this.g, this.wheel, this.dial, this.needle, this.pump, this.lever, this.title, this.sub, this.chart.root);
     this.root.visible = false;
 
     // capture phase: a drag on the widget must not also start the touch stick
@@ -138,7 +140,7 @@ export class StationWidget {
     }
   }
 
-  update(state: GameState, view: Snapshot, playerId: string | undefined): void {
+  update(state: GameState, view: Snapshot, playerId: string | undefined, tuning: Readonly<Tuning>): void {
     const p = state.players.find((pp) => pp.id === playerId);
     const st = p && p.station !== null ? state.stations[p.station] : undefined;
     const kind = st && st.kind !== 'workshop' ? st.kind : null;
@@ -162,6 +164,7 @@ export class StationWidget {
     this.center = { x: cx, y: cy };
     this.g.clear();
     for (const s of [this.wheel, this.dial, this.needle, this.pump, this.lever]) s.visible = false;
+    this.chart.root.visible = false;
     // soft backing so the control reads against any background
     this.g.circle(cx, cy, 34).fill({ color: 0x05070d, alpha: 0.45 });
 
@@ -184,7 +187,8 @@ export class StationWidget {
         const err = Math.max(-1, Math.min(1, state.ship.heading));
         this.g.rect(cx + Math.round(err * 23), gy + 5, 1, 2).fill(Math.abs(state.ship.heading) > 0.35 ? 0xe8584a : 0x6cc070);
         // the sea chart next to the wheel: steer around the red rocks
-        drawSeaChart(this.g, cx + 40, cy - 34, 64, 66, state, this.time);
+        this.chart.root.visible = true;
+        this.chart.draw(state, tuning, cx + 40, cy - 46, 78, 80, this.time);
         title = 'STEUERRAD';
         sub = this.drag ? '' : 'DREHEN: ZIEHEN ODER A/D';
         break;

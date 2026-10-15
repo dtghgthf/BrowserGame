@@ -19,8 +19,8 @@ Raumcode zusammen; allein üben geht ohne Server. Mit Platzhalter-Sounds.
 | ![](screenshots/chromium-09-steuerrad-widget.png) | ![](screenshots/chromium-10-einstellungen.png) | ![](screenshots/chromium-11-lobby.png) |
 | **Online: zweiter Browser sieht „ANNA“** | **Scheinwerfer entdeckt Felsen (Seekarte links)** | **Krake am Bug, Kanone** |
 | ![](screenshots/chromium-12-mehrspieler.png) | ![](screenshots/chromium-13-felsen-scheinwerfer.png) | ![](screenshots/chromium-14-krake-kanone.png) |
-| **Leuchtturm erreicht** | | |
-| ![](screenshots/chromium-15-ankunft.png) | | |
+| **Leuchtturm erreicht** | **Seekarte am Steuerrad** | |
+| ![](screenshots/chromium-15-ankunft.png) | ![](screenshots/chromium-16-seekarte.png) | |
 
 ---
 
@@ -126,9 +126,12 @@ desto stärker der **Sturm**: höhere Wellen, dichterer Nebel, Regen, Blitze. Oh
 
 - **Felsen im Nebel:** tauchen weit voraus auf. Wer am **Scheinwerfer** (Mastkorb) den Kegel knapp über den Horizont
   schwenkt, entdeckt sie und ruft „Felsen!“. Entdeckte Felsen erscheinen auf der **Seekarte** (HUD links oben und groß
-  neben dem Steuerrad): unten das eigene Schiff, nach oben die Fahrtrichtung, **rot blinkend = liegt im Weg**. Am
-  **Steuerrad** daran vorbeisteuern – oder mit der **Kanone** zerschießen (nur Felsen im Weg). Ein Treffer am Bug reißt
-  Lecks und wirft alle durcheinander. Wer nicht steuert, treibt ab – und das Schiff fährt langsamer.
+  neben dem Steuerrad). Sie funktioniert wie ein Rennspiel von oben: Die **gelbe Spur** in der Mitte ist der Weg, den das
+  Schiff in seiner jetzigen Richtung nimmt. Felsen in der Spur blinken **rot**, unten steht, wohin man lenken muss
+  („< LENKEN“ / „LENKEN >“). Dreht man am **Steuerrad**, wandern die Felsen seitlich – rote aus der gelben Spur herauslenken,
+  dann steht dort „KURS FREI“. Oder mit der **Kanone** zerschießen (nur Felsen im Weg). Ein Treffer am Bug reißt Lecks und
+  wirft alle durcheinander. Eine Strömung dreht das Schiff langsam vom Kurs – wer gar nicht steuert, fährt langsamer und
+  hört „Ruder!“ (auch, wenn ein entdeckter Felsen in der Spur liegt und niemand am Steuer steht).
 - **Der Krake** taucht bei 30 % der Strecke auf (danach alle 450 m), nähert sich, packt den Bug und schlägt alle 7 s ein
   neues Leck. **Drei Kanonentreffer** verjagen ihn. Mit dem Scheinwerfer sieht man ihn früher, seine Augen leuchten.
 - **Lecks:** Planke an der Werkbank holen (F), am Leck E (Hammer). Bis dahin pumpen. Ist das Unterdeck fast voll, sinkt
@@ -338,8 +341,8 @@ Begründung stehen in [`DECISIONS.md`](DECISIONS.md), der Arbeitsplan in [`PLAN.
 - Online kostet ein Snapshot ca. 0,8 KB (20/s → ~16 KB/s pro Gerät).
 - **Sounds sind nicht probegehört:** Sie sind synthetisiert und nur technisch geprüft (Pegel, Loops nahtlos). Auf dem
   iPad: Ist der Stumm-Schalter an, spielt Safari keinen Web-Audio-Ton.
-- Die Felsen-Lage hängt am Kurs: Die Seekarte zeigt Felsen relativ zur aktuellen Spur. Wer stark vom Kurs abkommt, hat
-  andere Felsen im Weg, als vorher rot waren – das ist Absicht (man muss steuern), kann aber anfangs verwirren.
+- Die Seekarte rechnet mit der aktuellen Fahrtrichtung. Die Strömung dreht das Schiff langsam weiter – ein Felsen kann also
+  nach ein paar Sekunden doch rot werden, wenn niemand steuert. Das ist Absicht (Aufgabe für das Steuerrad).
 - Server-Neustart (z. B. neues Deploy) beendet alle laufenden Schiffe.
 
 ---

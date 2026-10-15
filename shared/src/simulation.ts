@@ -29,6 +29,7 @@ import {
   type LadderZone,
 } from './player';
 import { nextRandom } from './rng';
+import { courseLateralAt, predictCourse, rockThreat } from './navigation';
 import { seaSurfaceY } from './sea';
 import { createShipState, shipToWorld, updateShip } from './ship';
 import { applyTuningPatch, cloneTuning, DEFAULT_TUNING, type Tuning, type TuningPatch } from './tuning';
@@ -1173,8 +1174,7 @@ export class Simulation {
     while (v.nextRockX - ship.x < ROCK_LOOKAHEAD && v.nextRockX < v.length - 40) {
       // around where the ship will be when it gets there on its current heading:
       // drifting off course does not dodge rocks, only steering does
-      const eta = (v.nextRockX - ship.x) / Math.max(0.5, ship.speed);
-      const predicted = ship.lateral + this.tuning.ship.speed * Math.sin(ship.heading) * eta;
+      const predicted = courseLateralAt(predictCourse(s, this.tuning, ROCK_LOOKAHEAD), v.nextRockX - ship.x);
       const inLane = nextRandom(s) < 0.45;
       const lateral = predicted + (inLane ? this.rand(-1.5, 1.5) : this.rand(-8, 8));
       s.rocks.push({ id: this.nextId(), x: v.nextRockX, lateral, radius: this.rand(1.6, 3.4), spotted: false, hit: false });
@@ -1374,7 +1374,13 @@ export class Simulation {
   private updateShouts(): void {
     const s = this.state;
     const wheel = s.stations.find((st) => st.kind === 'wheel');
-    if (wheel && !wheel.occupant && Math.abs(s.ship.heading) > 0.45 && s.shouts.wheel <= 0) {
+    // a spotted rock on the course and nobody steering: same call as drifting off course
+    let rockAhead = false;
+    if (wheel && !wheel.occupant && s.shouts.wheel <= 0 && s.tick % 30 === 0 && s.rocks.some((r) => r.spotted && !r.hit)) {
+      const course = predictCourse(s, this.tuning, 90);
+      rockAhead = s.rocks.some((r) => r.spotted && r.x - s.ship.x < 90 && rockThreat(r, s.ship.x, course, this.tuning.gameplay.shipBeam).danger);
+    }
+    if (wheel && !wheel.occupant && (Math.abs(s.ship.heading) > 0.45 || rockAhead) && s.shouts.wheel <= 0) {
       const p = this.closestPlayer(wheel.x, wheel.y, true);
       if (p) this.say(p, 'wheel');
       s.shouts.wheel = 14;

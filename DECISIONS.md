@@ -160,3 +160,10 @@ Format: **Entscheidung** – Begründung.
 - **Web Audio mit zwei Bussen** (Effekte, Ambience mit Tiefpass für „unter Deck“), Lautstärke/Pan nach Abstand zum eigenen
   Spieler. Eigene Ereignisse kommen aus der Vorhersage (sofort), fremde aus den Server-Events – keine doppelten Sounds.
 - **Regen/Blitz rein im Client** (Math.random erlaubt, weil ohne Einfluss aufs Spiel); Blitz hellt über die Exposure auf.
+- **Seekarte wie ein Rennspiel (Feedback: „versteht man nicht direkt“):** Die gelbe Spur bleibt gerade in der Mitte, alles
+  wird relativ zur Linie in der aktuellen Fahrtrichtung gezeichnet; Lenken lässt die Felsen seitlich wandern. Dazu
+  „< LENKEN / LENKEN >“, „KURS FREI“, „NICHTS GESICHTET“ und am Steuerrad eine Legende. Vorher: absolute Draufsicht mit
+  kleinen Strichen und „rot“ relativ zur momentanen Querposition – zu abstrakt. Ein erster Versuch mit einer gekrümmten,
+  vorausberechneten Bahn (Ruder + Strömung über 50 s) lief sofort aus dem Bild. Die Strömung ist jetzt halb so stark
+  (Steuern soll nötig, aber keine Daueraufgabe sein); `shared/src/navigation.ts` rechnet Spur und Gefahr für Karte,
+  Felsen-Platzierung und den „Ruder!“-Zuruf gleich.

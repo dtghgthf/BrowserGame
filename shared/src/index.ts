@@ -31,3 +31,4 @@ export * from './net/protocol';
 export * from './net/host';
 export * from './net/predict';
 export * from './net/codec';
+export * from './navigation';

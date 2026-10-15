@@ -27,7 +27,7 @@ export function createShipState(M: Readonly<ShipTuning> = DEFAULT_TUNING.ship, g
 
 /** Slow, deterministic current that pushes the ship off course (rad/s). */
 export function courseDrift(t: number): number {
-  return 0.05 * Math.sin(t * 0.13 + 1.3) + 0.03 * Math.sin(t * 0.37 + 0.2) + 0.012;
+  return 0.025 * Math.sin(t * 0.13 + 1.3) + 0.015 * Math.sin(t * 0.37 + 0.2) + 0.006;
 }
 
 /** Wave-only target roll at the ship's position (y-down convention: positive = right side down). */

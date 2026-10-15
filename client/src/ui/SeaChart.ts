@@ -1,52 +1,148 @@
-import type { Graphics } from 'pixi.js';
-import { ROCK_LOOKAHEAD, type GameState } from '@lw/shared';
+import { Container, Graphics } from 'pixi.js';
+import { ROCK_LOOKAHEAD, courseLateralAt, predictCourse, rockThreat, type GameState, type Tuning } from '@lw/shared';
+import { PixelFont, PixelText } from './PixelFont';
 
-/** Meters to each side shown on the chart. */
-const HALF_WIDTH = 14;
+/** Meters to each side of the course shown on the chart. */
+const HALF_WIDTH = 13;
+
+const COL = {
+  water: 0x0b1a26,
+  grid: 0x16303f,
+  edge: 0x2c3a4c,
+  course: 0xe0b860,
+  rock: 0x8a96a6,
+  danger: 0xff5a44,
+  dangerDim: 0xa8302a,
+  kraken: 0xc05a9a,
+  ship: 0xf2eee2,
+  text: 0xd8dde6,
+  dim: 0x7a8696,
+  good: 0x6cc070,
+};
 
 /**
- * Top-down sea chart: the ship at the bottom, the course straight up. Shows
- * the rocks the crew has spotted (red = in the way), the kraken and - near the
- * end - the lighthouse. Unspotted rocks stay invisible: that is the
- * searchlight's job.
+ * Top-down sea chart ("Seekarte"), drawn like a driving game: the yellow lane
+ * in the middle is the way the ship will go with the wheel as it is (the
+ * current is included). Everything else is drawn relative to that lane - turn
+ * the wheel and the rocks slide sideways. Rocks the searchlight has spotted
+ * are grey, rocks inside the lane blink red, an arrow says which way to steer.
  */
-export function drawSeaChart(g: Graphics, x: number, y: number, w: number, h: number, state: GameState, time: number): void {
-  const ship = state.ship;
-  const shipBeam = 2.6;
-  g.rect(x, y, w, h).fill({ color: 0x0a1620, alpha: 0.85 });
-  g.rect(x, y, w, 1).fill(0x2c3a4c);
-  g.rect(x, y + h - 1, w, 1).fill(0x2c3a4c);
-  g.rect(x, y, 1, h).fill(0x2c3a4c);
-  g.rect(x + w - 1, y, 1, h).fill(0x2c3a4c);
-  const cx = x + Math.floor(w / 2);
-  const toX = (lateral: number) => cx + Math.round(((lateral - ship.lateral) / HALF_WIDTH) * (w / 2 - 2));
-  const toY = (ahead: number) => y + h - 4 - Math.round((ahead / ROCK_LOOKAHEAD) * (h - 7));
-  // the ship's lane (where rocks would hit)
-  const laneW = Math.max(1, Math.round((shipBeam / HALF_WIDTH) * (w / 2 - 2)));
-  for (let yy = y + 2; yy < y + h - 4; yy += 3) g.rect(cx - laneW, yy, 1, 1).fill(0x2c4a5c).rect(cx + laneW, yy, 1, 1).fill(0x2c4a5c);
-  // heading: where the bow points
-  const hx = Math.round(Math.sin(ship.heading) * 10);
-  g.moveTo(cx, y + h - 4).lineTo(cx + hx, y + h - 14).stroke({ color: Math.abs(ship.heading) > 0.35 ? 0xe8584a : 0x6cc070, width: 1, pixelLine: true });
-  for (const r of state.rocks) {
-    if (!r.spotted || r.hit) continue;
-    const ahead = r.x - ship.x;
-    if (ahead < 0 || ahead > ROCK_LOOKAHEAD) continue;
-    const px = toX(r.lateral);
-    if (px < x + 1 || px > x + w - 2) continue;
-    const size = Math.max(1, Math.round((r.radius / HALF_WIDTH) * (w / 2 - 2)));
-    const danger = Math.abs(r.lateral - ship.lateral) < r.radius + shipBeam;
-    const col = danger ? (Math.floor(time * 4) % 2 ? 0xff6a50 : 0xc83a2c) : 0x8a96a6;
-    g.rect(px - size, toY(ahead) - 1, size * 2 + 1, 2).fill(col);
+export class SeaChart {
+  readonly root = new Container();
+  private readonly g = new Graphics();
+  private readonly title: PixelText;
+  private readonly dist: PixelText;
+  private readonly hint: PixelText;
+  private readonly legend: PixelText[] = [];
+
+  constructor(font: PixelFont, legend = false) {
+    this.title = new PixelText(font, 'SEEKARTE', COL.dim);
+    this.dist = new PixelText(font, '', COL.course);
+    this.hint = new PixelText(font, '', COL.danger);
+    this.root.addChild(this.g, this.title, this.dist, this.hint);
+    if (legend) {
+      for (const [text, color] of [
+        ['GELB = DEIN KURS', COL.course],
+        ['ROT = FELS IM WEG', COL.danger],
+      ] as const) {
+        const t = new PixelText(font, text, color);
+        this.legend.push(t);
+        this.root.addChild(t);
+      }
+    }
   }
-  if (state.monster && state.monster.spotted && state.monster.phase !== 'flee') {
-    const my = toY(Math.max(0, state.monster.offset - 16));
-    g.rect(cx - 2, my - 2, 5, 3).fill(0xb04a8a).rect(cx - 2, my + 1, 1, 1).fill(0xb04a8a).rect(cx + 2, my + 1, 1, 1).fill(0xb04a8a);
+
+  draw(state: GameState, tuning: Readonly<Tuning>, x: number, y: number, w: number, h: number, time: number): void {
+    const g = this.g;
+    g.clear();
+    const ship = state.ship;
+    const beam = tuning.gameplay.shipBeam;
+    // frame, title row, hint row
+    g.rect(x, y, w, h).fill({ color: 0x0b1018, alpha: 0.85 });
+    const ax = x + 1;
+    const ay = y + 9;
+    const aw = w - 2;
+    const ah = h - 18;
+    g.rect(ax, ay, aw, ah).fill(COL.water);
+    g.rect(x, y, w, 1).fill(COL.edge).rect(x, y + h - 1, w, 1).fill(COL.edge).rect(x, y, 1, h).fill(COL.edge).rect(x + w - 1, y, 1, h).fill(COL.edge);
+    this.title.position.set(x + 3, y + 2);
+    const left = Math.max(0, Math.round(state.voyage.length - ship.x));
+    this.dist.text = `${left} M`;
+    this.dist.position.set(x + w - 3 - this.dist.textWidth, y + 2);
+
+    const cx = ax + Math.floor(aw / 2);
+    const scaleX = aw / 2 / HALF_WIDTH;
+    const bottom = ay + ah - 2;
+    const course = predictCourse(state, tuning, ROCK_LOOKAHEAD + 10);
+    // sideways position relative to the predicted course at that distance
+    const toX = (lateral: number, ahead: number) => cx + Math.round((lateral - courseLateralAt(course, ahead)) * scaleX);
+    const toY = (ahead: number) => bottom - Math.round((ahead / ROCK_LOOKAHEAD) * (ah - 4));
+    const inside = (px: number, py: number) => px >= ax && px < ax + aw && py >= ay && py < ay + ah;
+
+    // distance rings every 40 m
+    for (let d = 40; d < ROCK_LOOKAHEAD; d += 40) g.rect(ax, toY(d), aw, 1).fill(COL.grid);
+
+    // the lane the ship will take: straight up the middle
+    const half = Math.max(2, Math.round(beam * scaleX));
+    g.rect(cx - half, ay, half * 2 + 1, ah).fill({ color: COL.course, alpha: 0.16 });
+    for (let py = ay + ((Math.floor(time * 12) % 4) + 4) % 4; py < ay + ah; py += 4) {
+      // edge dashes move down like road markings: the ship is moving
+      g.rect(cx - half, py, 1, 2).fill({ color: COL.course, alpha: 0.8 });
+      g.rect(cx + half, py, 1, 2).fill({ color: COL.course, alpha: 0.8 });
+    }
+
+    // rocks (only what the crew has seen)
+    let nearest: { ahead: number; steer: -1 | 1 } | null = null;
+    let seen = 0;
+    const blink = Math.floor(time * 4) % 2 === 0;
+    for (const r of state.rocks) {
+      if (!r.spotted || r.hit) continue;
+      const ahead = r.x - ship.x;
+      if (ahead < 0 || ahead > ROCK_LOOKAHEAD) continue;
+      seen++;
+      const t = rockThreat(r, ship.x, course, beam);
+      const px = toX(r.lateral, ahead);
+      const py = toY(ahead);
+      const size = Math.max(1, Math.round(r.radius * scaleX));
+      if (t.danger && (!nearest || ahead < nearest.ahead)) nearest = { ahead, steer: t.steer };
+      if (!inside(px, py)) continue;
+      const col = t.danger ? (blink ? COL.danger : COL.dangerDim) : COL.rock;
+      // a little rock: wider at the bottom
+      g.rect(px - size, py, size * 2 + 1, 2).fill(col);
+      g.rect(px - Math.max(0, size - 1), py - 1, Math.max(1, size * 2 - 1), 1).fill(col);
+      // a little "!" above rocks in the way
+      if (t.danger && py - 6 > ay) g.rect(px, py - 6, 1, 2).fill(COL.danger).rect(px, py - 3, 1, 1).fill(COL.danger);
+    }
+
+    // the kraken (straight ahead, in the ship's path)
+    const m = state.monster;
+    if (m && m.spotted && m.phase !== 'flee') {
+      const py = toY(Math.max(0, m.offset - 16));
+      const col = blink ? COL.kraken : 0x7a2e58;
+      g.rect(cx - 2, py - 2, 5, 3).fill(col).rect(cx - 3, py + 1, 1, 2).fill(col).rect(cx - 1, py + 1, 1, 2).fill(col).rect(cx + 1, py + 1, 1, 2).fill(col).rect(cx + 3, py + 1, 1, 2).fill(col);
+    }
+
+    // the lighthouse at the end of the course line
+    if (left < ROCK_LOOKAHEAD) {
+      const lx = cx;
+      const ly = toY(left);
+      if (inside(lx, ly)) g.rect(lx - 1, ly, 3, 3).fill(COL.course).rect(lx, ly - 2, 1, 2).fill(0xfff0c0);
+    }
+
+    // the own ship (bow up)
+    g.rect(cx, bottom - 4, 1, 1).fill(COL.ship).rect(cx - 1, bottom - 3, 3, 3).fill(COL.ship).rect(cx - 2, bottom, 5, 1).fill(COL.ship);
+
+    // what to do
+    if (nearest) {
+      this.hint.text = nearest.steer < 0 ? '< LENKEN' : 'LENKEN >';
+      this.hint.setColor(COL.danger);
+      this.hint.visible = blink || nearest.ahead > 60;
+    } else {
+      this.hint.text = seen > 0 ? 'KURS FREI' : 'NICHTS GESICHTET';
+      this.hint.setColor(seen > 0 ? COL.good : COL.dim);
+      this.hint.visible = true;
+    }
+    this.hint.position.set(Math.round(x + w / 2 - this.hint.textWidth / 2), y + h - 8);
+    this.legend.forEach((t, i) => t.position.set(x, y + h + 3 + i * 7));
   }
-  const left = state.voyage.length - ship.x;
-  if (left < ROCK_LOOKAHEAD) {
-    const ly = toY(left);
-    g.rect(toX(0), ly - 2, 1, 3).fill(0xe0b860).rect(toX(0) - 1, ly - 3, 3, 1).fill(0xfff0c0);
-  }
-  // the ship
-  g.rect(cx - 1, y + h - 5, 3, 3).fill(0xd8dde6).rect(cx, y + h - 6, 1, 1).fill(0xd8dde6);
 }

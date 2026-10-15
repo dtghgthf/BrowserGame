@@ -650,7 +650,7 @@ export class Game {
     });
     this.spray.update(dt);
     const ids = this.locals.map((l) => l.id);
-    this.station.update(s, v, ids[0]);
+    this.station.update(s, v, ids[0], this.sim.tuning);
     this.names.update(s, v, ids, left, top, this.time);
     this.pingView.update(s, v, left, top, width, height, this.time);
     this.audio?.update(dt, s, ids[0]);
