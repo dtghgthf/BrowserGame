@@ -17,6 +17,9 @@ const ICON: Record<PingKind, string> = {
   pump: 'ui_i_pump',
   searchlight: 'ui_i_light',
   cannon: 'ui_i_cannon',
+  fire: 'icon_fire',
+  crate: 'ui_i_crate',
+  ring: 'ui_i_ring',
 };
 
 /**

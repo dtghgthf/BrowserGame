@@ -118,6 +118,12 @@ function icons(): PropSprite[] {
     icon('icon_monster', ['  ppp  ', ' ppppp ', ' pyppy ', ' ppppp ', 'p p p p', 'p p p p', ' p   p '], { p: purple, y: yellow }),
     icon('icon_land', ['   y   ', '  ryr  ', '   w   ', '   r   ', '   w   ', '  rrr  ', ' ~~~~~ '], { y: yellow, r: red, w: hex('#e6e2d8'), '~': hex('#3d86d6') }),
     icon('icon_here', ['  rrr  ', '  rrr  ', '  rrr  ', 'rrrrrrr', ' rrrrr ', '  rrr  ', '   r   '], { r: red }),
+    icon('icon_fire', ['   y   ', '  yy y ', ' yyrry ', ' yrrwry', 'yrrwwry', 'yrwwwry', ' yrrry '], { y: yellow, r: hex('#e8642c'), w: hex('#fff0a0') }),
+    icon('icon_wave', ['   www ', '  wbbbw', ' wbb  w', 'wbb    ', 'bbb  b ', 'bbbbbbb', '~~~~~~~'], { w: hex('#e6f2fa'), b: hex('#3d86d6'), '~': hex('#1e4a80') }),
+    icon('icon_pirate', ['  ddd  ', ' ddddd ', ' wdwdd ', ' ddddd ', '  w w  ', ' w   w ', 'w     w'], { d: dark, w: hex('#e6e2d8') }),
+    icon('icon_overboard', ['  rwr  ', ' w   w ', 'r  s  r', 'w sss w', 'r  s  r', ' w   w ', '~~rwr~~'], { r: red, w: hex('#e6e2d8'), s: hex('#e0b090'), '~': hex('#3d86d6') }),
+    icon('icon_whirl', [' bbbbb ', 'b     b', 'b bbb b', 'b b b b', 'b bb  b', 'b     b', ' bbbbb '].map((r) => r), { b: hex('#5aa8e6') }),
+    icon('icon_flotsam', ['       ', ' ddddd ', ' dgdgd ', ' ddddd ', ' dgdgd ', '~ddddd~', '~~~~~~~'], { d: hex('#8a5a32'), g: hex('#c08a52'), '~': hex('#3d86d6') }),
   ];
 }
 

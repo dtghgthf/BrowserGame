@@ -47,6 +47,9 @@ export function copyInput(src: Readonly<PlayerInput>, dst: PlayerInput = { ...EM
   return dst;
 }
 
+export const DEBUG_HAZARDS = ['rock', 'monster', 'pirates', 'ice', 'whirl', 'flotsam', 'fire', 'wave', 'lightning'] as const;
+export type DebugHazard = (typeof DEBUG_HAZARDS)[number];
+
 export type InputMap = Readonly<Record<string, Readonly<PlayerInput>>>;
 
 /** Debug / meta commands. Also plain data so they can travel over the network later. */
@@ -56,8 +59,8 @@ export type SimCommand =
   | { type: 'seaState'; value: number }
   | { type: 'debugRoll'; value: number | null }
   | { type: 'tune'; patch: TuningPatch }
-  /** Debug: a rock straight ahead / the kraken right now. */
-  | { type: 'debugHazard'; what: 'rock' | 'monster' }
+  /** Debug: start a hazard right now (rock ahead, an encounter, a fire, a wave, lightning). */
+  | { type: 'debugHazard'; what: DebugHazard }
   /** Debug: sail forward this many meters. */
   | { type: 'debugAdvance'; meters: number }
   /** A player marks a spot (ship-local meters). Allowed for everybody online. */

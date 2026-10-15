@@ -20,7 +20,7 @@ function tap(sim: Simulation, id: string, key: keyof PlayerInput): GameEvent[] {
 }
 
 async function calm(): Promise<Simulation> {
-  const sim = await Simulation.create({ seaState: 0, tuning: { gameplay: { monsterFirstAt: 99 } } });
+  const sim = await Simulation.create({ seaState: 0, tuning: { gameplay: { encounterFirstAt: 99 } } });
   sim.state.voyage.nextRockX = 1e9;
   sim.addPlayer('a');
   run(sim, 0.5);

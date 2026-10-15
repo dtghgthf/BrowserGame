@@ -35,6 +35,13 @@ import { BOW_OFFSET, LIGHTHOUSE_ISLAND, MONSTER_ATTACK_OFFSET, ROCK_LOOKAHEAD, S
 import { fireCannon, updateBalls } from './systems/cannon';
 import type { BeamRay, SimContext } from './systems/context';
 import { openCrate, rollLoot } from './systems/crates';
+import { startEncounter, updateEncounters } from './systems/encounters';
+import { douse, fireCenter, ignite, updateFire } from './systems/fire';
+import { fishFlotsam, reachableFlotsam, updateFlotsam } from './systems/flotsam';
+import { cutHook, hookPoint, updatePirates } from './systems/pirates';
+import { ringButton, ringPull, updateRing } from './systems/rescue';
+import { breakWave, strike, updateWeather } from './systems/weather';
+import { updateWhirl } from './systems/whirl';
 import { monsterHead, updateMonster } from './systems/monster';
 import { updateRocks } from './systems/rocks';
 import { updateShouts } from './systems/shouts';
@@ -120,10 +127,11 @@ const STATION_KINDS: Partial<Record<MarkerDef['type'], StationKind>> = {
   cannon: 'cannon',
   workshop: 'workshop',
   rack: 'rack',
+  ring: 'ring',
 };
 
 /** Stations a player can enter (the ball rack is used by pressing F next to it instead). */
-const OPERABLE: ReadonlySet<StationKind> = new Set(['wheel', 'pump', 'searchlight', 'cannon', 'workshop']);
+const OPERABLE: ReadonlySet<StationKind> = new Set(['wheel', 'pump', 'searchlight', 'cannon', 'workshop', 'ring']);
 
 /** Language independent icon for an interaction (touch context buttons). */
 export type HintIcon =
@@ -141,7 +149,9 @@ export type HintIcon =
   | 'fire'
   | 'crate'
   | 'ball'
-  | 'oil';
+  | 'oil'
+  | 'bucket'
+  | 'ring';
 
 /** Seconds the ship needs to stop after arriving. */
 const ARRIVE_STOP_TIME = 4;
@@ -232,9 +242,14 @@ export class Simulation implements SimContext {
       voyage: this.createVoyage(seaState),
       rocks: [],
       monster: null,
+      pirate: null,
+      whirl: null,
+      flotsam: [],
+      fires: [],
+      ring: null,
       balls: [],
       pings: [],
-      shouts: { wheel: 6, water: 0, rock: 0, oil: 0 },
+      shouts: { wheel: 6, water: 0, rock: 0, oil: 0, fire: 0 },
       nextId: 1,
     };
     this.layout.hatches.forEach((h) => applyHatchState(this.hatchColliders[h.id]!, h, true));
@@ -257,7 +272,15 @@ export class Simulation implements SimContext {
       length: G.voyageLength,
       seaBase,
       nextRockX: 70,
-      nextMonsterX: G.voyageLength * G.monsterFirstAt,
+      nextEncounterX: G.voyageLength * G.encounterFirstAt,
+      iceUntilX: 0,
+      waveIn: 30,
+      waveWarn: 0,
+      lightningIn: 40,
+      firesPut: 0,
+      piratesBeaten: 0,
+      flotsamFished: 0,
+      rescues: 0,
       rocksHit: 0,
       rocksPassed: 0,
       rocksDestroyed: 0,
@@ -278,7 +301,7 @@ export class Simulation implements SimContext {
       const kind = STATION_KINDS[m.type];
       if (!kind) continue;
       const p = tileToLocal(this.layout, m.tx + 0.5, m.ty + 1);
-      const value = kind === 'searchlight' ? 0.25 : kind === 'cannon' ? -0.2 : 0;
+      const value = kind === 'searchlight' ? 0.25 : kind === 'cannon' ? -0.2 : kind === 'ring' ? -2.4 : 0;
       const charge = kind === 'cannon' ? 2 : kind === 'searchlight' ? 1 : 0;
       stations.push({ id: stations.length, kind, x: p.x, y: p.y, occupant: null, value, aux: kind === 'searchlight' ? 1 : 0, charge });
     }
@@ -326,6 +349,7 @@ export class Simulation implements SimContext {
       animTime: 0,
       prevInput: { ...EMPTY_INPUT },
       overboard: 0,
+      seaX: 0,
       bubble: null,
       airTime: 0,
       jumpBuffer: 0,
@@ -496,7 +520,9 @@ export class Simulation implements SimContext {
     }
     // arrived: the ship slows down and stops in front of the lighthouse island
     const G = this.tuning.gameplay;
-    const throttle = s.status === 'arrived' ? clamp((s.statusTimer - (G.arrivedResetTime - ARRIVE_STOP_TIME)) / ARRIVE_STOP_TIME, 0, 1) : 1;
+    let throttle = s.status === 'arrived' ? clamp((s.statusTimer - (G.arrivedResetTime - ARRIVE_STOP_TIME)) / ARRIVE_STOP_TIME, 0, 1) : 1;
+    // a pirate grappling hook holds the bow
+    if (s.pirate && s.pirate.hook > 0) throttle *= G.hookSlow;
     updateShip(s.ship, s.time, dt, { volume, moment }, this.tuning.ship, G.gravity, throttle);
     if (s.forcedRoll !== null) {
       s.ship.roll = s.forcedRoll;
@@ -518,6 +544,8 @@ export class Simulation implements SimContext {
     this.syncBodies(dt);
     this.updateLeaks(dt);
     updateWater(this.layout, this.waterGeometry, s.compartments, (id) => s.hatches[id]!.open, s.ship.gravity, dt);
+    updateFire(this, dt);
+    updateRing(this, dt);
     this.updateVoyage(dt);
     this.checkSinking();
 
@@ -552,8 +580,27 @@ export class Simulation implements SimContext {
         break;
       case 'debugHazard': {
         const s = this.state;
-        if (c.what === 'monster') s.voyage.nextMonsterX = Math.min(s.voyage.nextMonsterX, s.ship.x);
-        else s.rocks.push({ id: this.nextId(), x: s.ship.x + 55, lateral: s.ship.lateral, radius: 2.6, spotted: false, hit: false });
+        switch (c.what) {
+          case 'rock':
+            s.rocks.push({ id: this.nextId(), x: s.ship.x + 55, lateral: s.ship.lateral, radius: 2.6, spotted: false, hit: false, kind: 'rock', hp: 1 });
+            break;
+          case 'monster':
+            startEncounter(this, 'kraken');
+            break;
+          case 'fire': {
+            const tx = Math.floor(this.rand(8, this.layout.width - 8));
+            ignite(this, tx, this.rand(13, 24), 0.6);
+            break;
+          }
+          case 'wave':
+            breakWave(this);
+            break;
+          case 'lightning':
+            strike(this);
+            break;
+          default:
+            startEncounter(this, c.what);
+        }
         break;
       }
       case 'debugAdvance': {
@@ -610,7 +657,12 @@ export class Simulation implements SimContext {
     const pressed = (k: keyof PlayerInput) => input[k] && !prev[k];
 
     if (p.overboard > 0) {
-      p.overboard -= dt;
+      // swimming: the ship sails on, the life ring can pull him back
+      const holding = this.state.ring?.holder === p.id;
+      if (!holding) {
+        p.seaX += ((input.right ? 1 : 0) - (input.left ? 1 : 0)) * this.tuning.gameplay.swimSpeed * dt;
+        p.overboard -= dt;
+      }
       if (p.overboard <= 0) this.respawnPlayer(p, rt);
       return;
     }
@@ -799,6 +851,7 @@ export class Simulation implements SimContext {
       cannon: 'Kanone',
       workshop: 'Werkbank',
       rack: 'Kugeln',
+      ring: 'Rettungsring',
     };
 
     const carried = p.carrying !== null ? this.state.objects.find((o) => o.id === p.carrying) : undefined;
@@ -831,6 +884,27 @@ export class Simulation implements SimContext {
       if (OPERABLE.has(st.kind) && st.occupant === null && dx < this.tuning.player.stationRange) {
         candidates.push({ d: dx, label: STATION_LABEL[st.kind], icon: st.kind, run: () => this.enterStation(p, rt, st) });
       }
+    }
+    // a bucket: scoop water (in the hold or over the railing), douse a fire or pour it out
+    if (carried?.kind === 'bucket') {
+      const onDeck = compartmentAtLocal(this.layout, p.x, p.y) < 0;
+      if (carried.fill <= 0) {
+        if (p.inWater > 0.12 || onDeck) candidates.push({ d: 0.2, label: 'Wasser schöpfen', icon: 'bucket', run: () => this.scoop(p, carried) });
+      } else {
+        const fire = this.nearestFire(p.x, p.y - 0.3, 1.7);
+        candidates.push({ d: fire ? -0.5 : 0.6, label: fire ? 'Löschen!' : 'Ausschütten', icon: 'bucket', run: () => this.pour(p, carried) });
+      }
+    }
+    // the pirates' grappling hook on the bow railing
+    if (this.state.pirate && this.state.pirate.hook > 0 && !carried) {
+      const hp = hookPoint(this.layout);
+      const d = Math.hypot(hp.x - p.x, hp.y - feetY);
+      if (d < 1.4) candidates.push({ d: d - 0.6, label: 'Haken kappen', icon: 'repair', run: () => (p.action = { kind: 'cut', target: 0, progress: 0 }) });
+    }
+    // flotsam alongside: fish it out with the boat hook
+    if (!carried && compartmentAtLocal(this.layout, p.x, p.y) < 0) {
+      const f = reachableFlotsam(this, p);
+      if (f) candidates.push({ d: -0.2, label: 'Treibgut fischen', icon: 'crate', run: () => fishFlotsam(this, p, f) });
     }
     // crates and barrels on the floor
     for (const o of this.state.objects) {
@@ -1011,6 +1085,23 @@ export class Simulation implements SimContext {
         }
         break;
       }
+      case 'ring': {
+        // aim like the cannon; F throws (or reels in an empty ring); left/right pulls the line
+        const ring = this.state.ring;
+        if (ring && ring.phase !== 'flying') {
+          const before = st.charge;
+          if (hasTarget) st.charge = approach(st.charge, clamp(target, -1, 1), G.pumpHandleSpeed * dt);
+          else st.charge = clamp(st.charge + dir * G.pumpHandleSpeed * dt, -1, 1);
+          if ((before < 1 && st.charge >= 1) || (before > -1 && st.charge <= -1)) ringPull(this, st);
+        } else if (hasTarget) {
+          const step = G.cannonSpeed * 1.6 * dt;
+          st.value = wrapAngle(st.value + clamp(wrapAngle(target - st.value), -step, step));
+        } else {
+          st.value = wrapAngle(st.value + dir * G.cannonSpeed * dt);
+        }
+        if (fire) ringButton(this, st);
+        break;
+      }
       case 'rack':
         break;
     }
@@ -1123,6 +1214,55 @@ export class Simulation implements SimContext {
     this.emit({ type: 'breakUp', player: p.id });
   }
 
+  private nearestFire(x: number, y: number, range: number): boolean {
+    return this.state.fires.some((f) => {
+      const c = fireCenter(this.layout, f);
+      return Math.hypot(c.x - x, c.y - y) < range;
+    });
+  }
+
+  private scoop(p: PlayerState, bucket: ObjectState): void {
+    const comp = compartmentAtLocal(this.layout, p.x, p.y);
+    if (comp >= 0) this.addWater(comp, -this.tuning.gameplay.bucketVolume);
+    bucket.fill = 1;
+    this.emit({ type: 'bucket', player: p.id, what: 'scoop' });
+  }
+
+  /** Douses fires in reach; otherwise the water goes where the player stands (overboard = gone). */
+  private pour(p: PlayerState, bucket: ObjectState): void {
+    bucket.fill = 0;
+    if (douse(this, p.x + p.facing * 0.4, p.y, 1.5) > 0) {
+      this.emit({ type: 'bucket', player: p.id, what: 'douse' });
+      return;
+    }
+    const comp = compartmentAtLocal(this.layout, p.x, p.y);
+    if (comp >= 0) this.addWater(comp, this.tuning.gameplay.bucketVolume);
+    this.emit({ type: 'bucket', player: p.id, what: 'pour' });
+  }
+
+  /** @internal (systems) */
+  knock(p: PlayerState, vx: number, vy: number): void {
+    const rt = this.players.get(p.id);
+    if (!rt || p.overboard > 0) return;
+    p.climbing = null;
+    p.action = null;
+    rt.body.setLinvel({ x: vx, y: vy }, true);
+  }
+
+  /** @internal (systems) */
+  spawnLoose(kind: ObjectKind, x: number, y: number): ObjectState {
+    return this.spawnObject(kind, x, y, false);
+  }
+
+  /** @internal (systems) */
+  rescue(p: PlayerState, x: number, feetY: number): void {
+    const rt = this.players.get(p.id);
+    if (!rt) return;
+    rt.body.setEnabled(true);
+    p.overboard = 0;
+    this.teleportPlayer(p.id, x - 0.6, feetY - PLAYER_HALF_HEIGHT - 0.05);
+  }
+
   /** Seconds a timed action takes (with the tools the crew found). */
   actionDuration(kind: PlayerActionKind): number {
     const P = this.tuning.player;
@@ -1134,6 +1274,8 @@ export class Simulation implements SimContext {
         return P.openTime * (v.crowbar ? P.crowbarFactor : 1);
       case 'ram':
         return P.ramTime;
+      case 'cut':
+        return P.cutTime;
     }
   }
 
@@ -1162,6 +1304,10 @@ export class Simulation implements SimContext {
         this.emit({ type: 'cannonLoad', player: p.id, station: st.id, charge: 2 });
         return;
       }
+      case 'cut':
+        p.action = null;
+        cutHook(this);
+        return;
     }
   }
 
@@ -1224,7 +1370,8 @@ export class Simulation implements SimContext {
     return tileToLocal(this.layout, lp.tx + 0.5, lp.ty + 0.5);
   }
 
-  private createLeak(point?: number): void {
+  /** @internal (systems) */
+  createLeak(point?: number): void {
     const n = this.layout.leakPoints.length;
     if (n === 0) return;
     let idx = point;
@@ -1341,7 +1488,7 @@ export class Simulation implements SimContext {
     const s = this.state;
     const v = s.voyage;
     const G = this.tuning.gameplay;
-    for (const k of ['wheel', 'water', 'rock', 'oil'] as const) s.shouts[k] = Math.max(0, s.shouts[k] - dt);
+    for (const k of ['wheel', 'water', 'rock', 'oil', 'fire'] as const) s.shouts[k] = Math.max(0, s.shouts[k] - dt);
     for (const pg of s.pings) pg.time -= dt;
     if (s.pings.some((pg) => pg.time <= 0)) s.pings = s.pings.filter((pg) => pg.time > 0);
     updateBalls(this, dt);
@@ -1352,7 +1499,13 @@ export class Simulation implements SimContext {
       s.status = 'arrived';
       s.statusTimer = G.arrivedResetTime;
       s.rocks = [];
+      s.whirl = null;
+      s.flotsam = [];
       if (s.monster) s.monster.phase = 'flee';
+      if (s.pirate) {
+        cutHook(this);
+        s.pirate.phase = 'flee';
+      }
       this.emit({ type: 'arrived' });
       return;
     }
@@ -1361,8 +1514,13 @@ export class Simulation implements SimContext {
       const p = this.closestPlayer(0, -2);
       if (p) this.say(p, 'land');
     }
+    updateEncounters(this);
     updateRocks(this, progress);
     updateMonster(this, dt);
+    updatePirates(this, dt);
+    updateWhirl(this, dt);
+    updateFlotsam(this);
+    updateWeather(this, dt);
     updateShouts(this);
   }
 
@@ -1401,6 +1559,7 @@ export class Simulation implements SimContext {
   /** What a ping at a ship-local spot means, from what is there. */
   pingKindAt(x: number, y: number): PingKind {
     const s = this.state;
+    if (this.nearestFire(x, y, 1.2)) return 'fire';
     for (const leak of s.leaks) {
       if (!leak.active) continue;
       const lp = this.leakInteriorPoint(leak.point);
@@ -1488,9 +1647,15 @@ export class Simulation implements SimContext {
         this.leaveStation(p);
         p.climbing = null;
         p.action = null;
-        p.overboard = this.tuning.gameplay.overboardTime;
+        // with somebody else on board there is time for a rescue with the life ring
+        const crew = s.players.some((o) => o !== p && o.overboard <= 0 && !o.away);
+        const ringStation = s.stations.some((st) => st.kind === 'ring');
+        p.overboard = crew && ringStation ? this.tuning.gameplay.rescueWindow : this.tuning.gameplay.overboardTime;
+        p.seaX = shipToWorld(s.ship, { x: p.x, y: p.y }).x;
         rt.body.setEnabled(false);
         this.emit({ type: 'overboard', player: p.id });
+        const helper = this.closestPlayer(p.x, p.y);
+        if (crew && helper && helper !== p) this.say(helper, 'overboard');
         this.emit({ type: 'splash', x: p.x, y: p.y, strength: 1 });
       }
       const anim = this.animFor(p);

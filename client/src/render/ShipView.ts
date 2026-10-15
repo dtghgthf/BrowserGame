@@ -238,6 +238,9 @@ export class ShipView {
       case 'rack':
         add('ball_rack', 0, 0);
         break;
+      case 'ring':
+        add('ring_post', 0, 0);
+        break;
     }
     return { parts, moving, glow };
   }

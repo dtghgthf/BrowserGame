@@ -208,7 +208,7 @@ async function runBrowser(name, launcher) {
     const g = window.__game;
     const s = g.sim.state;
     s.voyage.nextRockX = 1e9;
-    s.voyage.nextMonsterX = 1e9;
+    s.voyage.nextEncounterX = 1e9;
     s.rocks.length = 0;
     s.rocks.push({ id: 9001, x: s.ship.x + 30, lateral: s.ship.lateral, radius: 3, spotted: false, hit: false });
     s.stations.find((x) => x.kind === 'searchlight').value = 0.32;

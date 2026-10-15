@@ -200,6 +200,8 @@ function icons(): PropSprite[] {
     icon('ui_i_crate', ['            ', '   d    d   ', '    d  d    ', '  dddddddd  ', '  dgddddgd  ', '  dddddddd  ', '  dd dd dd  ', '  dddddddd  ', '  dgddddgd  ', '  dddddddd  ', '            ', '            ']),
     icon('ui_i_ball', ['            ', '            ', '    gggg    ', '   gwgggg   ', '  ggwggggg  ', '  gggggggg  ', '  gggggggg  ', '  gggggggg  ', '   gggggg   ', '    gggg    ', '            ', '            ']),
     icon('ui_i_oil', ['            ', '     y      ', '    yyy     ', '   yyyyy    ', '   yyyyy    ', '  ggggggg   ', '  gdddddg  g', '  gdddddggg ', '  gdddddg   ', '  ggggggg   ', '            ', '            ']),
+    icon('ui_i_bucket', ['            ', '  gggggggg  ', ' g        g ', ' g dddddd g ', '  dbbbbbbd  ', '  dddddddd  ', '  gggggggg  ', '  dddddddd  ', '   dddddd   ', '   gggggg   ', '            ', '            ']),
+    icon('ui_i_ring', ['            ', '   rrwwrr   ', '  w      w  ', ' r        r ', ' r        r ', ' w        w ', ' w        w ', ' r        r ', ' r        r ', '  w      w  ', '   rrwwrr   ', '            ']),
     icon('ui_i_ping', ['            ', '    rrrr    ', '   rrwwrr   ', '  rrrwwrrr  ', '  rrrwwrrr  ', '  rrrrrrrr  ', '   rrwwrr   ', '    rrrr    ', '     rr     ', '     rr     ', '      r     ', '            ']),
   ];
 }

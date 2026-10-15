@@ -33,6 +33,8 @@ export interface PlayerTuning {
   /** Repair time multiplier once the crew found a hammer. */
   hammerFactor: number;
   crowbarFactor: number;
+  /** Seconds to cut a pirate grappling hook. */
+  cutTime: number;
 }
 
 export interface ShipTuning {
@@ -80,8 +82,6 @@ export interface GameplayTuning {
   shipBeam: number;
   rockShake: number;
   ballSpeed: number;
-  monsterFirstAt: number;
-  monsterEvery: number;
   monsterHp: number;
   monsterSpeed: number;
   monsterAttackInterval: number;
@@ -93,6 +93,44 @@ export interface GameplayTuning {
   cannonSoloLoad: number;
   /** Oil the searchlight burns per second (1 = full tank). */
   oilBurn: number;
+  /** Phase 5b: encounters (share of the voyage before the first one, spacing in m, weights). */
+  encounterFirstAt: number;
+  encounterEvery: number;
+  weightKraken: number;
+  weightPirates: number;
+  weightIce: number;
+  weightWhirl: number;
+  weightFlotsam: number;
+  /** Fire: heat per second, spread chance per second at full heat, seconds until it damages the hull, rain on the open deck, bucket of water (m^2). */
+  fireGrowth: number;
+  fireSpread: number;
+  fireDamageTime: number;
+  rainDouse: number;
+  bucketVolume: number;
+  /** Storm: breaking waves and lightning above this sea state. */
+  waveMinSea: number;
+  waveEvery: number;
+  wavePush: number;
+  lightningEvery: number;
+  lightningFireChance: number;
+  /** Pirates: hits to drive them off, seconds between shots, scatter (m), hook after, chance a hit sets a fire, ship speed while hooked. */
+  pirateHp: number;
+  pirateFireInterval: number;
+  pirateAccuracy: number;
+  pirateHookAfter: number;
+  pirateFireChance: number;
+  hookSlow: number;
+  /** Ice field length (m), hits per floe; whirlpool radius and pull. */
+  iceFieldLength: number;
+  iceHp: number;
+  whirlRadius: number;
+  whirlPull: number;
+  /** Life ring: throw speed, line length, meters per pull; seconds a swimmer waits for rescue; swim speed. */
+  ringSpeed: number;
+  ringRope: number;
+  ringPullStroke: number;
+  rescueWindow: number;
+  swimSpeed: number;
 }
 
 export interface Tuning {
@@ -129,6 +167,7 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     ramTime: 0.7,
     hammerFactor: 0.6,
     crowbarFactor: 0.5,
+    cutTime: 1.2,
   },
   ship: {
     initialSeaState: 0.75,
@@ -171,8 +210,6 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     shipBeam: 2.6,
     rockShake: 0.5,
     ballSpeed: 24,
-    monsterFirstAt: 0.3,
-    monsterEvery: 450,
     monsterHp: 3,
     monsterSpeed: 1.4,
     monsterAttackInterval: 7,
@@ -182,6 +219,38 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     startTimber: 6,
     cannonSoloLoad: 3.2,
     oilBurn: 0.006,
+    encounterFirstAt: 0.18,
+    encounterEvery: 240,
+    weightKraken: 3,
+    weightPirates: 2,
+    weightIce: 2,
+    weightWhirl: 1.5,
+    weightFlotsam: 2.5,
+    fireGrowth: 0.08,
+    fireSpread: 0.12,
+    fireDamageTime: 16,
+    rainDouse: 0.03,
+    bucketVolume: 0.12,
+    waveMinSea: 1.0,
+    waveEvery: 38,
+    wavePush: 7,
+    lightningEvery: 75,
+    lightningFireChance: 0.45,
+    pirateHp: 4,
+    pirateFireInterval: 6,
+    pirateAccuracy: 3,
+    pirateHookAfter: 14,
+    pirateFireChance: 0.5,
+    hookSlow: 0.45,
+    iceFieldLength: 220,
+    iceHp: 2,
+    whirlRadius: 12,
+    whirlPull: 0.6,
+    ringSpeed: 11,
+    ringRope: 22,
+    ringPullStroke: 1.4,
+    rescueWindow: 30,
+    swimSpeed: 1.1,
   },
 };
 

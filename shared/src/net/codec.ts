@@ -3,6 +3,11 @@ import type { SnapshotMessage } from './protocol';
 import type {
   BallState,
   CompartmentState,
+  FireState,
+  FlotsamState,
+  PirateState,
+  RingState,
+  WhirlState,
   GameState,
   HatchState,
   LeakState,
@@ -49,10 +54,29 @@ const INPUT = obj<PlayerInput>({
   target: nullable('f32'),
 });
 
-const BUBBLES = ['leak', 'water', 'plank', 'help', 'wheel', 'rock', 'monster', 'land', 'rat', 'oil', 'wood'] as const;
+const BUBBLES = [
+  'leak',
+  'water',
+  'plank',
+  'help',
+  'wheel',
+  'rock',
+  'monster',
+  'land',
+  'rat',
+  'oil',
+  'wood',
+  'fire',
+  'wave',
+  'pirate',
+  'overboard',
+  'whirl',
+  'flotsam',
+] as const;
 const OBJECT_KINDS = ['crate', 'barrel', 'plank', 'bucket', 'oilcan', 'ball'] as const;
 const LOOT = ['plank', 'timber', 'ball', 'oilcan', 'bucket', 'coins', 'hammer', 'crowbar', 'rat'] as const;
-const STATION_KINDS = ['wheel', 'pump', 'searchlight', 'cannon', 'workshop', 'rack'] as const;
+const STATION_KINDS = ['wheel', 'pump', 'searchlight', 'cannon', 'workshop', 'rack', 'ring'] as const;
+const PING_KINDS = ['here', 'help', 'danger', 'leak', 'hatch', 'plank', 'wheel', 'pump', 'searchlight', 'cannon', 'fire', 'crate', 'ring'] as const;
 
 const PLAYER = obj<PlayerState>({
   id: 'str',
@@ -69,11 +93,12 @@ const PLAYER = obj<PlayerState>({
   climbing: nullable('u8'),
   station: nullable('u8'),
   carrying: nullable('u16'),
-  action: nullable(obj<NonNullable<PlayerState['action']>>({ kind: oneOf(['repair', 'open', 'ram']), target: 'u16', progress: 'f32' })),
+  action: nullable(obj<NonNullable<PlayerState['action']>>({ kind: oneOf(['repair', 'open', 'ram', 'cut']), target: 'u16', progress: 'f32' })),
   anim: oneOf(['idle', 'run', 'jump', 'fall', 'climb', 'station', 'repair', 'swim']),
   animTime: 'f32',
   prevInput: INPUT,
   overboard: 'f32',
+  seaX: 'f64',
   bubble: nullable(obj<NonNullable<PlayerState['bubble']>>({ key: oneOf(BUBBLES), time: 'f32' })),
   airTime: 'f32',
   jumpBuffer: 'f32',
@@ -147,7 +172,15 @@ const STATE = obj<GameState>({
     length: 'f32',
     seaBase: 'f32',
     nextRockX: 'f64',
-    nextMonsterX: 'f64',
+    nextEncounterX: 'f64',
+    iceUntilX: 'f64',
+    waveIn: 'f32',
+    waveWarn: 'f32',
+    lightningIn: 'f32',
+    firesPut: 'u16',
+    piratesBeaten: 'u16',
+    flotsamFished: 'u16',
+    rescues: 'u16',
     rocksHit: 'u16',
     rocksPassed: 'u16',
     rocksDestroyed: 'u16',
@@ -160,7 +193,7 @@ const STATE = obj<GameState>({
     hammer: 'bool',
     crowbar: 'bool',
   }),
-  rocks: array(obj<RockState>({ id: 'u32', x: 'f64', lateral: 'f32', radius: 'f32', spotted: 'bool', hit: 'bool' })),
+  rocks: array(obj<RockState>({ id: 'u32', x: 'f64', lateral: 'f32', radius: 'f32', spotted: 'bool', hit: 'bool', kind: oneOf(['rock', 'ice']), hp: 'u8' })),
   monster: nullable(
     obj<MonsterState>({
       offset: 'f32',
@@ -173,18 +206,37 @@ const STATE = obj<GameState>({
       hurt: 'f32',
     }),
   ),
-  balls: array(obj<BallState>({ id: 'u32', x: 'f64', y: 'f32', vx: 'f32', vy: 'f32', age: 'f32' })),
+  pirate: nullable(
+    obj<PirateState>({
+      offset: 'f32',
+      hp: 'u8',
+      phase: oneOf(['approach', 'fight', 'flee']),
+      timer: 'f32',
+      fireIn: 'f32',
+      hook: 'f32',
+      hookIn: 'f32',
+      hurt: 'f32',
+      spotted: 'bool',
+    }),
+  ),
+  whirl: nullable(obj<WhirlState>({ x: 'f64', lateral: 'f32', radius: 'f32', spotted: 'bool', hit: 'bool' })),
+  flotsam: array(obj<FlotsamState>({ id: 'u32', x: 'f64', lateral: 'f32', spotted: 'bool' })),
+  fires: array(obj<FireState>({ id: 'u32', tx: 'u8', ty: 'u8', heat: 'f32', age: 'f32' })),
+  ring: nullable(
+    obj<RingState>({ x: 'f64', y: 'f32', vx: 'f32', vy: 'f32', phase: oneOf(['flying', 'floating', 'pulling']), holder: nullable('str') }),
+  ),
+  balls: array(obj<BallState>({ id: 'u32', x: 'f64', y: 'f32', vx: 'f32', vy: 'f32', age: 'f32', pirate: 'bool' })),
   pings: array(
     obj<PingState>({
       id: 'u32',
       player: 'str',
-      kind: oneOf(['here', 'help', 'danger', 'leak', 'hatch', 'plank', 'wheel', 'pump', 'searchlight', 'cannon']),
+      kind: oneOf(PING_KINDS),
       x: 'pos',
       y: 'pos',
       time: 'f32',
     }),
   ),
-  shouts: obj<ShoutCooldowns>({ wheel: 'f32', water: 'f32', rock: 'f32', oil: 'f32' }),
+  shouts: obj<ShoutCooldowns>({ wheel: 'f32', water: 'f32', rock: 'f32', oil: 'f32', fire: 'f32' }),
   nextId: 'u32',
 });
 

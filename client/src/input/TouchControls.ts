@@ -18,6 +18,8 @@ const ICONS: Record<HintIcon, string> = {
   crate: 'ui_i_crate',
   ball: 'ui_i_ball',
   oil: 'ui_i_oil',
+  bucket: 'ui_i_bucket',
+  ring: 'ui_i_ring',
 };
 
 type ButtonKey = 'jump' | 'interact' | 'pick';

@@ -34,3 +34,7 @@ export * from './net/predict';
 export * from './net/codec';
 export * from './navigation';
 export { LOOT_NAMES, LOOT_OBJECTS, rollLoot } from './systems/crates';
+export { PIRATE_HALF_LENGTH, PIRATE_HEIGHT, hookPoint, pirateShip } from './systems/pirates';
+export { fireCenter, isFloorTile } from './systems/fire';
+export { RING_ANCHOR } from './systems/rescue';
+export { ENCOUNTER_KINDS, type EncounterKind } from './systems/encounters';

@@ -304,6 +304,39 @@ function supplies(): PropSprite[] {
     { name: 'oilcan', canvas: can, pivot: { x: 3, y: 4 } },
     { name: 'ball', canvas: ball, pivot: { x: 2, y: 2 } },
     { name: 'ball_rack', canvas: rack, pivot: { x: 7, y: 9 } },
+    ...lifeRing(),
+  ];
+}
+
+/** Life ring: on its post at the railing, and flying / floating in the sea. */
+function lifeRing(): PropSprite[] {
+  const RED = hex('#d8402c');
+  const WHITE = hex('#ece6d8');
+  const ring = new Canvas(9, 9);
+  for (let y = 0; y < 9; y++) {
+    for (let x = 0; x < 9; x++) {
+      const d = Math.hypot(x - 4, y - 4);
+      if (d < 2 || d > 4.4) continue;
+      const a = Math.atan2(y - 4, x - 4);
+      const band = Math.floor(((a + Math.PI) / (Math.PI * 2)) * 4) % 2;
+      ring.set(x, y, band ? RED : WHITE, 1 + (1 - Math.abs(d - 3.2)) * 1.5);
+    }
+  }
+  const post = new Canvas(11, 18);
+  post.rect(4, 6, 2, 12, WOOD_D, 2);
+  post.rect(4, 6, 1, 12, WOOD, 2.2);
+  post.rect(1, 16, 8, 2, WOOD, 1.8);
+  // coiled line
+  for (let i = 0; i < 3; i++) post.rect(2, 14 - i, 6, 1, i % 2 ? hex('#c8b080') : hex('#a08860'), 2);
+  post.innerOutline(WOOD_DD);
+  // ring hanging on the post
+  for (let y = 0; y < 9; y++) for (let x = 0; x < 9; x++) {
+    const i = (y * 9 + x) * 4;
+    if (ring.data[i + 3]! > 0) post.set(x + 1, y + 2, [ring.data[i]!, ring.data[i + 1]!, ring.data[i + 2]!, 255], 2.5);
+  }
+  return [
+    { name: 'life_ring', canvas: ring, pivot: { x: 4, y: 4 } },
+    { name: 'ring_post', canvas: post, pivot: { x: 5, y: 18 } },
   ];
 }
 

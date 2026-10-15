@@ -1,4 +1,4 @@
-import { EMPTY_INPUT, type PlayerInput, type SimCommand } from '../input';
+import { DEBUG_HAZARDS, EMPTY_INPUT, type DebugHazard, type PlayerInput, type SimCommand } from '../input';
 import type { GameEvent, GameState } from '../state';
 import type { TuningPatch } from '../tuning';
 
@@ -161,7 +161,7 @@ export function parseCommand(raw: unknown): SimCommand | null {
     case 'reset':
       return { type: 'reset' };
     case 'debugHazard':
-      return c.what === 'rock' || c.what === 'monster' ? { type: 'debugHazard', what: c.what } : null;
+      return typeof c.what === 'string' && (DEBUG_HAZARDS as readonly string[]).includes(c.what) ? { type: 'debugHazard', what: c.what as DebugHazard } : null;
     case 'debugAdvance':
       return finite(c.meters) ? { type: 'debugAdvance', meters: Math.max(0, Math.min(2000, c.meters)) } : null;
     case 'ping':

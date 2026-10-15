@@ -27,7 +27,7 @@ function run(sim: Simulation, seconds: number, inp: () => Record<string, PlayerI
 
 /** A calm sea without random rocks or kraken unless a test places them. */
 async function calm(tuning: TuningPatch = {}): Promise<Simulation> {
-  const sim = await Simulation.create({ seaState: 0, tuning: { ...tuning, gameplay: { monsterFirstAt: 99, ...tuning.gameplay } } });
+  const sim = await Simulation.create({ seaState: 0, tuning: { ...tuning, gameplay: { encounterFirstAt: 99, ...tuning.gameplay } } });
   sim.state.voyage.nextRockX = 1e9;
   return sim;
 }
@@ -59,8 +59,8 @@ describe('voyage', () => {
     const sim = await calm();
     sim.addPlayer('a');
     const ship = sim.state.ship;
-    sim.state.rocks.push({ id: 900, x: ship.x + BOW_OFFSET + 3, lateral: ship.lateral + 0.5, radius: 2, spotted: false, hit: false });
-    sim.state.rocks.push({ id: 901, x: ship.x + BOW_OFFSET + 8, lateral: ship.lateral + 12, radius: 2, spotted: false, hit: false });
+    sim.state.rocks.push({ id: 900, x: ship.x + BOW_OFFSET + 3, lateral: ship.lateral + 0.5, radius: 2, spotted: false, hit: false, kind: 'rock', hp: 1 });
+    sim.state.rocks.push({ id: 901, x: ship.x + BOW_OFFSET + 8, lateral: ship.lateral + 12, radius: 2, spotted: false, hit: false, kind: 'rock', hp: 1 });
     const events = run(sim, 6);
     expect(events.filter((e) => e.type === 'rockHit').map((e) => (e as { rock: number }).rock)).toEqual([900]);
     expect(sim.state.voyage.rocksHit).toBe(1);
@@ -75,7 +75,7 @@ describe('voyage', () => {
     const st = enter(sim, 'a', 'searchlight');
     const ship = sim.state.ship;
     st.value = -1.2;
-    sim.state.rocks.push({ id: 5, x: ship.x + 70, lateral: 0, radius: 2.5, spotted: false, hit: false });
+    sim.state.rocks.push({ id: 5, x: ship.x + 70, lateral: 0, radius: 2.5, spotted: false, hit: false, kind: 'rock', hp: 1 });
     // pointing at the sky: nothing
     run(sim, 0.5, () => ({ a: input({ target: -1.2 }) }));
     expect(sim.state.rocks[0]!.spotted).toBe(false);
@@ -111,7 +111,7 @@ describe('cannon and kraken', () => {
     sim.addPlayer('a');
     enter(sim, 'a', 'cannon');
     run(sim, 1, () => ({ a: input({ target: -0.35 }) }));
-    sim.state.rocks.push({ id: 77, x: splash!.x, lateral: sim.state.ship.lateral, radius: 2, spotted: true, hit: false });
+    sim.state.rocks.push({ id: 77, x: splash!.x, lateral: sim.state.ship.lateral, radius: 2, spotted: true, hit: false, kind: 'rock', hp: 1 });
     run(sim, 0.05, () => ({ a: input({ target: -0.35, pick: true }) }));
     events = run(sim, 5, () => ({ a: input({ target: -0.35 }) }));
     expect(events.some((e) => e.type === 'rockBreak')).toBe(true);
@@ -121,8 +121,7 @@ describe('cannon and kraken', () => {
   it('the kraken surfaces, attacks the bow and flees after three hits', async () => {
     const sim = await calm({ gameplay: { monsterAttackInterval: 3 } });
     sim.addPlayer('a');
-    sim.state.voyage.nextMonsterX = sim.state.ship.x;
-    let events = run(sim, 0.1);
+    let events = run(sim, 0.1, () => ({}), [{ type: 'debugHazard', what: 'monster' }]);
     expect(events.some((e) => e.type === 'monsterAppear')).toBe(true);
     events = run(sim, 40);
     expect(sim.state.monster!.phase).toBe('attack');
@@ -130,7 +129,7 @@ describe('cannon and kraken', () => {
     expect(sim.state.leaks.some((l) => l.active)).toBe(true);
     for (let i = 0; i < 3; i++) {
       const h = monsterHead(sim.state)!;
-      sim.state.balls.push({ id: 1000 + i, x: h.x, y: h.y, vx: 0, vy: 0, age: 0 });
+      sim.state.balls.push({ id: 1000 + i, x: h.x, y: h.y, vx: 0, vy: 0, age: 0, pirate: false });
       run(sim, 0.1);
     }
     expect(sim.state.monster!.phase).toBe('flee');
@@ -180,7 +179,7 @@ describe('navigation (sea chart)', () => {
     const sim = await calm();
     const ship = sim.state.ship;
     ship.heading = 0;
-    const rock = { id: 1, x: ship.x + 80, lateral: ship.lateral + 1, radius: 2.5, spotted: true, hit: false };
+    const rock = { id: 1, x: ship.x + 80, lateral: ship.lateral + 1, radius: 2.5, spotted: true, hit: false, kind: 'rock' as const, hp: 1 };
     const straight = predictCourse(sim.state, sim.tuning, 120);
     expect(courseLateralAt(straight, 80)).toBeCloseTo(ship.lateral, 6);
     expect(rockThreat(rock, ship.x, straight, 2.6)).toEqual({ danger: true, steer: -1 });

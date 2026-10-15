@@ -1,6 +1,6 @@
 import type { ShipLayout } from '../layout/parseLayout';
 import type { Vec2 } from '../math';
-import type { BubbleKey, GameEvent, GameState, PlayerState } from '../state';
+import type { BubbleKey, GameEvent, GameState, ObjectKind, ObjectState, PlayerState } from '../state';
 import type { Tuning } from '../tuning';
 import type { CompartmentGeometry } from '../water';
 
@@ -36,6 +36,14 @@ export interface SimContext {
   /** World-space ray of the searchlight, or null if it is dark. */
   searchlightRay(): BeamRay | null;
   inBeam(ray: BeamRay, x: number, y: number, size: number, range: number): boolean;
+  /** Opens a leak at a specific leak point. */
+  createLeak(point?: number): void;
+  /** Throws a player (fire, breaking wave): sets the velocity of the body. */
+  knock(p: PlayerState, vx: number, vy: number): void;
+  /** Spawns a loose object (ship-local meters). */
+  spawnLoose(kind: ObjectKind, x: number, y: number): ObjectState;
+  /** Brings a swimmer back on board, standing at a ship-local point (feet). */
+  rescue(p: PlayerState, x: number, feetY: number): void;
   /** Ship-local centre of the interior tile next to a leak point. */
   leakInteriorPoint(point: number): Vec2;
 }

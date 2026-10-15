@@ -189,3 +189,23 @@ Format: **Entscheidung** – Begründung.
   hätte nur genervt.
 - Für Aktionen, die etwas Getragenes benutzen (Öl abfüllen, Kugel laden), haben Vorrang vor Luken in der Nähe – sonst
   schnappt die Luke über dem Fass den Tastendruck weg.
+- **Begegnungs-Tabelle statt fester Krake:** Alle ~240 m (±25 %) wird aus gewichteten Einträgen gezogen (Krake,
+  Piraten, Eisfeld, Strudel, Treibgut; Gewichte in `tuning.json`, später pro Biom/Modifier überschrieben). Nur eine große
+  Begegnung gleichzeitig (Krake/Piraten/Strudel), Eis und Treibgut dürfen dazukommen.
+- **Feuer brennt auf Böden** (Luft-Tile mit Festem darunter) und wandert seitlich weiter: so bleibt es auf Decks und
+  klettert nicht durch Wände. Wasser im Raum löscht es (Fluten als Notlösung), Regen auf dem offenen Deck langsam. Langes
+  Feuer neben dem Rumpf brennt ein Leck, neben der Werkbank Holz weg; wer hineinläuft, wird weggeschleudert.
+- **Eimer statt Feuerlöscher:** schöpfen im gefluteten Raum (nimmt dort Wasser weg) oder über die Reling, ausschütten
+  löscht – oder kippt das Wasser dorthin, wo man steht (über Bord = weg). Der Eimer ist damit auch eine Lenzhilfe.
+- **Piraten fahren vor dem Bug im nahen Meer** statt daneben im fernen Band: so trifft die vorhandene ballistische Kanone
+  sie ohne zweite Zielachse. Ihre Kugeln sind echte Flugbahnen auf das Deck (Treffer auf Rumpf neben Leckstelle = Leck,
+  sonst Feuer). Der Enterhaken bremst das Schiff auf 45 %, bis jemand ihn am Bug kappt. Besiegte Piraten werfen Ladung
+  über Bord (Treibgut).
+- **Treibgut fischt man vom offenen Deck**, wenn es in der eigenen Spur längsseits treibt: das einzige Ziel, auf das man
+  zusteuern will statt auszuweichen.
+- **Mann über Bord mit Rettungsring:** Allein bleibt der kurze Respawn-Timer; ist noch jemand an Bord (und das Schiff hat
+  einen Rettungsring), wartet der Schwimmer bis zu 30 s. Der Ring ist eine Station: zielen und werfen (F), Schwimmer
+  greift zu, dann Hand über Hand einholen (links/rechts wie die Pumpe). Die Leine ist 22 m lang, das Schiff zieht den Ring
+  mit.
+- **Brecher und Blitze nur im Sturm** (Seegang ≥ 1,0), mit 2 s Vorwarnung und Zuruf „Welle!“: Wer auf dem offenen Deck
+  steht und sich nicht an einer Station festhält, wird Richtung Heck geschleudert – über die Heckwand heißt Mann über Bord.

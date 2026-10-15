@@ -19,8 +19,19 @@ export function updateRocks(ctx: SimContext, progress: number): void {
     const predicted = courseLateralAt(predictCourse(s, ctx.tuning, ROCK_LOOKAHEAD), v.nextRockX - ship.x);
     const inLane = nextRandom(s) < 0.45;
     const lateral = predicted + (inLane ? ctx.rand(-1.5, 1.5) : ctx.rand(-8, 8));
-    s.rocks.push({ id: ctx.nextId(), x: v.nextRockX, lateral, radius: ctx.rand(1.6, 3.4), spotted: false, hit: false });
-    v.nextRockX += ctx.rand(G.rockSpacingMin, G.rockSpacingMax) * (1 - 0.35 * progress);
+    // inside an ice field: ice floes, closer together, two cannon hits each
+    const ice = v.nextRockX <= v.iceUntilX && v.nextRockX > v.iceUntilX - G.iceFieldLength;
+    s.rocks.push({
+      id: ctx.nextId(),
+      x: v.nextRockX,
+      lateral,
+      radius: ice ? ctx.rand(1.4, 2.6) : ctx.rand(1.6, 3.4),
+      spotted: false,
+      hit: false,
+      kind: ice ? 'ice' : 'rock',
+      hp: ice ? G.iceHp : 1,
+    });
+    v.nextRockX += ctx.rand(G.rockSpacingMin, G.rockSpacingMax) * (1 - 0.35 * progress) * (ice ? 0.5 : 1);
   }
   const light = ctx.searchlightRay();
   for (const r of s.rocks) {
@@ -60,5 +71,5 @@ export function hitRock(ctx: SimContext, id: number): void {
   ctx.emit({ type: 'rockHit', rock: r.id, x: r.x });
   ctx.emit({ type: 'splash', x: BOW_OFFSET - 1, y: 0.5, strength: 1.4 });
   ctx.leakAt('bow');
-  if (r.radius > 2.8) ctx.leakAt('bottom');
+  if (r.radius > 2.8 && r.kind === 'rock') ctx.leakAt('bottom');
 }

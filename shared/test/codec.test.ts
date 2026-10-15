@@ -33,13 +33,25 @@ async function busyState(): Promise<GameState> {
   sim.addPlayer('p2', { name: 'BEN' });
   for (let t = 0; t < 200; t++) sim.step({ Kx9_aB3dE: input({ right: t % 80 < 40, jump: t % 50 === 3 }), p2: input({ left: true, pick: t === 60 }) });
   sim.step({}, undefined, [{ type: 'debugLeak' }, { type: 'debugRoll', value: 0.1 }, { type: 'ping', player: 'p2', x: 3, y: -1 }]);
-  sim.state.voyage.nextMonsterX = sim.state.ship.x;
   sim.state.voyage.nextRockX = sim.state.ship.x + 30;
+  sim.state.voyage.iceUntilX = sim.state.ship.x + 300;
+  sim.step({}, undefined, [
+    { type: 'debugHazard', what: 'monster' },
+    { type: 'debugHazard', what: 'flotsam' },
+    { type: 'debugHazard', what: 'whirl' },
+    { type: 'debugHazard', what: 'fire' },
+    { type: 'debugHazard', what: 'pirates' },
+  ]);
   for (let t = 0; t < 60; t++) sim.step({});
-  sim.state.balls.push({ id: 99, x: sim.state.ship.x + 10, y: -3, vx: 20, vy: -4, age: 0.3 });
+  sim.state.balls.push({ id: 99, x: sim.state.ship.x + 10, y: -3, vx: 20, vy: -4, age: 0.3, pirate: true });
+  sim.state.ring = { x: sim.state.ship.x - 5, y: 0.2, vx: 0, vy: 0, phase: 'pulling', holder: 'p2' };
+  sim.state.players[1]!.seaX = sim.state.ship.x - 5;
   sim.state.players[0]!.bubble = { key: 'monster', time: 2 };
   sim.state.players[0]!.action = { kind: 'repair', target: 0, progress: 0.5 };
   expect(sim.state.monster).not.toBeNull();
+  expect(sim.state.pirate).not.toBeNull();
+  expect(sim.state.fires.length).toBeGreaterThan(0);
+  expect(sim.state.flotsam.length).toBeGreaterThan(0);
   expect(sim.state.rocks.length).toBeGreaterThan(0);
   expect(sim.state.pings.length).toBe(1);
   return sim.state;

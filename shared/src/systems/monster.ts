@@ -23,10 +23,6 @@ export function spawnMonster(ctx: SimContext): void {
 export function updateMonster(ctx: SimContext, dt: number): void {
   const s = ctx.state;
   const G = ctx.tuning.gameplay;
-  if (!s.monster && s.ship.x >= s.voyage.nextMonsterX) {
-    s.voyage.nextMonsterX += G.monsterEvery;
-    spawnMonster(ctx);
-  }
   const m = s.monster;
   if (!m) return;
   m.timer += dt;

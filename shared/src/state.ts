@@ -41,8 +41,11 @@ export interface ShipState {
 
 export type AnimState = 'idle' | 'run' | 'jump' | 'fall' | 'climb' | 'station' | 'repair' | 'swim';
 
-/** Timed actions: repair a leak (target = leak id), open a crate / barrel (object id), ram the cannon ball home (station id). */
-export type PlayerActionKind = 'repair' | 'open' | 'ram';
+/**
+ * Timed actions: repair a leak (target = leak id), open a crate (object id),
+ * ram the cannon ball home (station id), cut a pirate grappling hook (0).
+ */
+export type PlayerActionKind = 'repair' | 'open' | 'ram' | 'cut';
 
 export interface PlayerAction {
   kind: PlayerActionKind;
@@ -50,7 +53,24 @@ export interface PlayerAction {
   progress: number;
 }
 
-export type BubbleKey = 'leak' | 'water' | 'plank' | 'help' | 'wheel' | 'rock' | 'monster' | 'land' | 'rat' | 'oil' | 'wood';
+export type BubbleKey =
+  | 'leak'
+  | 'water'
+  | 'plank'
+  | 'help'
+  | 'wheel'
+  | 'rock'
+  | 'monster'
+  | 'land'
+  | 'rat'
+  | 'oil'
+  | 'wood'
+  | 'fire'
+  | 'wave'
+  | 'pirate'
+  | 'overboard'
+  | 'whirl'
+  | 'flotsam';
 
 export interface PlayerState {
   id: string;
@@ -80,6 +100,8 @@ export interface PlayerState {
   prevInput: PlayerInput;
   /** Seconds until respawn after falling overboard (0 = on board). */
   overboard: number;
+  /** While overboard: world x of the swimmer (the ship sails away, the life ring can reach him). */
+  seaX: number;
   /** Automatic speech bubble (communication without voice). */
   bubble: { key: BubbleKey; time: number } | null;
   // Controller internals. They live in the state (not in the simulation object)
@@ -151,7 +173,7 @@ export interface LeakState {
   inflow: number;
 }
 
-export type StationKind = 'wheel' | 'pump' | 'searchlight' | 'cannon' | 'workshop' | 'rack';
+export type StationKind = 'wheel' | 'pump' | 'searchlight' | 'cannon' | 'workshop' | 'rack' | 'ring';
 
 export interface StationState {
   id: number;
@@ -174,6 +196,67 @@ export interface StationState {
   charge: number;
 }
 
+/** A fire on a deck tile (fires burn on floors: an air tile with something solid below). */
+export interface FireState {
+  id: number;
+  tx: number;
+  ty: number;
+  /** 0..1, grows while it burns. */
+  heat: number;
+  /** Seconds burning (long fires damage the hull). */
+  age: number;
+}
+
+export type RockKind = 'rock' | 'ice';
+
+/** The pirates' sloop: sails ahead of the bow, fires back and throws a grappling hook. */
+export type PiratePhase = 'approach' | 'fight' | 'flee';
+
+export interface PirateState {
+  /** Distance ahead of the ship pivot (m). */
+  offset: number;
+  hp: number;
+  phase: PiratePhase;
+  timer: number;
+  fireIn: number;
+  /** > 0: a grappling hook holds the bow (seconds it has held). */
+  hook: number;
+  hookIn: number;
+  hurt: number;
+  spotted: boolean;
+}
+
+/** A whirlpool ahead: pulls the ship sideways and spins it. */
+export interface WhirlState {
+  x: number;
+  lateral: number;
+  radius: number;
+  spotted: boolean;
+  /** The ship went through the middle (one hard knock). */
+  hit: boolean;
+}
+
+/** A crate drifting in the water, to be fished out alongside. */
+export interface FlotsamState {
+  id: number;
+  x: number;
+  lateral: number;
+  spotted: boolean;
+}
+
+export type RingPhase = 'flying' | 'floating' | 'pulling';
+
+/** The life ring on its line (world coordinates). */
+export interface RingState {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  phase: RingPhase;
+  /** The swimmer holding on. */
+  holder: string | null;
+}
+
 /** A rock ahead in the fog. Coordinates in the top-down sense: along the course (world x) and sideways. */
 export interface RockState {
   id: number;
@@ -186,6 +269,9 @@ export interface RockState {
   spotted: boolean;
   /** The ship already ran into it. */
   hit: boolean;
+  kind: RockKind;
+  /** Cannon hits it still takes (ice needs two). */
+  hp: number;
 }
 
 export type MonsterPhase = 'approach' | 'attack' | 'flee';
@@ -215,9 +301,24 @@ export interface BallState {
   vx: number;
   vy: number;
   age: number;
+  /** Who fired it: the crew's balls hit the kraken / rocks / pirates, the pirates' hit the ship. */
+  pirate: boolean;
 }
 
-export type PingKind = 'here' | 'help' | 'danger' | 'leak' | 'hatch' | 'plank' | 'wheel' | 'pump' | 'searchlight' | 'cannon';
+export type PingKind =
+  | 'here'
+  | 'help'
+  | 'danger'
+  | 'leak'
+  | 'hatch'
+  | 'plank'
+  | 'wheel'
+  | 'pump'
+  | 'searchlight'
+  | 'cannon'
+  | 'fire'
+  | 'crate'
+  | 'ring';
 
 /** A marker a player put on a spot (communication without voice). Ship-local position. */
 export interface PingState {
@@ -235,9 +336,20 @@ export interface VoyageState {
   length: number;
   /** Sea state without the storm (debug keys change this one). */
   seaBase: number;
-  /** World x where the next rock appears / the next kraken surfaces. */
+  /** World x where the next rock appears / the next encounter (kraken, pirates, ...) starts. */
   nextRockX: number;
-  nextMonsterX: number;
+  nextEncounterX: number;
+  /** Rocks are ice floes until the ship passes this world x (ice field encounter). */
+  iceUntilX: number;
+  /** Seconds until the next breaking wave / lightning strike (only in a storm). */
+  waveIn: number;
+  /** > 0: a breaking wave is coming (warning seconds left). */
+  waveWarn: number;
+  lightningIn: number;
+  firesPut: number;
+  piratesBeaten: number;
+  flotsamFished: number;
+  rescues: number;
   rocksHit: number;
   rocksPassed: number;
   rocksDestroyed: number;
@@ -261,6 +373,7 @@ export interface ShoutCooldowns {
   water: number;
   rock: number;
   oil: number;
+  fire: number;
 }
 
 export type GameEvent =
@@ -294,7 +407,26 @@ export type GameEvent =
   | { type: 'plankMade'; station: number }
   | { type: 'cannonLoad'; player: string | null; station: number; charge: number }
   | { type: 'refill'; player: string; what: 'oil' }
-  | { type: 'breakUp'; player: string };
+  | { type: 'breakUp'; player: string }
+  | { type: 'fire'; x: number; y: number }
+  | { type: 'extinguish'; x: number; y: number }
+  | { type: 'bucket'; player: string; what: 'scoop' | 'pour' | 'douse' }
+  | { type: 'waveWarn' }
+  | { type: 'wave' }
+  | { type: 'lightning'; x: number; y: number }
+  | { type: 'pirateAppear' }
+  | { type: 'pirateFire'; x: number; y: number; angle: number }
+  | { type: 'pirateHit'; hp: number }
+  | { type: 'pirateFlee' }
+  | { type: 'shipHit'; x: number; y: number }
+  | { type: 'hook'; on: boolean }
+  | { type: 'whirlAppear' }
+  | { type: 'whirlHit' }
+  | { type: 'iceHit'; rock: number; x: number }
+  | { type: 'flotsamFished'; player: string; id: number }
+  | { type: 'ringThrow'; player: string }
+  | { type: 'ringCatch'; player: string }
+  | { type: 'rescued'; player: string };
 
 export type GameStatus = 'sailing' | 'sunk' | 'arrived';
 
@@ -321,6 +453,11 @@ export interface GameState {
   voyage: VoyageState;
   rocks: RockState[];
   monster: MonsterState | null;
+  pirate: PirateState | null;
+  whirl: WhirlState | null;
+  flotsam: FlotsamState[];
+  fires: FireState[];
+  ring: RingState | null;
   balls: BallState[];
   pings: PingState[];
   shouts: ShoutCooldowns;
