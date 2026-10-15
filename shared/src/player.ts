@@ -1,8 +1,9 @@
 import { tileToLocal, type LadderDef, type ShipLayout } from './layout/parseLayout';
 import { clamp } from './math';
+import type { PlayerTuning } from './tuning';
 
-/** Player movement tunables (meters, seconds). */
-export const PLAYER = {
+/** Fixed player body shape (not tunable at runtime: it is the physics collider). */
+export const PLAYER_SHAPE = {
   /**
    * Capsule radius and half length of the straight segment: total height 1.28 m (20.5 px),
    * width 0.44 m - narrower than a one-tile hatch (0.5 m) so players fit through.
@@ -10,32 +11,9 @@ export const PLAYER = {
   radius: 0.22,
   halfHeight: 0.42,
   mass: 70,
-  walkSpeed: 4.2,
-  carrySpeedFactor: 0.62,
-  groundAccel: 36,
-  airAccel: 14,
-  jumpSpeed: 7.2,
-  carryJumpFactor: 0.82,
-  maxFall: 14,
-  /**
-   * Steady-state slide speed per m/s^2 of tangential gravity while standing on a
-   * tilted deck. At 15° roll (5.7 m/s^2 tangential) this is ~1.8 m/s - clearly
-   * noticeable, but slower than walking, so the player can always walk uphill.
-   */
-  slideFactor: 0.32,
-  climbSpeed: 3.2,
-  carryClimbFactor: 0.6,
-  coyoteTime: 0.1,
-  jumpBuffer: 0.12,
-  stationRange: 0.9,
-  pickRange: 1.0,
-  hatchRange: 0.7,
-  leakRange: 1.4,
-  repairTime: 1.6,
-  waterSlow: 0.55,
 } as const;
 
-export const PLAYER_HEIGHT = 2 * (PLAYER.halfHeight + PLAYER.radius);
+export const PLAYER_HEIGHT = 2 * (PLAYER_SHAPE.halfHeight + PLAYER_SHAPE.radius);
 /** Distance from body centre to feet / head. */
 export const PLAYER_HALF_HEIGHT = PLAYER_HEIGHT / 2;
 
@@ -76,16 +54,16 @@ export function findGrabbableLadder(
 }
 
 /** Steady slide speed caused by tangential gravity while grounded. */
-export function slideVelocity(gravityX: number): number {
-  return gravityX * PLAYER.slideFactor;
+export function slideVelocity(T: Readonly<PlayerTuning>, gravityX: number): number {
+  return gravityX * T.slideFactor;
 }
 
-export function moveSpeed(carrying: boolean, inWater: number): number {
-  let s = PLAYER.walkSpeed * (carrying ? PLAYER.carrySpeedFactor : 1);
-  if (inWater > 0.25) s *= PLAYER.waterSlow;
+export function moveSpeed(T: Readonly<PlayerTuning>, carrying: boolean, inWater: number): number {
+  let s = T.walkSpeed * (carrying ? T.carrySpeedFactor : 1);
+  if (inWater > 0.25) s *= T.waterSlow;
   return s;
 }
 
-export function clampFall(vy: number): number {
-  return clamp(vy, -PLAYER.maxFall * 2, PLAYER.maxFall);
+export function clampFall(T: Readonly<PlayerTuning>, vy: number): number {
+  return clamp(vy, -T.maxFall * 2, T.maxFall);
 }

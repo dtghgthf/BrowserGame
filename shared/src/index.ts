@@ -11,4 +11,5 @@ export * from './fixedStepper';
 export * from './layout/parseLayout';
 export * from './layout/shipMap';
 export { GROUP, OBJECT_SPECS, initPhysics } from './physics';
-export { Simulation, GAMEPLAY, getShipLayout, type SimulationOptions } from './simulation';
+export { Simulation, getShipLayout, type Hint, type HintIcon, type SimulationOptions } from './simulation';
+export * from './tuning';

@@ -1,8 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
   EMPTY_INPUT,
-  GAMEPLAY,
-  PLAYER,
+  DEFAULT_TUNING,
   PLAYER_HALF_HEIGHT,
   SIM_DT,
   Simulation,
@@ -118,7 +117,7 @@ describe('player physics', () => {
     tap(sim, 'a', 'pick');
     expect(sim.state.players[0]!.carrying).toBe(crate.id);
     run(sim, 1, () => ({ a: input({ left: true }) }));
-    expect(Math.abs(sim.state.players[0]!.vx)).toBeCloseTo(PLAYER.walkSpeed * PLAYER.carrySpeedFactor, 1);
+    expect(Math.abs(sim.state.players[0]!.vx)).toBeCloseTo(DEFAULT_TUNING.player.walkSpeed * DEFAULT_TUNING.player.carrySpeedFactor, 1);
     tap(sim, 'a', 'pick');
     expect(sim.state.players[0]!.carrying).toBeNull();
     expect(sim.state.objects.find((o) => o.id === crate.id)!.carriedBy).toBeNull();
@@ -197,7 +196,7 @@ describe('leak, pump and repair', () => {
     const vAfter = sim.state.compartments[comp]!.volume;
     // 6 s of pumping at ~3.3 strokes/s removes more water than the leak brings in
     expect(vAfter).toBeLessThan(vBefore);
-    expect(vAfter).toBeLessThan(vBefore + leakIn * 6 - strokes * GAMEPLAY.pumpStroke * 0.9);
+    expect(vAfter).toBeLessThan(vBefore + leakIn * 6 - strokes * DEFAULT_TUNING.gameplay.pumpStroke * 0.9);
     tap(sim, 'a', 'interact');
 
     // get a plank from the workshop
@@ -215,7 +214,7 @@ describe('leak, pump and repair', () => {
     run(sim, 0.5);
     tap(sim, 'a', 'interact');
     expect(sim.state.players[0]!.action?.kind).toBe('repair');
-    run(sim, PLAYER.repairTime + 0.2);
+    run(sim, DEFAULT_TUNING.player.repairTime + 0.2);
     expect(sim.state.leaks[0]!.active).toBe(false);
     expect(sim.state.players[0]!.carrying).toBeNull();
     expect(sim.state.objects.some((o) => o.id === plankId)).toBe(false);
@@ -235,6 +234,68 @@ describe('leak, pump and repair', () => {
   });
 });
 
+describe('analog station input', () => {
+  it('dragging the wheel to a target sets the rudder', async () => {
+    const sim = await Simulation.create({ seaState: 0 });
+    sim.addPlayer('a');
+    const wheel = sim.state.stations.find((s) => s.kind === 'wheel')!;
+    sim.teleportPlayer('a', wheel.x, wheel.y - PLAYER_HALF_HEIGHT - 0.02);
+    run(sim, 0.3);
+    tap(sim, 'a', 'interact');
+    run(sim, 1.5, () => ({ a: input({ target: 0.6 }) }));
+    expect(sim.state.ship.rudder).toBeCloseTo(0.6, 3);
+    run(sim, 1.5, () => ({ a: input({ target: -2 }) }));
+    expect(sim.state.ship.rudder).toBeCloseTo(-1, 3);
+  });
+
+  it('swinging the pump lever by target pumps water', async () => {
+    const sim = await Simulation.create({ seaState: 0 });
+    sim.addPlayer('a');
+    const pump = sim.state.stations.find((s) => s.kind === 'pump')!;
+    sim.step({}, SIM_DT, [{ type: 'debugWater', compartment: 1, volume: 10 }]);
+    sim.teleportPlayer('a', pump.x, pump.y - PLAYER_HALF_HEIGHT - 0.02);
+    run(sim, 0.3);
+    tap(sim, 'a', 'interact');
+    const v0 = sim.state.compartments[1]!.volume;
+    for (let k = 0; k < 10; k++) run(sim, 0.3, () => ({ a: input({ target: k % 2 ? 1 : -1 }) }));
+    expect(sim.state.stations[pump.id]!.aux).toBeGreaterThanOrEqual(9);
+    expect(sim.state.compartments[1]!.volume).toBeLessThan(v0 - 1.2);
+  });
+
+  it('the searchlight turns towards a target angle along the shortest arc', async () => {
+    const sim = await Simulation.create({ seaState: 0 });
+    sim.addPlayer('a');
+    const sl = sim.state.stations.find((s) => s.kind === 'searchlight')!;
+    sim.teleportPlayer('a', sl.x, sl.y - PLAYER_HALF_HEIGHT - 0.02);
+    run(sim, 0.3);
+    tap(sim, 'a', 'interact');
+    run(sim, 3, () => ({ a: input({ target: Math.PI - 0.2 }) }));
+    expect(Math.abs(sim.state.stations[sl.id]!.value - (Math.PI - 0.2))).toBeLessThan(0.01);
+  });
+});
+
+describe('tuning', () => {
+  it('a tune command changes gameplay live (walk speed)', async () => {
+    const sim = await Simulation.create({ seaState: 0 });
+    sim.addPlayer('a');
+    run(sim, 0.5);
+    run(sim, 1, () => ({ a: input({ right: true }) }));
+    expect(sim.state.players[0]!.vx).toBeCloseTo(DEFAULT_TUNING.player.walkSpeed, 1);
+    sim.step({}, SIM_DT, [{ type: 'tune', patch: { player: { walkSpeed: 2 } } }]);
+    run(sim, 1, () => ({ a: input({ left: true }) }));
+    expect(sim.state.players[0]!.vx).toBeCloseTo(-2, 1);
+    // the defaults themselves are untouched
+    expect(DEFAULT_TUNING.player.walkSpeed).not.toBe(2);
+  });
+
+  it('options.tuning overrides defaults per simulation', async () => {
+    const sim = await Simulation.create({ seaState: 0, tuning: { gameplay: { gravity: 10 } } });
+    expect(sim.tuning.gameplay.gravity).toBe(10);
+    run(sim, 0.2);
+    expect(Math.hypot(sim.state.ship.gravity.x, sim.state.ship.gravity.y)).toBeCloseTo(10, 0);
+  });
+});
+
 describe('sinking', () => {
   it('a flooded hull sinks the ship and the game restarts after a few seconds', async () => {
     const sim = await Simulation.create({ seaState: 0 });
@@ -246,7 +307,7 @@ describe('sinking', () => {
     ]);
     sim.step({});
     expect(sim.state.status).toBe('sunk');
-    run(sim, GAMEPLAY.sunkResetTime + 0.2);
+    run(sim, DEFAULT_TUNING.gameplay.sunkResetTime + 0.2);
     expect(sim.state.status).toBe('sailing');
     expect(sim.waterTotals().volume).toBe(0);
     expect(sim.state.players.map((p) => p.id)).toEqual(['a']);

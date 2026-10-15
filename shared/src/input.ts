@@ -1,3 +1,5 @@
+import type { TuningPatch } from './tuning';
+
 /**
  * Player input for one simulation tick. Inputs are plain data: the client
  * samples keyboard/touch into this shape, the (future) server receives it over
@@ -14,6 +16,12 @@ export interface PlayerInput {
   interact: boolean;
   /** F: pick up / drop objects, take a plank at the workshop. */
   pick: boolean;
+  /**
+   * Analog target for the station the player operates (e.g. dragging the
+   * steering wheel): wheel/pump -1..1, searchlight/cannon = angle in radians.
+   * null when not used.
+   */
+  target: number | null;
 }
 
 export const EMPTY_INPUT: Readonly<PlayerInput> = Object.freeze({
@@ -24,6 +32,7 @@ export const EMPTY_INPUT: Readonly<PlayerInput> = Object.freeze({
   jump: false,
   interact: false,
   pick: false,
+  target: null,
 });
 
 export function copyInput(src: Readonly<PlayerInput>, dst: PlayerInput = { ...EMPTY_INPUT }): PlayerInput {
@@ -34,6 +43,7 @@ export function copyInput(src: Readonly<PlayerInput>, dst: PlayerInput = { ...EM
   dst.jump = src.jump;
   dst.interact = src.interact;
   dst.pick = src.pick;
+  dst.target = src.target ?? null;
   return dst;
 }
 
@@ -45,4 +55,5 @@ export type SimCommand =
   | { type: 'debugWater'; compartment: number; volume: number }
   | { type: 'seaState'; value: number }
   | { type: 'debugRoll'; value: number | null }
+  | { type: 'tune'; patch: TuningPatch }
   | { type: 'reset' };

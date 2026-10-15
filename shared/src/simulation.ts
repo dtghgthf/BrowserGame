@@ -1,4 +1,4 @@
-import { GRAVITY, SIM_DT } from './constants';
+import { SIM_DT } from './constants';
 import { copyInput, EMPTY_INPUT, type InputMap, type PlayerInput, type SimCommand } from './input';
 import { COMPARTMENT_NAMES, SHIP_MAP, SHIP_ORIGIN } from './layout/shipMap';
 import { compartmentAtLocal, parseLayout, tileToLocal, type MarkerDef, type ShipLayout } from './layout/parseLayout';
@@ -22,8 +22,8 @@ import {
   findGrabbableLadder,
   ladderZone,
   moveSpeed,
-  PLAYER,
   PLAYER_HALF_HEIGHT,
+  PLAYER_SHAPE,
   PLAYER_HEIGHT,
   slideVelocity,
   type LadderZone,
@@ -31,6 +31,7 @@ import {
 import { nextRandom } from './rng';
 import { seaSurfaceY } from './sea';
 import { createShipState, shipToWorld, updateShip } from './ship';
+import { applyTuningPatch, cloneTuning, DEFAULT_TUNING, type Tuning, type TuningPatch } from './tuning';
 import type {
   BubbleKey,
   GameEvent,
@@ -51,29 +52,14 @@ import {
   type CompartmentGeometry,
 } from './water';
 
-export const GAMEPLAY = {
-  /** Leak inflow in m^2/s per sqrt(m) of depth below the outside waterline. */
-  leakRate: 0.3,
-  /** Volume removed per pump stroke (half swing), m^2. */
-  pumpStroke: 0.16,
-  /** Pump handle speed (handle units per second, full swing = 2 units). */
-  pumpHandleSpeed: 8,
-  /** Rudder change per second while turning the wheel. */
-  wheelSpeed: 0.9,
-  searchlightSpeed: 1.5,
-  cannonSpeed: 1.0,
-  workshopCooldown: 1.0,
-  /** Fraction of total hull capacity at which the ship is lost. */
-  sinkFraction: 0.8,
-  sunkResetTime: 5,
-  overboardTime: 2.5,
-  bubbleTime: 3,
-} as const;
 
 export interface SimulationOptions {
   seed?: number;
+  /** Initial sea state; defaults to tuning.ship.initialSeaState. */
   seaState?: number;
   layout?: ShipLayout;
+  /** Overrides on top of DEFAULT_TUNING. */
+  tuning?: TuningPatch;
 }
 
 interface PlayerRuntime {
@@ -105,6 +91,14 @@ const STATION_KINDS: Partial<Record<MarkerDef['type'], StationKind>> = {
 /** Stations a player can enter (workshop is used by pressing E/F next to it instead). */
 const OPERABLE: ReadonlySet<StationKind> = new Set(['wheel', 'pump', 'searchlight', 'cannon']);
 
+/** Language independent icon for an interaction (touch context buttons). */
+export type HintIcon = 'wheel' | 'pump' | 'searchlight' | 'cannon' | 'workshop' | 'plank' | 'hatch' | 'repair' | 'exit' | 'grab' | 'drop';
+
+export interface Hint {
+  label: string;
+  icon: HintIcon;
+}
+
 let defaultLayout: ShipLayout | null = null;
 export function getShipLayout(): ShipLayout {
   defaultLayout ??= parseLayout(SHIP_MAP, { origin: SHIP_ORIGIN, compartmentNames: COMPARTMENT_NAMES });
@@ -120,6 +114,8 @@ export class Simulation {
   readonly layout: ShipLayout;
   readonly waterGeometry: CompartmentGeometry[];
   readonly ladders: LadderZone[];
+  /** This simulation's gameplay numbers (change them with a `tune` command). */
+  readonly tuning: Tuning;
   state!: GameState;
 
   private world!: World;
@@ -141,8 +137,10 @@ export class Simulation {
     this.layout = options.layout ?? getShipLayout();
     this.waterGeometry = this.layout.compartments.map((c) => buildCompartmentGeometry(this.layout, c));
     this.ladders = this.layout.ladders.map((l) => ladderZone(this.layout, l));
+    this.tuning = cloneTuning(DEFAULT_TUNING);
+    applyTuningPatch(this.tuning, options.tuning);
     this.seed = options.seed ?? 1337;
-    this.initialSeaState = options.seaState ?? 0.75;
+    this.initialSeaState = options.seaState ?? this.tuning.ship.initialSeaState;
     this.reset();
   }
 
@@ -167,7 +165,7 @@ export class Simulation {
       rng: this.seed >>> 0,
       status: 'sailing',
       statusTimer: 0,
-      ship: createShipState(seaState),
+      ship: createShipState(this.tuning.ship, this.tuning.gameplay.gravity, seaState),
       players: [],
       objects: [],
       hatches: this.layout.hatches.map((h) => ({ id: h.id, open: true })),
@@ -221,8 +219,8 @@ export class Simulation {
     );
     const filter = PLAYER_FILTER_BASE | GROUP.PLATFORM;
     const collider = this.world.createCollider(
-      RAPIER.ColliderDesc.capsule(PLAYER.halfHeight, PLAYER.radius)
-        .setMass(PLAYER.mass)
+      RAPIER.ColliderDesc.capsule(PLAYER_SHAPE.halfHeight, PLAYER_SHAPE.radius)
+        .setMass(PLAYER_SHAPE.mass)
         .setFriction(0)
         .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
         .setRestitution(0)
@@ -327,13 +325,13 @@ export class Simulation {
       volume += c.volume;
       moment += c.volume * c.centroidX;
     }
-    updateShip(s.ship, s.time, dt, { volume, moment });
+    updateShip(s.ship, s.time, dt, { volume, moment }, this.tuning.ship, this.tuning.gameplay.gravity);
     if (this.forcedRoll !== null) {
       s.ship.roll = this.forcedRoll;
       s.ship.rollVel = 0;
       s.ship.ay = 0;
-      s.ship.gravity.x = Math.sin(this.forcedRoll) * GRAVITY;
-      s.ship.gravity.y = Math.cos(this.forcedRoll) * GRAVITY;
+      s.ship.gravity.x = Math.sin(this.forcedRoll) * this.tuning.gameplay.gravity;
+      s.ship.gravity.y = Math.cos(this.forcedRoll) * this.tuning.gameplay.gravity;
     }
     this.world.gravity = { x: s.ship.gravity.x, y: s.ship.gravity.y };
 
@@ -379,6 +377,9 @@ export class Simulation {
       case 'debugRoll':
         this.forcedRoll = c.value;
         break;
+      case 'tune':
+        applyTuningPatch(this.tuning, c.patch);
+        break;
       case 'reset':
         this.reset();
         break;
@@ -392,7 +393,7 @@ export class Simulation {
   }
 
   private say(p: PlayerState, key: BubbleKey): void {
-    p.bubble = { key, time: GAMEPLAY.bubbleTime };
+    p.bubble = { key, time: this.tuning.gameplay.bubbleTime };
   }
 
   private updatePlayer(p: PlayerState, input: Readonly<PlayerInput>, dt: number): void {
@@ -413,7 +414,7 @@ export class Simulation {
     const grounded = this.probeGround(rt);
     p.grounded = grounded;
     rt.airTime = grounded ? 0 : rt.airTime + dt;
-    rt.jumpBuffer = pressed('jump') ? PLAYER.jumpBuffer : Math.max(0, rt.jumpBuffer - dt);
+    rt.jumpBuffer = pressed('jump') ? this.tuning.player.jumpBuffer : Math.max(0, rt.jumpBuffer - dt);
 
     // an E/jump press that leaves a station or cancels an action is consumed
     let consumed = false;
@@ -443,8 +444,8 @@ export class Simulation {
       } else {
         p.action.progress += dt;
         const v = rt.body.linvel();
-        rt.body.setLinvel({ x: approach(v.x, 0, PLAYER.groundAccel * dt), y: clampFall(v.y + g.y * dt) }, true);
-        if (p.action.progress >= PLAYER.repairTime) this.finishRepair(p);
+        rt.body.setLinvel({ x: approach(v.x, 0, this.tuning.player.groundAccel * dt), y: clampFall(this.tuning.player, v.y + g.y * dt) }, true);
+        if (p.action.progress >= this.tuning.player.repairTime) this.finishRepair(p);
         return;
       }
     }
@@ -457,7 +458,7 @@ export class Simulation {
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     rt.moveDir = dir;
     if (dir !== 0) p.facing = dir > 0 ? 1 : -1;
-    const speed = moveSpeed(carrying, p.inWater);
+    const speed = moveSpeed(this.tuning.player, carrying, p.inWater);
     const v = rt.body.linvel();
     let vx = v.x;
     let vy = v.y;
@@ -474,7 +475,7 @@ export class Simulation {
     }
     if (p.climbing !== null) {
       const z = this.ladders[p.climbing]!;
-      const climb = PLAYER.climbSpeed * (carrying ? PLAYER.carryClimbFactor : 1);
+      const climb = this.tuning.player.climbSpeed * (carrying ? this.tuning.player.carryClimbFactor : 1);
       const vDir = (input.down ? 1 : 0) - (input.up ? 1 : 0);
       vx = (z.x - p.x) * 12;
       vy = vDir * climb;
@@ -491,7 +492,7 @@ export class Simulation {
       if (rt.jumpBuffer > 0) {
         leave = true;
         rt.jumpBuffer = 0;
-        vy = -PLAYER.jumpSpeed * 0.55;
+        vy = -this.tuning.player.jumpSpeed * 0.55;
         vx = dir * speed;
         this.emit({ type: 'jump', player: p.id });
       }
@@ -504,11 +505,11 @@ export class Simulation {
     // ---- walking / sliding / jumping
     const swimming = p.inWater > 0.55;
     if (grounded) {
-      const target = dir * speed + (swimming ? 0 : slideVelocity(g.x));
-      vx = approach(vx, target, PLAYER.groundAccel * dt);
+      const target = dir * speed + (swimming ? 0 : slideVelocity(this.tuning.player, g.x));
+      vx = approach(vx, target, this.tuning.player.groundAccel * dt);
       vy += g.y * dt;
     } else {
-      if (dir !== 0) vx = approach(vx, dir * speed, PLAYER.airAccel * dt);
+      if (dir !== 0) vx = approach(vx, dir * speed, this.tuning.player.airAccel * dt);
       vx += g.x * dt * (swimming ? 0.3 : 1);
       vy += g.y * dt * (swimming ? 0.3 : 1);
     }
@@ -516,14 +517,14 @@ export class Simulation {
       vx *= 1 - 2 * dt;
       vy *= 1 - 2.5 * dt;
     }
-    const canJump = grounded || rt.airTime < PLAYER.coyoteTime || swimming;
+    const canJump = grounded || rt.airTime < this.tuning.player.coyoteTime || swimming;
     if (rt.jumpBuffer > 0 && canJump) {
-      vy = -PLAYER.jumpSpeed * (carrying ? PLAYER.carryJumpFactor : 1) * (swimming ? 0.7 : 1);
+      vy = -this.tuning.player.jumpSpeed * (carrying ? this.tuning.player.carryJumpFactor : 1) * (swimming ? 0.7 : 1);
       rt.jumpBuffer = 0;
-      rt.airTime = PLAYER.coyoteTime;
+      rt.airTime = this.tuning.player.coyoteTime;
       this.emit({ type: 'jump', player: p.id });
     }
-    vy = clampFall(vy);
+    vy = clampFall(this.tuning.player, vy);
     rt.body.setLinvel({ x: vx, y: vy }, true);
     this.setPlatformFilter(p, rt, true);
   }
@@ -555,7 +556,7 @@ export class Simulation {
       for (const h of this.layout.hatches) {
         if (!h.hasLadder || !this.state.hatches[h.id]!.open) continue;
         const g = hatchGeometry(this.layout, h);
-        if (Math.abs(t.x - g.x) > g.width / 2 + PLAYER.radius) continue;
+        if (Math.abs(t.x - g.x) > g.width / 2 + PLAYER_SHAPE.radius) continue;
         if (feet > g.top + 0.1 && head < g.bottom) {
           solid = false;
           break;
@@ -582,9 +583,9 @@ export class Simulation {
   // ---------------------------------------------------------------- interactions
 
   /** All interactions (E) available to a player, nearest first. Pure query - nothing happens until `run`. */
-  private interactionCandidates(p: PlayerState, rt: PlayerRuntime): { d: number; label: string; run: () => void }[] {
+  private interactionCandidates(p: PlayerState, rt: PlayerRuntime): { d: number; label: string; icon: HintIcon; run: () => void }[] {
     const feetY = p.y + PLAYER_HALF_HEIGHT;
-    const candidates: { d: number; label: string; run: () => void }[] = [];
+    const candidates: { d: number; label: string; icon: HintIcon; run: () => void }[] = [];
     const STATION_LABEL: Record<StationKind, string> = {
       wheel: 'Steuerrad',
       pump: 'Pumpe',
@@ -598,33 +599,34 @@ export class Simulation {
       const dy = Math.abs(st.y - feetY);
       if (dy > 0.6) continue;
       if (st.kind === 'workshop') {
-        if (dx < 1.0 && p.carrying === null) candidates.push({ d: dx, label: STATION_LABEL.workshop, run: () => this.takePlank(p) });
-      } else if (OPERABLE.has(st.kind) && st.occupant === null && dx < PLAYER.stationRange) {
-        candidates.push({ d: dx, label: STATION_LABEL[st.kind], run: () => this.enterStation(p, rt, st) });
+        if (dx < 1.0 && p.carrying === null) candidates.push({ d: dx, label: STATION_LABEL.workshop, icon: 'plank', run: () => this.takePlank(p) });
+      } else if (OPERABLE.has(st.kind) && st.occupant === null && dx < this.tuning.player.stationRange) {
+        candidates.push({ d: dx, label: STATION_LABEL[st.kind], icon: st.kind, run: () => this.enterStation(p, rt, st) });
       }
     }
     for (const h of this.layout.hatches) {
       const g = hatchGeometry(this.layout, h);
       const dx = Math.abs(g.x - p.x);
-      if (dx > g.width / 2 + PLAYER.hatchRange) continue;
+      if (dx > g.width / 2 + this.tuning.player.hatchRange) continue;
       const headY = p.y - PLAYER_HALF_HEIGHT;
       const fromAbove = Math.abs(feetY - g.top) < 0.4;
       const fromBelow = headY > g.bottom - 0.1 && headY - g.bottom < 1.4;
       const open = this.state.hatches[h.id]!.open;
       if (fromAbove || fromBelow) {
-        candidates.push({ d: dx + 0.25, label: open ? 'Luke schließen' : 'Luke öffnen', run: () => this.toggleHatch(h.id) });
+        candidates.push({ d: dx + 0.25, label: open ? 'Luke schließen' : 'Luke öffnen', icon: 'hatch', run: () => this.toggleHatch(h.id) });
       }
     }
     for (const leak of this.state.leaks) {
       if (!leak.active) continue;
       const lp = this.leakInteriorPoint(leak.point);
       const d = Math.hypot(lp.x - p.x, lp.y - p.y);
-      if (d < PLAYER.leakRange) {
+      if (d < this.tuning.player.leakRange) {
         const obj = p.carrying !== null ? this.state.objects.find((o) => o.id === p.carrying) : undefined;
         const hasPlank = obj?.kind === 'plank';
         candidates.push({
           d: d - 0.5,
           label: hasPlank ? 'Leck reparieren' : 'Planke nötig!',
+          icon: hasPlank ? 'repair' : 'plank',
           run: () => {
             if (hasPlank) p.action = { kind: 'repair', target: leak.id, progress: 0 };
             else this.say(p, 'plank');
@@ -639,22 +641,23 @@ export class Simulation {
     this.interactionCandidates(p, rt)[0]?.run();
   }
 
-  /** What E and F would do right now for this player (for UI prompts). */
-  interactionHints(id: string): { interact: string | null; pick: string | null } {
+  /** What E and F would do right now for this player (for UI prompts and context buttons). */
+  interactionHints(id: string): { interact: Hint | null; pick: Hint | null } {
     const p = this.state.players.find((pp) => pp.id === id);
     const rt = this.players.get(id);
     if (!p || !rt || p.overboard > 0) return { interact: null, pick: null };
-    if (p.station !== null) return { interact: 'Verlassen', pick: null };
-    if (p.action) return { interact: 'Abbrechen', pick: null };
-    const interact = this.interactionCandidates(p, rt)[0]?.label ?? null;
-    let pick: string | null = null;
-    if (p.carrying !== null) pick = 'Ablegen';
+    if (p.station !== null) return { interact: { label: 'Verlassen', icon: 'exit' }, pick: null };
+    if (p.action) return { interact: { label: 'Abbrechen', icon: 'exit' }, pick: null };
+    const c = this.interactionCandidates(p, rt)[0];
+    const interact: Hint | null = c ? { label: c.label, icon: c.icon } : null;
+    let pick: Hint | null = null;
+    if (p.carrying !== null) pick = { label: 'Ablegen', icon: 'drop' };
     else {
-      const near = this.state.objects.find((o) => !o.carriedBy && Math.hypot(o.x - p.x, (o.y - p.y) * 0.8) < PLAYER.pickRange);
-      if (near) pick = near.kind === 'crate' ? 'Kiste nehmen' : near.kind === 'barrel' ? 'Fass nehmen' : 'Planke nehmen';
+      const near = this.state.objects.find((o) => !o.carriedBy && Math.hypot(o.x - p.x, (o.y - p.y) * 0.8) < this.tuning.player.pickRange);
+      if (near) pick = { label: near.kind === 'crate' ? 'Kiste nehmen' : near.kind === 'barrel' ? 'Fass nehmen' : 'Planke nehmen', icon: 'grab' };
       else {
         const ws = this.state.stations.find((st) => st.kind === 'workshop');
-        if (ws && Math.abs(ws.x - p.x) < 1.0 && Math.abs(ws.y - (p.y + PLAYER_HALF_HEIGHT)) < 0.6) pick = 'Planke holen';
+        if (ws && Math.abs(ws.x - p.x) < 1.0 && Math.abs(ws.y - (p.y + PLAYER_HALF_HEIGHT)) < 0.6) pick = { label: 'Planke holen', icon: 'plank' };
       }
     }
     return { interact, pick };
@@ -677,26 +680,41 @@ export class Simulation {
     p.station = null;
   }
 
+  /**
+   * Station controls. Digital input (left/right) moves the station at a fixed
+   * rate; an analog `target` (dragging the wheel / lever / dial in the UI) moves
+   * it towards the target, at most a bit faster than the keys - so touch and
+   * keyboard players are equally strong.
+   */
   private operateStation(st: StationState, input: Readonly<PlayerInput>, dt: number): void {
+    const G = this.tuning.gameplay;
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    const target = input.target;
+    const hasTarget = typeof target === 'number' && Number.isFinite(target);
     switch (st.kind) {
       case 'wheel': {
-        st.value = clamp(st.value + dir * GAMEPLAY.wheelSpeed * dt, -1, 1);
+        st.value = hasTarget
+          ? approach(st.value, clamp(target, -1, 1), G.wheelSpeed * 2.5 * dt)
+          : clamp(st.value + dir * G.wheelSpeed * dt, -1, 1);
         this.state.ship.rudder = st.value;
         break;
       }
       case 'pump': {
-        // alternate left/right (or up/down) to swing the handle; each full swing pumps water
-        const pdir = dir !== 0 ? dir : (input.down ? 1 : 0) - (input.up ? 1 : 0);
-        if (pdir === 0) break;
+        // swing the handle from end to end; each full swing pumps water
         const before = st.value;
-        st.value = clamp(st.value + pdir * GAMEPLAY.pumpHandleSpeed * dt, -1, 1);
-        const reachedEnd = (pdir > 0 && before < 1 && st.value >= 1) || (pdir < 0 && before > -1 && st.value <= -1);
+        if (hasTarget) {
+          st.value = approach(st.value, clamp(target, -1, 1), G.pumpHandleSpeed * dt);
+        } else {
+          const pdir = dir !== 0 ? dir : (input.down ? 1 : 0) - (input.up ? 1 : 0);
+          if (pdir === 0) break;
+          st.value = clamp(st.value + pdir * G.pumpHandleSpeed * dt, -1, 1);
+        }
+        const reachedEnd = (before < 1 && st.value >= 1) || (before > -1 && st.value <= -1);
         if (reachedEnd) {
           const comp = this.pumpCompartment(st);
           if (comp >= 0) {
             const c = this.state.compartments[comp]!;
-            const removed = Math.min(c.volume, GAMEPLAY.pumpStroke);
+            const removed = Math.min(c.volume, G.pumpStroke);
             c.volume -= removed;
             refreshSurface(this.waterGeometry[comp]!, c);
             st.aux += 1;
@@ -706,10 +724,17 @@ export class Simulation {
         break;
       }
       case 'searchlight':
-        st.value = wrapAngle(st.value + dir * GAMEPLAY.searchlightSpeed * dt);
+        if (hasTarget) {
+          const step = G.searchlightSpeed * 1.6 * dt;
+          st.value = wrapAngle(st.value + clamp(wrapAngle(target - st.value), -step, step));
+        } else {
+          st.value = wrapAngle(st.value + dir * G.searchlightSpeed * dt);
+        }
         break;
       case 'cannon':
-        st.value = clamp(st.value + dir * GAMEPLAY.cannonSpeed * dt, -1.3, 0.35);
+        st.value = hasTarget
+          ? approach(st.value, clamp(target, -1.3, 0.35), G.cannonSpeed * 1.6 * dt)
+          : clamp(st.value + dir * G.cannonSpeed * dt, -1.3, 0.35);
         break;
       case 'workshop':
         break;
@@ -734,7 +759,7 @@ export class Simulation {
     const g = hatchGeometry(this.layout, this.layout.hatches[id]!);
     const inside = (x: number, y: number, hx: number, hy: number) =>
       Math.abs(x - g.x) < g.width / 2 + hx - 0.02 && y + hy > g.top + 0.02 && y - hy < g.bottom - 0.02;
-    for (const p of this.state.players) if (inside(p.x, p.y, PLAYER.radius, PLAYER_HALF_HEIGHT)) return true;
+    for (const p of this.state.players) if (inside(p.x, p.y, PLAYER_SHAPE.radius, PLAYER_HALF_HEIGHT)) return true;
     for (const o of this.state.objects) {
       if (o.carriedBy) continue;
       const s = OBJECT_SPECS[o.kind];
@@ -749,7 +774,7 @@ export class Simulation {
       return;
     }
     let best: ObjectState | null = null;
-    let bestD: number = PLAYER.pickRange;
+    let bestD: number = this.tuning.player.pickRange;
     for (const o of this.state.objects) {
       if (o.carriedBy) continue;
       const d = Math.hypot(o.x - p.x, (o.y - p.y) * 0.8);
@@ -780,7 +805,7 @@ export class Simulation {
     ort.body.setEnabled(false);
     o.carriedBy = p.id;
     p.carrying = o.id;
-    ws.value = GAMEPLAY.workshopCooldown;
+    ws.value = this.tuning.gameplay.workshopCooldown;
     ws.aux += 1;
     this.emit({ type: 'pickup', player: p.id, object: o.id });
   }
@@ -797,10 +822,10 @@ export class Simulation {
     const shape = new RAPIER.Cuboid(s.hx, s.hy);
     const grp = groups(GROUP.OBJECT, GROUP.WORLD | GROUP.OBJECT | GROUP.HATCH | GROUP.PLATFORM);
     const candidates: Vec2[] = [
-      { x: t.x + p.facing * (PLAYER.radius + s.hx + 0.06), y: feet - s.hy - 0.03 },
-      { x: t.x + p.facing * (PLAYER.radius + s.hx + 0.06), y: feet - s.hy - 0.45 },
+      { x: t.x + p.facing * (PLAYER_SHAPE.radius + s.hx + 0.06), y: feet - s.hy - 0.03 },
+      { x: t.x + p.facing * (PLAYER_SHAPE.radius + s.hx + 0.06), y: feet - s.hy - 0.45 },
       { x: t.x, y: t.y - PLAYER_HALF_HEIGHT - s.hy - 0.05 },
-      { x: t.x - p.facing * (PLAYER.radius + s.hx + 0.06), y: feet - s.hy - 0.03 },
+      { x: t.x - p.facing * (PLAYER_SHAPE.radius + s.hx + 0.06), y: feet - s.hy - 0.03 },
     ];
     let pos = candidates[candidates.length - 1]!;
     for (const c of candidates) {
@@ -900,7 +925,7 @@ export class Simulation {
       const geom = this.waterGeometry[lp.compartment]!;
       const inside = depthBelowSurface(geom, comp, hull.x, hull.y);
       const head = outside - inside;
-      leak.inflow = head > 0 ? GAMEPLAY.leakRate * Math.sqrt(head) : 0;
+      leak.inflow = head > 0 ? this.tuning.gameplay.leakRate * Math.sqrt(head) : 0;
       if (leak.inflow > 0) {
         comp.volume = Math.min(geom.capacity, comp.volume + leak.inflow * dt);
         refreshSurface(geom, comp);
@@ -915,9 +940,9 @@ export class Simulation {
     let cap = 0;
     for (const c of s.compartments) v += c.volume;
     for (const g of this.waterGeometry) cap += g.capacity;
-    if (cap > 0 && v / cap >= GAMEPLAY.sinkFraction) {
+    if (cap > 0 && v / cap >= this.tuning.gameplay.sinkFraction) {
       s.status = 'sunk';
-      s.statusTimer = GAMEPLAY.sunkResetTime;
+      s.statusTimer = this.tuning.gameplay.sunkResetTime;
       this.emit({ type: 'sunk' });
     }
   }
@@ -986,7 +1011,7 @@ export class Simulation {
         this.leaveStation(p);
         p.climbing = null;
         p.action = null;
-        p.overboard = GAMEPLAY.overboardTime;
+        p.overboard = this.tuning.gameplay.overboardTime;
         rt.body.setEnabled(false);
         this.emit({ type: 'overboard', player: p.id });
         this.emit({ type: 'splash', x: p.x, y: p.y, strength: 1 });
