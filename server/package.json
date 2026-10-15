@@ -1,0 +1,10 @@
+{
+  "name": "@lw/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Authoritative game server (Colyseus) - Phase 3. Empty for now.",
+  "scripts": {
+    "build": "tsc --noEmit -p ."
+  }
+}
