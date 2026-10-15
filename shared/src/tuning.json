@@ -17,7 +17,11 @@
     "stationRange": 0.9,
     "pickRange": 1,
     "hatchRange": 0.7,
-    "leakRange": 1.4
+    "leakRange": 1.4,
+    "openTime": 2.2,
+    "ramTime": 0.7,
+    "hammerFactor": 0.6,
+    "crowbarFactor": 0.5
   },
   "ship": {
     "initialSeaState": 0.75,
@@ -47,7 +51,6 @@
     "wheelSpeed": 0.9,
     "searchlightSpeed": 1.5,
     "cannonSpeed": 1,
-    "workshopCooldown": 1,
     "sinkFraction": 0.42,
     "sunkResetTime": 5,
     "overboardTime": 2.5,
@@ -60,7 +63,6 @@
     "rockSeeRange": 18,
     "shipBeam": 2.6,
     "rockShake": 0.5,
-    "cannonReload": 2.2,
     "ballSpeed": 24,
     "monsterFirstAt": 0.3,
     "monsterEvery": 450,
@@ -68,6 +70,10 @@
     "monsterSpeed": 1.4,
     "monsterAttackInterval": 7,
     "arrivedResetTime": 15,
-    "pingTime": 4
+    "pingTime": 4,
+    "sawStrokes": 5,
+    "startTimber": 6,
+    "cannonSoloLoad": 3.2,
+    "oilBurn": 0.006
   }
 }

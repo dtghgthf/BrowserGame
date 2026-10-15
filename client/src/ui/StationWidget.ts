@@ -130,6 +130,10 @@ export class StationWidget {
         // pull the lever: up = -1, down = +1
         this.target = Math.max(-1, Math.min(1, (p.y - this.center.y) / 16));
         break;
+      case 'workshop':
+        // push and pull the saw sideways
+        this.target = Math.max(-1, Math.min(1, (p.x - this.center.x) / 20));
+        break;
       case 'searchlight':
       case 'cannon':
         // the dial shows world directions: compensate the ship's roll
@@ -143,7 +147,7 @@ export class StationWidget {
   update(state: GameState, view: Snapshot, playerId: string | undefined, tuning: Readonly<Tuning>): void {
     const p = state.players.find((pp) => pp.id === playerId);
     const st = p && p.station !== null ? state.stations[p.station] : undefined;
-    const kind = st && st.kind !== 'workshop' ? st.kind : null;
+    const kind = st && st.kind !== 'rack' ? st.kind : null;
     if (kind !== this.kind) {
       this.kind = kind;
       this.drag = null;
@@ -211,6 +215,26 @@ export class StationWidget {
         sub = this.drag ? `HUB ${st.aux}` : 'HEBEL AUF UND AB / A-D';
         break;
       }
+      case 'workshop': {
+        this.radius = 30;
+        // the plank on the bench and the saw going back and forth
+        const progress = st.charge;
+        this.g.rect(cx - 30, cy + 2, 60, 6).fill(0x8a5a32);
+        this.g.rect(cx - 30, cy + 2, 60, 1).fill(0xb07a48);
+        const cut = Math.round(progress * 6);
+        if (cut > 0) this.g.rect(cx - 1, cy + 2, 2, cut).fill(0x2a1a10);
+        const sx = cx + Math.round(this.value * 14);
+        this.g.rect(sx - 16, cy - 6, 30, 7).fill(0xb8c0c8);
+        this.g.rect(sx - 16, cy + 1, 30, 1).fill(0x707880);
+        this.g.rect(sx + 14, cy - 9, 7, 11).fill(0x6a3a20);
+        // progress + wood stock
+        this.g.rect(cx - 20, cy + 14, 40, 3).fill(0x2c3a4c);
+        this.g.rect(cx - 20, cy + 14, Math.round(40 * progress), 3).fill(0xe0b860);
+        title = 'WERKBANK';
+        const wood = state.voyage.timber;
+        sub = wood <= 0 ? 'KEIN HOLZ! KISTEN ZERLEGEN' : this.drag ? `HOLZ ${wood}` : `SÄGEN: HIN UND HER / A-D  HOLZ ${wood}`;
+        break;
+      }
       case 'searchlight':
       case 'cannon': {
         this.radius = 28;
@@ -220,13 +244,13 @@ export class StationWidget {
         this.needle.position.set(cx, cy);
         this.needle.rotation = this.value + this.roll;
         title = kind === 'searchlight' ? 'SCHEINWERFER' : 'KANONE';
-        sub = this.drag ? '' : kind === 'searchlight' ? 'RICHTUNG ZEIGEN / A-D' : st.aux > 0 ? 'LADEN ...' : 'ZIELEN, F = FEUER!';
-        if (kind === 'cannon') {
-          // reload bar under the dial
-          const frac = 1 - Math.min(1, st.aux / 2.2);
-          this.g.rect(cx - 20, cy + 32, 40, 3).fill(0x2c3a4c);
-          this.g.rect(cx - 20, cy + 32, Math.round(40 * frac), 3).fill(frac >= 1 ? 0x6cc070 : 0xe0b860);
-        }
+        if (kind === 'searchlight') sub = this.drag ? '' : st.charge <= 0 ? 'KEIN ÖL! ÖLKANNE HOLEN' : 'RICHTUNG ZEIGEN / A-D';
+        else sub = this.drag ? '' : st.charge < 2 ? 'LADEN ...' : 'ZIELEN, F = FEUER!';
+        // load bar (cannon) / oil gauge (searchlight) under the dial
+        const frac = kind === 'cannon' ? Math.min(1, st.charge / 2) : st.charge;
+        this.g.rect(cx - 20, cy + 32, 40, 3).fill(0x2c3a4c);
+        const full = kind === 'cannon' ? frac >= 1 : frac > 0.25;
+        this.g.rect(cx - 20, cy + 32, Math.round(40 * frac), 3).fill(full ? 0x6cc070 : kind === 'cannon' ? 0xe0b860 : 0xe8584a);
         break;
       }
       default:

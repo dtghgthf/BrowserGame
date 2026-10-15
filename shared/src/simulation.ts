@@ -34,6 +34,7 @@ import { createShipState, shipToWorld, updateShip } from './ship';
 import { BOW_OFFSET, LIGHTHOUSE_ISLAND, MONSTER_ATTACK_OFFSET, ROCK_LOOKAHEAD, SEARCHLIGHT_PIVOT, CANNON_PIVOT } from './systems/constants';
 import { fireCannon, updateBalls } from './systems/cannon';
 import type { BeamRay, SimContext } from './systems/context';
+import { openCrate, rollLoot } from './systems/crates';
 import { monsterHead, updateMonster } from './systems/monster';
 import { updateRocks } from './systems/rocks';
 import { updateShouts } from './systems/shouts';
@@ -45,6 +46,7 @@ import type {
   ObjectKind,
   ObjectState,
   PingKind,
+  PlayerActionKind,
   PlayerState,
   StationKind,
   StationState,
@@ -92,19 +94,54 @@ export interface AddPlayerOptions {
 /** Number of distinct coat colours / spawn points. */
 export const PLAYER_COLORS = 4;
 
+/** German object names (UI prompts). */
+export const OBJECT_NAMES: Record<ObjectKind, string> = {
+  crate: 'Kiste',
+  barrel: 'Fass',
+  plank: 'Planke',
+  bucket: 'Eimer',
+  oilcan: 'Ölkanne',
+  ball: 'Kugel',
+};
+
+/** Map markers that place a loose object. */
+const MARKER_OBJECTS: Partial<Record<MarkerDef['type'], ObjectKind>> = {
+  crate: 'crate',
+  barrel: 'barrel',
+  plank: 'plank',
+  oilcan: 'oilcan',
+  bucket: 'bucket',
+};
+
 const STATION_KINDS: Partial<Record<MarkerDef['type'], StationKind>> = {
   wheel: 'wheel',
   pump: 'pump',
   searchlight: 'searchlight',
   cannon: 'cannon',
   workshop: 'workshop',
+  rack: 'rack',
 };
 
-/** Stations a player can enter (workshop is used by pressing E/F next to it instead). */
-const OPERABLE: ReadonlySet<StationKind> = new Set(['wheel', 'pump', 'searchlight', 'cannon']);
+/** Stations a player can enter (the ball rack is used by pressing F next to it instead). */
+const OPERABLE: ReadonlySet<StationKind> = new Set(['wheel', 'pump', 'searchlight', 'cannon', 'workshop']);
 
 /** Language independent icon for an interaction (touch context buttons). */
-export type HintIcon = 'wheel' | 'pump' | 'searchlight' | 'cannon' | 'workshop' | 'plank' | 'hatch' | 'repair' | 'exit' | 'grab' | 'drop' | 'fire';
+export type HintIcon =
+  | 'wheel'
+  | 'pump'
+  | 'searchlight'
+  | 'cannon'
+  | 'workshop'
+  | 'plank'
+  | 'hatch'
+  | 'repair'
+  | 'exit'
+  | 'grab'
+  | 'drop'
+  | 'fire'
+  | 'crate'
+  | 'ball'
+  | 'oil';
 
 /** Seconds the ship needs to stop after arriving. */
 const ARRIVE_STOP_TIME = 4;
@@ -197,17 +234,19 @@ export class Simulation implements SimContext {
       monster: null,
       balls: [],
       pings: [],
-      shouts: { wheel: 6, water: 0, rock: 0 },
+      shouts: { wheel: 6, water: 0, rock: 0, oil: 0 },
       nextId: 1,
     };
     this.layout.hatches.forEach((h) => applyHatchState(this.hatchColliders[h.id]!, h, true));
 
     for (const m of this.layout.markers) {
-      if (m.type === 'crate' || m.type === 'barrel' || m.type === 'plank') {
-        const spec = OBJECT_SPECS[m.type];
-        const p = tileToLocal(this.layout, m.tx + 0.5, m.ty + 1);
-        this.spawnObject(m.type, p.x, p.y - spec.hy - 0.01, true);
-      }
+      const kind = MARKER_OBJECTS[m.type];
+      if (!kind) continue;
+      const spec = OBJECT_SPECS[kind];
+      const p = tileToLocal(this.layout, m.tx + 0.5, m.ty + 1);
+      const o = this.spawnObject(kind, p.x, p.y - spec.hy - 0.01, true);
+      if (kind === 'crate') o.contents = rollLoot(this.state);
+      if (kind === 'barrel' || kind === 'oilcan') o.fill = 1;
     }
     for (const k of keep) this.addPlayer(k.id, k).away = k.away;
   }
@@ -225,6 +264,11 @@ export class Simulation implements SimContext {
       monstersRepelled: 0,
       leaksRepaired: 0,
       landSighted: false,
+      timber: G.startTimber,
+      coins: 0,
+      cratesOpened: 0,
+      hammer: false,
+      crowbar: false,
     };
   }
 
@@ -235,7 +279,8 @@ export class Simulation implements SimContext {
       if (!kind) continue;
       const p = tileToLocal(this.layout, m.tx + 0.5, m.ty + 1);
       const value = kind === 'searchlight' ? 0.25 : kind === 'cannon' ? -0.2 : 0;
-      stations.push({ id: stations.length, kind, x: p.x, y: p.y, occupant: null, value, aux: kind === 'searchlight' ? 1 : 0 });
+      const charge = kind === 'cannon' ? 2 : kind === 'searchlight' ? 1 : 0;
+      stations.push({ id: stations.length, kind, x: p.x, y: p.y, occupant: null, value, aux: kind === 'searchlight' ? 1 : 0, charge });
     }
     return stations;
   }
@@ -385,7 +430,21 @@ export class Simulation implements SimContext {
   private spawnObject(kind: ObjectKind, x: number, y: number, rememberSpawn: boolean): ObjectState {
     const id = this.state.nextObjectId++;
     this.objects.set(id, createObjectBody(this.world, kind, x, y));
-    const o: ObjectState = { id, kind, x, y, angle: 0, vx: 0, vy: 0, av: 0, carriedBy: null, spawn: rememberSpawn ? { x, y } : null };
+    const o: ObjectState = {
+      id,
+      kind,
+      x,
+      y,
+      angle: 0,
+      vx: 0,
+      vy: 0,
+      av: 0,
+      carriedBy: null,
+      spawn: rememberSpawn ? { x, y } : null,
+      contents: [],
+      opened: false,
+      fill: 0,
+    };
     this.state.objects.push(o);
     return o;
   }
@@ -583,7 +642,7 @@ export class Simulation implements SimContext {
       }
     }
 
-    // ---- timed action (repairing a leak)
+    // ---- timed action (repairing a leak, opening a crate, ramming the cannon)
     if (p.action) {
       if (pressed('interact') || pressed('jump')) {
         p.action = null;
@@ -593,7 +652,7 @@ export class Simulation implements SimContext {
         p.action.progress += dt;
         const v = rt.body.linvel();
         rt.body.setLinvel({ x: approach(v.x, 0, this.tuning.player.groundAccel * dt), y: clampFall(this.tuning.player, v.y + g.y * dt) }, true);
-        if (p.action.progress >= this.tuning.player.repairTime) this.finishRepair(p);
+        if (p.action.progress >= this.actionDuration(p.action.kind)) this.finishAction(p);
         return;
       }
     }
@@ -738,17 +797,50 @@ export class Simulation implements SimContext {
       pump: 'Pumpe',
       searchlight: 'Scheinwerfer',
       cannon: 'Kanone',
-      workshop: 'Planke holen',
+      workshop: 'Werkbank',
+      rack: 'Kugeln',
     };
 
+    const carried = p.carrying !== null ? this.state.objects.find((o) => o.id === p.carrying) : undefined;
     for (const st of this.state.stations) {
       const dx = Math.abs(st.x - p.x);
       const dy = Math.abs(st.y - feetY);
       if (dy > 0.6) continue;
-      if (st.kind === 'workshop') {
-        if (dx < 1.0 && p.carrying === null) candidates.push({ d: dx, label: STATION_LABEL.workshop, icon: 'plank', run: () => this.takePlank(p) });
-      } else if (OPERABLE.has(st.kind) && st.occupant === null && dx < this.tuning.player.stationRange) {
+      if (st.kind === 'rack') {
+        if (dx < 1.0 && !carried) candidates.push({ d: dx, label: 'Kugel nehmen', icon: 'ball', run: () => this.takeBall(p) });
+        continue;
+      }
+      // things you bring to a station
+      if (dx < 1.2 && carried) {
+        if (st.kind === 'cannon' && carried.kind === 'ball' && st.charge < 1) {
+          candidates.push({ d: dx - 0.3, label: 'Kugel laden', icon: 'ball', run: () => this.loadBall(p, st) });
+        } else if (st.kind === 'searchlight' && carried.kind === 'oilcan') {
+          candidates.push({
+            d: dx - 0.3,
+            label: carried.fill > 0 ? 'Öl nachfüllen' : 'Kanne ist leer',
+            icon: 'oil',
+            run: () => (carried.fill > 0 ? this.refillLamp(p, st, carried) : this.say(p, 'oil')),
+          });
+        } else if (st.kind === 'workshop' && carried.kind === 'crate' && carried.opened) {
+          candidates.push({ d: dx - 0.3, label: 'Kiste zerlegen', icon: 'workshop', run: () => this.breakUpCrate(p) });
+        }
+      }
+      if (st.kind === 'cannon' && !carried && st.charge >= 1 && st.charge < 2 && dx < 1.2) {
+        candidates.push({ d: dx - 0.2, label: 'Kugel stopfen', icon: 'cannon', run: () => (p.action = { kind: 'ram', target: st.id, progress: 0 }) });
+      }
+      if (OPERABLE.has(st.kind) && st.occupant === null && dx < this.tuning.player.stationRange) {
         candidates.push({ d: dx, label: STATION_LABEL[st.kind], icon: st.kind, run: () => this.enterStation(p, rt, st) });
+      }
+    }
+    // crates and barrels on the floor
+    for (const o of this.state.objects) {
+      if (o.carriedBy) continue;
+      const d = Math.hypot(o.x - p.x, (o.y - p.y) * 0.8);
+      if (d > this.tuning.player.pickRange * 1.2) continue;
+      if (o.kind === 'crate' && !o.opened && !carried) {
+        candidates.push({ d: d - 0.2, label: 'Kiste öffnen', icon: 'crate', run: () => (p.action = { kind: 'open', target: o.id, progress: 0 }) });
+      } else if (o.kind === 'barrel' && carried?.kind === 'oilcan' && carried.fill < 1 && o.fill > 0) {
+        candidates.push({ d: d - 0.6, label: 'Öl abfüllen', icon: 'oil', run: () => this.fillCan(p, carried, o) });
       }
     }
     for (const h of this.layout.hatches) {
@@ -795,7 +887,7 @@ export class Simulation implements SimContext {
     if (!p || !rt || p.overboard > 0) return { interact: null, pick: null };
     if (p.station !== null) {
       const st = this.state.stations[p.station];
-      const pick: Hint | null = st?.kind === 'cannon' ? { label: st.aux > 0 ? 'Lädt ...' : 'Feuer!', icon: 'fire' } : null;
+      const pick: Hint | null = st?.kind === 'cannon' ? { label: st.charge < 2 ? 'Lädt ...' : 'Feuer!', icon: 'fire' } : null;
       return { interact: { label: 'Verlassen', icon: 'exit' }, pick };
     }
     if (p.action) return { interact: { label: 'Abbrechen', icon: 'exit' }, pick: null };
@@ -805,11 +897,8 @@ export class Simulation implements SimContext {
     if (p.carrying !== null) pick = { label: 'Ablegen', icon: 'drop' };
     else {
       const near = this.state.objects.find((o) => !o.carriedBy && Math.hypot(o.x - p.x, (o.y - p.y) * 0.8) < this.tuning.player.pickRange);
-      if (near) pick = { label: near.kind === 'crate' ? 'Kiste nehmen' : near.kind === 'barrel' ? 'Fass nehmen' : 'Planke nehmen', icon: 'grab' };
-      else {
-        const ws = this.state.stations.find((st) => st.kind === 'workshop');
-        if (ws && Math.abs(ws.x - p.x) < 1.0 && Math.abs(ws.y - (p.y + PLAYER_HALF_HEIGHT)) < 0.6) pick = { label: 'Planke holen', icon: 'plank' };
-      }
+      if (near) pick = { label: `${OBJECT_NAMES[near.kind]} nehmen`, icon: 'grab' };
+      else if (this.rackNear(p)) pick = { label: 'Kugel nehmen', icon: 'ball' };
     }
     return { interact, pick };
   }
@@ -886,9 +975,43 @@ export class Simulation implements SimContext {
         st.value = hasTarget
           ? approach(st.value, clamp(target, -1.3, 0.35), G.cannonSpeed * 1.6 * dt)
           : clamp(st.value + dir * G.cannonSpeed * dt, -1.3, 0.35);
-        if (fire && st.aux <= 0) fireCannon(this, st);
+        if (fire && st.charge >= 2) fireCannon(this, st);
+        else if (st.charge < 2) {
+          // alone the gunner loads by himself (slower than with a helper)
+          const before = st.charge;
+          st.charge = Math.min(2, st.charge + (2 / G.cannonSoloLoad) * dt);
+          if (before < 2 && st.charge >= 2) this.emit({ type: 'cannonLoad', player: st.occupant, station: st.id, charge: 2 });
+        }
         break;
-      case 'workshop':
+      case 'workshop': {
+        // saw back and forth like the pump; every stroke cuts a bit
+        const before = st.value;
+        if (hasTarget) st.value = approach(st.value, clamp(target, -1, 1), G.pumpHandleSpeed * dt);
+        else {
+          if (dir === 0) break;
+          st.value = clamp(st.value + dir * G.pumpHandleSpeed * dt, -1, 1);
+        }
+        const reachedEnd = (before < 1 && st.value >= 1) || (before > -1 && st.value <= -1);
+        if (!reachedEnd) break;
+        const v = this.state.voyage;
+        const op = st.occupant ? this.state.players.find((pp) => pp.id === st.occupant) : undefined;
+        if (v.timber <= 0) {
+          if (op && !op.bubble) this.say(op, 'wood');
+          break;
+        }
+        st.charge = Math.min(1, st.charge + 1 / Math.max(1, G.sawStrokes));
+        this.emit({ type: 'sawStroke', player: st.occupant, station: st.id });
+        if (st.charge >= 1) {
+          st.charge = 0;
+          v.timber -= 1;
+          st.aux += 1;
+          const o = this.spawnObject('plank', st.x + 0.2, st.y - 1.0, false);
+          this.objects.get(o.id)!.body.setLinvel({ x: 1.2, y: -2 }, true);
+          this.emit({ type: 'plankMade', station: st.id });
+        }
+        break;
+      }
+      case 'rack':
         break;
     }
   }
@@ -943,23 +1066,103 @@ export class Simulation implements SimContext {
       this.emit({ type: 'pickup', player: p.id, object: best.id });
       return;
     }
-    const workshop = this.state.stations.find((st) => st.kind === 'workshop');
-    if (workshop && Math.abs(workshop.x - p.x) < 1.0 && Math.abs(workshop.y - (p.y + PLAYER_HALF_HEIGHT)) < 0.6) {
-      this.takePlank(p);
+    if (this.rackNear(p)) this.takeBall(p);
+  }
+
+  private rackNear(p: PlayerState): StationState | undefined {
+    return this.state.stations.find((st) => st.kind === 'rack' && Math.abs(st.x - p.x) < 1.0 && Math.abs(st.y - (p.y + PLAYER_HALF_HEIGHT)) < 0.6);
+  }
+
+  /** Creates an object straight in the player's hands. */
+  private giveObject(p: PlayerState, kind: ObjectKind): ObjectState {
+    const o = this.spawnObject(kind, p.x, p.y - 1, false);
+    this.objects.get(o.id)!.body.setEnabled(false);
+    o.carriedBy = p.id;
+    p.carrying = o.id;
+    this.emit({ type: 'pickup', player: p.id, object: o.id });
+    return o;
+  }
+
+  private takeBall(p: PlayerState): void {
+    if (p.carrying !== null) return;
+    this.giveObject(p, 'ball');
+  }
+
+  /** Removes the carried object (it was used up). */
+  private consumeCarried(p: PlayerState): void {
+    if (p.carrying === null) return;
+    const id = p.carrying;
+    p.carrying = null;
+    this.removeObject(id);
+  }
+
+  private loadBall(p: PlayerState, st: StationState): void {
+    this.consumeCarried(p);
+    st.charge = Math.max(st.charge, 1);
+    this.emit({ type: 'cannonLoad', player: p.id, station: st.id, charge: st.charge });
+  }
+
+  private refillLamp(p: PlayerState, st: StationState, can: ObjectState): void {
+    const take = Math.min(can.fill, 1 - st.charge);
+    st.charge += take;
+    can.fill -= take;
+    this.emit({ type: 'refill', player: p.id, what: 'oil' });
+  }
+
+  private fillCan(p: PlayerState, can: ObjectState, barrel: ObjectState): void {
+    const take = Math.min(barrel.fill, 1 - can.fill);
+    can.fill += take;
+    barrel.fill -= take;
+    this.emit({ type: 'refill', player: p.id, what: 'oil' });
+  }
+
+  /** An empty crate becomes wood for the workshop. */
+  private breakUpCrate(p: PlayerState): void {
+    this.consumeCarried(p);
+    this.state.voyage.timber += 1;
+    this.emit({ type: 'breakUp', player: p.id });
+  }
+
+  /** Seconds a timed action takes (with the tools the crew found). */
+  actionDuration(kind: PlayerActionKind): number {
+    const P = this.tuning.player;
+    const v = this.state.voyage;
+    switch (kind) {
+      case 'repair':
+        return P.repairTime * (v.hammer ? P.hammerFactor : 1);
+      case 'open':
+        return P.openTime * (v.crowbar ? P.crowbarFactor : 1);
+      case 'ram':
+        return P.ramTime;
     }
   }
 
-  private takePlank(p: PlayerState): void {
-    const ws = this.state.stations.find((st) => st.kind === 'workshop');
-    if (!ws || p.carrying !== null || ws.value > 0) return;
-    const o = this.spawnObject('plank', p.x, p.y - 1, false);
-    const ort = this.objects.get(o.id)!;
-    ort.body.setEnabled(false);
-    o.carriedBy = p.id;
-    p.carrying = o.id;
-    ws.value = this.tuning.gameplay.workshopCooldown;
-    ws.aux += 1;
-    this.emit({ type: 'pickup', player: p.id, object: o.id });
+  private finishAction(p: PlayerState): void {
+    const action = p.action!;
+    switch (action.kind) {
+      case 'repair':
+        this.finishRepair(p);
+        return;
+      case 'open': {
+        p.action = null;
+        const crate = this.state.objects.find((o) => o.id === action.target);
+        if (!crate || crate.opened || crate.carriedBy || Math.hypot(crate.x - p.x, crate.y - p.y) > 2) return;
+        openCrate(this, p, crate, (kind, x, y, fill) => {
+          const o = this.spawnObject(kind, x, y, false);
+          o.fill = fill;
+          this.objects.get(o.id)!.body.setLinvel({ x: (x - crate.x) * 8, y: -3 }, true);
+        });
+        return;
+      }
+      case 'ram': {
+        p.action = null;
+        const st = this.state.stations[action.target];
+        if (!st || st.charge < 1) return;
+        st.charge = 2;
+        this.emit({ type: 'cannonLoad', player: p.id, station: st.id, charge: 2 });
+        return;
+      }
+    }
   }
 
   /** Places the carried object in front of the player (or wherever it fits). */
@@ -1138,7 +1341,7 @@ export class Simulation implements SimContext {
     const s = this.state;
     const v = s.voyage;
     const G = this.tuning.gameplay;
-    for (const k of ['wheel', 'water', 'rock'] as const) s.shouts[k] = Math.max(0, s.shouts[k] - dt);
+    for (const k of ['wheel', 'water', 'rock', 'oil'] as const) s.shouts[k] = Math.max(0, s.shouts[k] - dt);
     for (const pg of s.pings) pg.time -= dt;
     if (s.pings.some((pg) => pg.time <= 0)) s.pings = s.pings.filter((pg) => pg.time > 0);
     updateBalls(this, dt);
@@ -1182,7 +1385,7 @@ export class Simulation implements SimContext {
   /** World-space ray of the searchlight (origin, angle), or null. */
   searchlightRay(): BeamRay | null {
     const st = this.state.stations.find((x) => x.kind === 'searchlight');
-    if (!st || st.aux <= 0) return null;
+    if (!st || st.aux <= 0 || st.charge <= 0) return null;
     const ship = this.state.ship;
     const o = shipToWorld(ship, { x: st.x + SEARCHLIGHT_PIVOT.x, y: st.y + SEARCHLIGHT_PIVOT.y });
     return { x: o.x, y: o.y, angle: st.value + ship.roll };
@@ -1204,7 +1407,7 @@ export class Simulation implements SimContext {
       if (Math.hypot(lp.x - x, lp.y - y) < 1.4) return 'leak';
     }
     for (const st of s.stations) {
-      if (Math.abs(st.x - x) < 1.2 && y > st.y - 2 && y < st.y + 0.5) return st.kind === 'workshop' ? 'plank' : st.kind;
+      if (Math.abs(st.x - x) < 1.2 && y > st.y - 2 && y < st.y + 0.5) return st.kind === 'workshop' ? 'plank' : st.kind === 'rack' ? 'cannon' : st.kind;
     }
     for (const h of this.layout.hatches) {
       const g = hatchGeometry(this.layout, h);
@@ -1256,9 +1459,8 @@ export class Simulation implements SimContext {
     const minX = (0 - L.origin.x - 3) * L.tileSize;
     const maxX = (L.width - L.origin.x + 3) * L.tileSize;
     const maxY = (L.height - L.origin.y + 2) * L.tileSize;
-    for (const ws of s.stations) {
-      if (ws.kind === 'workshop' && ws.value > 0) ws.value = Math.max(0, ws.value - dt);
-      if (ws.kind === 'cannon' && ws.aux > 0) ws.aux = Math.max(0, ws.aux - dt);
+    for (const st of s.stations) {
+      if (st.kind === 'searchlight' && s.status === 'sailing' && st.charge > 0) st.charge = Math.max(0, st.charge - this.tuning.gameplay.oilBurn * dt);
     }
 
     for (const p of s.players) {

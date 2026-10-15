@@ -41,13 +41,16 @@ export interface ShipState {
 
 export type AnimState = 'idle' | 'run' | 'jump' | 'fall' | 'climb' | 'station' | 'repair' | 'swim';
 
+/** Timed actions: repair a leak (target = leak id), open a crate / barrel (object id), ram the cannon ball home (station id). */
+export type PlayerActionKind = 'repair' | 'open' | 'ram';
+
 export interface PlayerAction {
-  kind: 'repair';
+  kind: PlayerActionKind;
   target: number;
   progress: number;
 }
 
-export type BubbleKey = 'leak' | 'water' | 'plank' | 'help' | 'wheel' | 'rock' | 'monster' | 'land';
+export type BubbleKey = 'leak' | 'water' | 'plank' | 'help' | 'wheel' | 'rock' | 'monster' | 'land' | 'rat' | 'oil' | 'wood';
 
 export interface PlayerState {
   id: string;
@@ -91,7 +94,14 @@ export interface PlayerState {
   solidPlatforms: boolean;
 }
 
-export type ObjectKind = 'crate' | 'barrel' | 'plank';
+export type ObjectKind = 'crate' | 'barrel' | 'plank' | 'bucket' | 'oilcan' | 'ball';
+
+/**
+ * What can be inside a crate. Objects pop out as objects; `timber` and `coins`
+ * go to the ship's stock, `hammer` / `crowbar` are tools for the whole crew,
+ * the `rat` jumps out and runs away (and nibbles a plank of the stock).
+ */
+export type LootKind = 'plank' | 'timber' | 'ball' | 'oilcan' | 'bucket' | 'coins' | 'hammer' | 'crowbar' | 'rat';
 
 export interface ObjectState {
   id: number;
@@ -106,6 +116,12 @@ export interface ObjectState {
   carriedBy: string | null;
   /** Where the object respawns after falling overboard (null = it is removed instead). */
   spawn: Vec2 | null;
+  /** Crate: what is inside (decided by the seeded RNG when it is created). */
+  contents: LootKind[];
+  /** Crate / barrel: lid pried open. */
+  opened: boolean;
+  /** Bucket: water 0..1, oil can / barrel: oil 0..1. */
+  fill: number;
 }
 
 export interface HatchState {
@@ -135,7 +151,7 @@ export interface LeakState {
   inflow: number;
 }
 
-export type StationKind = 'wheel' | 'pump' | 'searchlight' | 'cannon' | 'workshop';
+export type StationKind = 'wheel' | 'pump' | 'searchlight' | 'cannon' | 'workshop' | 'rack';
 
 export interface StationState {
   id: number;
@@ -149,8 +165,13 @@ export interface StationState {
    * cannon: aim angle, workshop: cooldown seconds.
    */
   value: number;
-  /** wheel: visual wheel angle, pump: total strokes, searchlight: intensity, workshop: planks handed out. */
+  /** wheel: visual wheel angle, pump: total strokes, searchlight: intensity, workshop: planks made. */
   aux: number;
+  /**
+   * cannon: load 0 = empty, 1 = ball inside, 2 = rammed / ready (fractions while the operator loads alone),
+   * searchlight: oil 0..1, workshop: saw progress of the current plank 0..1.
+   */
+  charge: number;
 }
 
 /** A rock ahead in the fog. Coordinates in the top-down sense: along the course (world x) and sideways. */
@@ -224,6 +245,14 @@ export interface VoyageState {
   leaksRepaired: number;
   /** Set when the crew first saw the lighthouse up close (one shout). */
   landSighted: boolean;
+  /** Wood in stock for the workshop (one plank each). */
+  timber: number;
+  /** Coins found on the way (spent in the harbour). */
+  coins: number;
+  cratesOpened: number;
+  /** Tools found in crates (crew-wide): faster repairs / faster opening. */
+  hammer: boolean;
+  crowbar: boolean;
 }
 
 /** Cooldowns of the automatic shouts (seconds). */
@@ -231,6 +260,7 @@ export interface ShoutCooldowns {
   wheel: number;
   water: number;
   rock: number;
+  oil: number;
 }
 
 export type GameEvent =
@@ -258,7 +288,13 @@ export type GameEvent =
   | { type: 'monsterFlee' }
   | { type: 'ping'; player: string; kind: PingKind }
   | { type: 'shout'; player: string; key: BubbleKey }
-  | { type: 'arrived' };
+  | { type: 'arrived' }
+  | { type: 'crateOpen'; player: string; object: number; loot: LootKind[] }
+  | { type: 'sawStroke'; player: string | null; station: number }
+  | { type: 'plankMade'; station: number }
+  | { type: 'cannonLoad'; player: string | null; station: number; charge: number }
+  | { type: 'refill'; player: string; what: 'oil' }
+  | { type: 'breakUp'; player: string };
 
 export type GameStatus = 'sailing' | 'sunk' | 'arrived';
 

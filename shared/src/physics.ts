@@ -38,6 +38,9 @@ export const OBJECT_SPECS: Record<
   crate: { hx: 0.375, hy: 0.375, mass: 20, friction: 0.12, buoyancy: 1.6, restitution: 0.05 },
   barrel: { hx: 0.3125, hy: 0.375, mass: 30, friction: 0.08, buoyancy: 1.4, restitution: 0.1 },
   plank: { hx: 0.625, hy: 0.09375, mass: 6, friction: 0.25, buoyancy: 2.2, restitution: 0.05 },
+  bucket: { hx: 0.21875, hy: 0.25, mass: 4, friction: 0.3, buoyancy: 1.8, restitution: 0.05 },
+  oilcan: { hx: 0.1875, hy: 0.25, mass: 5, friction: 0.3, buoyancy: 1.5, restitution: 0.05 },
+  ball: { hx: 0.15625, hy: 0.15625, mass: 12, friction: 0.5, buoyancy: 0, restitution: 0.15 },
 };
 
 /** Creates the fixed hull colliders from the layout. Returns the hatch colliders by hatch id. */

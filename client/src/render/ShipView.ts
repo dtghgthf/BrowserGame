@@ -235,6 +235,9 @@ export class ShipView {
       case 'workshop':
         add('workbench', 0, 0);
         break;
+      case 'rack':
+        add('ball_rack', 0, 0);
+        break;
     }
     return { parts, moving, glow };
   }
@@ -322,7 +325,12 @@ export class ShipView {
           break;
       }
     });
-    this.searchlight.intensity = this.r.look.searchlightIntensity;
+    // the lamp burns oil: it flickers when the tank runs low and goes dark when empty
+    const lamp = state.stations.find((st) => st.kind === 'searchlight');
+    const oil = lamp ? lamp.charge : 1;
+    const flicker = oil <= 0 ? 0 : oil < 0.15 ? (Math.sin(this.time * 23) > -0.2 ? 0.75 : 0.15) : 1;
+    this.searchlight.intensity = this.r.look.searchlightIntensity * flicker;
+    for (const sv of this.stations) if (sv.glow) sv.glow.alpha = flicker;
     const pose = this.searchlightPose(view);
     if (pose) {
       this.searchlight.x = pose.x;
@@ -343,10 +351,11 @@ export class ShipView {
     for (const o of state.objects) {
       seen.add(o.id);
       let s = this.objects.get(o.id);
+      const frame = frameOf(this.assets.props, objectFrame(o));
       if (!s) {
-        s = new LitSprite(frameOf(this.assets.props, o.kind), this.layers.objects.a, this.layers.objects.n);
+        s = new LitSprite(frame, this.layers.objects.a, this.layers.objects.n);
         this.objects.set(o.id, s);
-      }
+      } else s.setFrame(frame);
       const v = view.objects.get(o.id) ?? o;
       s.setTransform(px(v.x), px(v.y), carriedAngle(o, v.angle));
     }
@@ -502,6 +511,12 @@ function imageFrame(name: string, layer: ImageLayer): SheetFrame {
     pivot: { x: 0, y: 0 },
     duration: 100,
   };
+}
+
+function objectFrame(o: ObjectState): string {
+  if (o.kind === 'crate' && o.opened) return 'crate_open';
+  if (o.kind === 'bucket' && o.fill > 0) return 'bucket_full';
+  return o.kind;
 }
 
 function carriedAngle(o: ObjectState, angle: number): number {

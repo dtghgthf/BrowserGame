@@ -44,8 +44,8 @@
   },
   "plank": {
    "frame": {
-    "x": 126,
-    "y": 187,
+    "x": 60,
+    "y": 197,
     "w": 20,
     "h": 3
    },
@@ -65,7 +65,7 @@
   },
   "lantern": {
    "frame": {
-    "x": 30,
+    "x": 86,
     "y": 173,
     "w": 7,
     "h": 10
@@ -86,7 +86,7 @@
   },
   "lantern_flame": {
    "frame": {
-    "x": 39,
+    "x": 95,
     "y": 173,
     "w": 7,
     "h": 10
@@ -170,8 +170,8 @@
   },
   "pump_handle": {
    "frame": {
-    "x": 148,
-    "y": 187,
+    "x": 82,
+    "y": 197,
     "w": 16,
     "h": 3
    },
@@ -212,7 +212,7 @@
   },
   "searchlight_head": {
    "frame": {
-    "x": 48,
+    "x": 120,
     "y": 173,
     "w": 12,
     "h": 8
@@ -233,7 +233,7 @@
   },
   "searchlight_glow": {
    "frame": {
-    "x": 62,
+    "x": 134,
     "y": 173,
     "w": 12,
     "h": 8
@@ -254,8 +254,8 @@
   },
   "cannon": {
    "frame": {
-    "x": 122,
-    "y": 173,
+    "x": 32,
+    "y": 187,
     "w": 18,
     "h": 7
    },
@@ -275,7 +275,7 @@
   },
   "cannon_carriage": {
    "frame": {
-    "x": 76,
+    "x": 148,
     "y": 173,
     "w": 14,
     "h": 8
@@ -315,10 +315,136 @@
    },
    "duration": 100
   },
+  "crate_open": {
+   "frame": {
+    "x": 14,
+    "y": 159,
+    "w": 12,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 12
+   },
+   "duration": 100
+  },
+  "bucket": {
+   "frame": {
+    "x": 164,
+    "y": 173,
+    "w": 7,
+    "h": 8
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 8
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 8
+   },
+   "duration": 100
+  },
+  "bucket_full": {
+   "frame": {
+    "x": 173,
+    "y": 173,
+    "w": 7,
+    "h": 8
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 8
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 8
+   },
+   "duration": 100
+  },
+  "oilcan": {
+   "frame": {
+    "x": 182,
+    "y": 173,
+    "w": 6,
+    "h": 8
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 6,
+    "h": 8
+   },
+   "sourceSize": {
+    "w": 6,
+    "h": 8
+   },
+   "duration": 100
+  },
+  "ball": {
+   "frame": {
+    "x": 53,
+    "y": 197,
+    "w": 5,
+    "h": 5
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 5,
+    "h": 5
+   },
+   "sourceSize": {
+    "w": 5,
+    "h": 5
+   },
+   "duration": 100
+  },
+  "ball_rack": {
+   "frame": {
+    "x": 104,
+    "y": 173,
+    "w": 14,
+    "h": 9
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 9
+   },
+   "sourceSize": {
+    "w": 14,
+    "h": 9
+   },
+   "duration": 100
+  },
   "hatch_closed": {
    "frame": {
-    "x": 92,
-    "y": 173,
+    "x": 2,
+    "y": 187,
     "w": 8,
     "h": 8
    },
@@ -359,8 +485,8 @@
   },
   "leak": {
    "frame": {
-    "x": 102,
-    "y": 173,
+    "x": 12,
+    "y": 187,
     "w": 8,
     "h": 8
    },
@@ -380,8 +506,8 @@
   },
   "patch": {
    "frame": {
-    "x": 112,
-    "y": 173,
+    "x": 22,
+    "y": 187,
     "w": 8,
     "h": 8
    },
@@ -422,8 +548,8 @@
   },
   "icon_leak": {
    "frame": {
-    "x": 142,
-    "y": 173,
+    "x": 52,
+    "y": 187,
     "w": 7,
     "h": 7
    },
@@ -443,8 +569,8 @@
   },
   "icon_plank": {
    "frame": {
-    "x": 151,
-    "y": 173,
+    "x": 61,
+    "y": 187,
     "w": 7,
     "h": 7
    },
@@ -464,8 +590,8 @@
   },
   "icon_help": {
    "frame": {
-    "x": 160,
-    "y": 173,
+    "x": 70,
+    "y": 187,
     "w": 7,
     "h": 7
    },
@@ -485,8 +611,71 @@
   },
   "icon_water": {
    "frame": {
-    "x": 169,
-    "y": 173,
+    "x": 79,
+    "y": 187,
+    "w": 7,
+    "h": 7
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 7
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 7
+   },
+   "duration": 100
+  },
+  "icon_rat": {
+   "frame": {
+    "x": 88,
+    "y": 187,
+    "w": 7,
+    "h": 7
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 7
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 7
+   },
+   "duration": 100
+  },
+  "icon_oil": {
+   "frame": {
+    "x": 97,
+    "y": 187,
+    "w": 7,
+    "h": 7
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 7
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 7
+   },
+   "duration": 100
+  },
+  "icon_wood": {
+   "frame": {
+    "x": 106,
+    "y": 187,
     "w": 7,
     "h": 7
    },
@@ -611,7 +800,7 @@
   },
   "ui_lever": {
    "frame": {
-    "x": 2,
+    "x": 115,
     "y": 187,
     "w": 44,
     "h": 7
@@ -653,8 +842,8 @@
   },
   "ui_needle": {
    "frame": {
-    "x": 93,
-    "y": 187,
+    "x": 27,
+    "y": 197,
     "w": 24,
     "h": 5
    },
@@ -800,7 +989,7 @@
   },
   "ui_i_jump": {
    "frame": {
-    "x": 14,
+    "x": 28,
     "y": 159,
     "w": 12,
     "h": 12
@@ -821,7 +1010,7 @@
   },
   "ui_i_hand": {
    "frame": {
-    "x": 28,
+    "x": 42,
     "y": 159,
     "w": 12,
     "h": 12
@@ -842,7 +1031,7 @@
   },
   "ui_i_wheel": {
    "frame": {
-    "x": 42,
+    "x": 56,
     "y": 159,
     "w": 12,
     "h": 12
@@ -863,7 +1052,7 @@
   },
   "ui_i_pump": {
    "frame": {
-    "x": 56,
+    "x": 70,
     "y": 159,
     "w": 12,
     "h": 12
@@ -884,7 +1073,7 @@
   },
   "ui_i_hatch": {
    "frame": {
-    "x": 70,
+    "x": 84,
     "y": 159,
     "w": 12,
     "h": 12
@@ -905,7 +1094,7 @@
   },
   "ui_i_hammer": {
    "frame": {
-    "x": 84,
+    "x": 98,
     "y": 159,
     "w": 12,
     "h": 12
@@ -926,7 +1115,7 @@
   },
   "ui_i_light": {
    "frame": {
-    "x": 98,
+    "x": 112,
     "y": 159,
     "w": 12,
     "h": 12
@@ -947,7 +1136,7 @@
   },
   "ui_i_cannon": {
    "frame": {
-    "x": 112,
+    "x": 126,
     "y": 159,
     "w": 12,
     "h": 12
@@ -968,7 +1157,7 @@
   },
   "ui_i_plank": {
    "frame": {
-    "x": 126,
+    "x": 140,
     "y": 159,
     "w": 12,
     "h": 12
@@ -989,7 +1178,7 @@
   },
   "ui_i_exit": {
    "frame": {
-    "x": 140,
+    "x": 154,
     "y": 159,
     "w": 12,
     "h": 12
@@ -1010,7 +1199,7 @@
   },
   "ui_i_grab": {
    "frame": {
-    "x": 154,
+    "x": 168,
     "y": 159,
     "w": 12,
     "h": 12
@@ -1031,8 +1220,8 @@
   },
   "ui_i_drop": {
    "frame": {
-    "x": 168,
-    "y": 159,
+    "x": 2,
+    "y": 173,
     "w": 12,
     "h": 12
    },
@@ -1052,7 +1241,70 @@
   },
   "ui_i_fire": {
    "frame": {
-    "x": 2,
+    "x": 16,
+    "y": 173,
+    "w": 12,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 12
+   },
+   "duration": 100
+  },
+  "ui_i_crate": {
+   "frame": {
+    "x": 30,
+    "y": 173,
+    "w": 12,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 12
+   },
+   "duration": 100
+  },
+  "ui_i_ball": {
+   "frame": {
+    "x": 44,
+    "y": 173,
+    "w": 12,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 12
+   },
+   "duration": 100
+  },
+  "ui_i_oil": {
+   "frame": {
+    "x": 58,
     "y": 173,
     "w": 12,
     "h": 12
@@ -1073,7 +1325,7 @@
   },
   "ui_i_ping": {
    "frame": {
-    "x": 16,
+    "x": 72,
     "y": 173,
     "w": 12,
     "h": 12
@@ -1239,30 +1491,9 @@
    },
    "duration": 100
   },
-  "ball": {
-   "frame": {
-    "x": 119,
-    "y": 187,
-    "w": 5,
-    "h": 5
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 5,
-    "h": 5
-   },
-   "sourceSize": {
-    "w": 5,
-    "h": 5
-   },
-   "duration": 100
-  },
   "icon_wheel": {
    "frame": {
-    "x": 48,
+    "x": 161,
     "y": 187,
     "w": 7,
     "h": 7
@@ -1283,7 +1514,7 @@
   },
   "icon_rock": {
    "frame": {
-    "x": 57,
+    "x": 170,
     "y": 187,
     "w": 7,
     "h": 7
@@ -1304,7 +1535,7 @@
   },
   "icon_monster": {
    "frame": {
-    "x": 66,
+    "x": 179,
     "y": 187,
     "w": 7,
     "h": 7
@@ -1325,8 +1556,8 @@
   },
   "icon_land": {
    "frame": {
-    "x": 75,
-    "y": 187,
+    "x": 2,
+    "y": 197,
     "w": 7,
     "h": 7
    },
@@ -1346,8 +1577,8 @@
   },
   "icon_here": {
    "frame": {
-    "x": 84,
-    "y": 187,
+    "x": 11,
+    "y": 197,
     "w": 7,
     "h": 7
    },
@@ -1373,7 +1604,7 @@
   "format": "RGBA8888",
   "size": {
    "w": 192,
-   "h": 196
+   "h": 206
   },
   "scale": "1",
   "frameTags": [],
@@ -1665,6 +1896,120 @@
     ]
    },
    {
+    "name": "crate_open",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 12,
+       "h": 12
+      },
+      "pivot": {
+       "x": 6,
+       "y": 6
+      }
+     }
+    ]
+   },
+   {
+    "name": "bucket",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 7,
+       "h": 8
+      },
+      "pivot": {
+       "x": 3,
+       "y": 4
+      }
+     }
+    ]
+   },
+   {
+    "name": "bucket_full",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 7,
+       "h": 8
+      },
+      "pivot": {
+       "x": 3,
+       "y": 4
+      }
+     }
+    ]
+   },
+   {
+    "name": "oilcan",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 6,
+       "h": 8
+      },
+      "pivot": {
+       "x": 3,
+       "y": 4
+      }
+     }
+    ]
+   },
+   {
+    "name": "ball",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 5,
+       "h": 5
+      },
+      "pivot": {
+       "x": 2,
+       "y": 2
+      }
+     }
+    ]
+   },
+   {
+    "name": "ball_rack",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 14,
+       "h": 9
+      },
+      "pivot": {
+       "x": 7,
+       "y": 9
+      }
+     }
+    ]
+   },
+   {
     "name": "hatch_closed",
     "color": "#0000ffff",
     "keys": [
@@ -1818,6 +2163,63 @@
    },
    {
     "name": "icon_water",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 7,
+       "h": 7
+      },
+      "pivot": {
+       "x": 3,
+       "y": 3
+      }
+     }
+    ]
+   },
+   {
+    "name": "icon_rat",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 7,
+       "h": 7
+      },
+      "pivot": {
+       "x": 3,
+       "y": 3
+      }
+     }
+    ]
+   },
+   {
+    "name": "icon_oil",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 7,
+       "h": 7
+      },
+      "pivot": {
+       "x": 3,
+       "y": 3
+      }
+     }
+    ]
+   },
+   {
+    "name": "icon_wood",
     "color": "#0000ffff",
     "keys": [
      {
@@ -2331,6 +2733,63 @@
    },
    {
     "name": "ui_i_fire",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 12,
+       "h": 12
+      },
+      "pivot": {
+       "x": 6,
+       "y": 6
+      }
+     }
+    ]
+   },
+   {
+    "name": "ui_i_crate",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 12,
+       "h": 12
+      },
+      "pivot": {
+       "x": 6,
+       "y": 6
+      }
+     }
+    ]
+   },
+   {
+    "name": "ui_i_ball",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 0,
+       "y": 0,
+       "w": 12,
+       "h": 12
+      },
+      "pivot": {
+       "x": 6,
+       "y": 6
+      }
+     }
+    ]
+   },
+   {
+    "name": "ui_i_oil",
     "color": "#0000ffff",
     "keys": [
      {

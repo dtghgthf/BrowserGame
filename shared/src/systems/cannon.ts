@@ -15,7 +15,7 @@ export function fireCannon(ctx: SimContext, st: StationState): void {
   const x = pivot.x + Math.cos(angle) * CANNON_LENGTH;
   const y = pivot.y + Math.sin(angle) * CANNON_LENGTH;
   s.balls.push({ id: ctx.nextId(), x, y, vx: Math.cos(angle) * G.ballSpeed + ship.speed, vy: Math.sin(angle) * G.ballSpeed + ship.vy, age: 0 });
-  st.aux = G.cannonReload;
+  st.charge = 0;
   ship.rollVel -= 0.06;
   ctx.emit({ type: 'cannonFire', player: st.occupant, x, y, angle });
 }

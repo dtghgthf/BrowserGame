@@ -26,6 +26,13 @@ export interface PlayerTuning {
   pickRange: number;
   hatchRange: number;
   leakRange: number;
+  /** Seconds to pry a crate open (crowbar: x crowbarFactor). */
+  openTime: number;
+  /** Seconds to ram a ball home in the cannon. */
+  ramTime: number;
+  /** Repair time multiplier once the crew found a hammer. */
+  hammerFactor: number;
+  crowbarFactor: number;
 }
 
 export interface ShipTuning {
@@ -59,7 +66,6 @@ export interface GameplayTuning {
   wheelSpeed: number;
   searchlightSpeed: number;
   cannonSpeed: number;
-  workshopCooldown: number;
   sinkFraction: number;
   sunkResetTime: number;
   overboardTime: number;
@@ -73,7 +79,6 @@ export interface GameplayTuning {
   rockSeeRange: number;
   shipBeam: number;
   rockShake: number;
-  cannonReload: number;
   ballSpeed: number;
   monsterFirstAt: number;
   monsterEvery: number;
@@ -82,6 +87,12 @@ export interface GameplayTuning {
   monsterAttackInterval: number;
   arrivedResetTime: number;
   pingTime: number;
+  /** Phase 5: saw strokes per plank, wood at the start, solo cannon loading, searchlight oil. */
+  sawStrokes: number;
+  startTimber: number;
+  cannonSoloLoad: number;
+  /** Oil the searchlight burns per second (1 = full tank). */
+  oilBurn: number;
 }
 
 export interface Tuning {
@@ -114,6 +125,10 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     pickRange: 1.0,
     hatchRange: 0.7,
     leakRange: 1.4,
+    openTime: 2.2,
+    ramTime: 0.7,
+    hammerFactor: 0.6,
+    crowbarFactor: 0.5,
   },
   ship: {
     initialSeaState: 0.75,
@@ -143,7 +158,6 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     wheelSpeed: 0.9,
     searchlightSpeed: 1.5,
     cannonSpeed: 1.0,
-    workshopCooldown: 1.0,
     sinkFraction: 0.42,
     sunkResetTime: 5,
     overboardTime: 2.5,
@@ -156,7 +170,6 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     rockSeeRange: 18,
     shipBeam: 2.6,
     rockShake: 0.5,
-    cannonReload: 2.2,
     ballSpeed: 24,
     monsterFirstAt: 0.3,
     monsterEvery: 450,
@@ -165,6 +178,10 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     monsterAttackInterval: 7,
     arrivedResetTime: 15,
     pingTime: 4,
+    sawStrokes: 5,
+    startTimber: 6,
+    cannonSoloLoad: 3.2,
+    oilBurn: 0.006,
   },
 };
 

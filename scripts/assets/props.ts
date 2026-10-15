@@ -237,6 +237,76 @@ function workbench(): PropSprite {
   return { name: 'workbench', canvas: c, pivot: { x: 12, y: 13 } };
 }
 
+/** Phase 5 supplies: opened crate, bucket, oil can, cannon ball and the ball rack. */
+function supplies(): PropSprite[] {
+  // opened crate: no lid, straw and a dark inside
+  const open = new Canvas(12, 12);
+  for (let y = 3; y < 12; y++) {
+    for (let x = 0; x < 12; x++) {
+      const plank = Math.floor(y / 3);
+      let col = hash(plank, 3) > 0.5 ? WOOD : shade(WOOD, 0.9);
+      if (y % 3 === 2) col = WOOD_D;
+      open.set(x, y, col, y % 3 === 2 ? 1.5 : 2);
+    }
+  }
+  open.rect(1, 3, 10, 2, WOOD_DD, 0.5);
+  const STRAW = hex('#d8b860');
+  for (const [x, y] of [[2, 2], [3, 3], [5, 2], [6, 3], [8, 2], [9, 3], [4, 4], [7, 4]] as const) open.set(x, y, hash(x, y) > 0.5 ? STRAW : shade(STRAW, 0.8), 2.4);
+  open.innerOutline(WOOD_DD);
+  for (const [x, y] of [[0, 10], [10, 10]] as const) open.rect(x, y, 2, 2, IRON_M, 2.8);
+
+  const bucket = (full: boolean): Canvas => {
+    const c = new Canvas(7, 8);
+    for (let y = 1; y < 8; y++) {
+      const inset = y > 5 ? 1 : 0;
+      for (let x = inset; x < 7 - inset; x++) c.set(x, y, mix(WOOD, WOOD_L, Math.sin(((x + 0.5) / 7) * Math.PI) * 0.7), 1 + Math.sin(((x + 0.5) / 7) * Math.PI) * 2);
+    }
+    for (const y of [2, 6]) for (let x = 0; x < 7; x++) c.set(x, y, IRON_M, 2.8);
+    // handle
+    c.set(0, 0, IRON_L, 2);
+    c.set(6, 0, IRON_L, 2);
+    for (let x = 1; x < 6; x++) c.set(x, 0, IRON_M, 2);
+    if (full) for (let x = 1; x < 6; x++) c.set(x, 1, x % 2 ? hex('#5aa8e6') : hex('#9ccaf2'), 2);
+    c.innerOutline(WOOD_DD);
+    return c;
+  };
+
+  const can = new Canvas(6, 8);
+  can.rect(0, 3, 6, 5, hex('#8a3a2a'), 2);
+  can.rect(0, 3, 6, 1, hex('#b85a40'), 2.4);
+  can.rect(1, 5, 3, 2, BRASS, 2.6);
+  can.rect(2, 1, 2, 2, IRON_M, 2.4);
+  can.set(4, 1, IRON_L, 2.4);
+  can.set(5, 0, IRON_L, 2.4);
+  can.innerOutline(hex('#2a1008'));
+
+  const ball = new Canvas(5, 5);
+  ball.disc(2, 2, 2, IRON, 2.5);
+  ball.set(1, 1, IRON_L, 3.5);
+  ball.set(2, 1, IRON_M, 3.2);
+
+  // rack: a low wooden frame holding a pyramid of balls
+  const rack = new Canvas(14, 9);
+  rack.rect(0, 6, 14, 3, WOOD, 2);
+  rack.rect(0, 6, 14, 1, WOOD_L, 2.4);
+  rack.rect(0, 2, 2, 7, WOOD_D, 2.2);
+  rack.rect(12, 2, 2, 7, WOOD_D, 2.2);
+  for (const [x, y] of [[3, 2], [7, 2], [5, 0]] as const) {
+    rack.disc(x + 2, y + 2, 2, IRON, 2.8);
+    rack.set(x + 1, y + 1, IRON_L, 3.6);
+  }
+  rack.innerOutline(WOOD_DD);
+
+  return [
+    { name: 'crate_open', canvas: open, pivot: { x: 6, y: 6 } },
+    { name: 'bucket', canvas: bucket(false), pivot: { x: 3, y: 4 } },
+    { name: 'bucket_full', canvas: bucket(true), pivot: { x: 3, y: 4 } },
+    { name: 'oilcan', canvas: can, pivot: { x: 3, y: 4 } },
+    { name: 'ball', canvas: ball, pivot: { x: 2, y: 2 } },
+    { name: 'ball_rack', canvas: rack, pivot: { x: 7, y: 9 } },
+  ];
+}
+
 function hatches(): PropSprite[] {
   const closed = new Canvas(8, 8);
   for (let y = 0; y < 8; y++) {
@@ -325,6 +395,9 @@ function bubbles(): PropSprite[] {
     icon('icon_plank', ['     ww', '    wwd', '   wwd ', '  wwd  ', ' wwd   ', 'wwd    ', 'dd     '], { w: hex('#c08a52'), d: hex('#6e4628') }),
     icon('icon_help', ['  rrr  ', '  rrr  ', '  rrr  ', '  rrr  ', '   r   ', '       ', '  rrr  '], { r: red }),
     icon('icon_water', ['       ', ' b   b ', 'b b b b', '   b   ', ' b   b ', 'b b b b', '   b   '], { b: blue }),
+    icon('icon_rat', ['       ', '  gg   ', ' gggg g', 'wgggggg', ' gggg  ', '  p p  ', '       '], { g: hex('#6a6470'), w: hex('#e8a0a8'), p: hex('#3a3440') }),
+    icon('icon_oil', ['   y   ', '  yyy  ', ' yyoyy ', ' yoooy ', ' yoooy ', '  yyy  ', '       '], { y: hex('#e0b860'), o: hex('#8a3a2a') }),
+    icon('icon_wood', ['       ', ' ddddd ', 'dwwwwwd', ' ddddd ', 'dwwwwwd', ' ddddd ', '       '], { w: hex('#c08a52'), d: hex('#6e4628') }),
   ];
 }
 
@@ -380,6 +453,7 @@ export function drawProps(): PropSprite[] {
     ...searchlight(),
     ...cannon(),
     workbench(),
+    ...supplies(),
     ...hatches(),
     ...leak(),
     ...bubbles(),

@@ -16,6 +16,13 @@ export function updateShouts(ctx: SimContext): void {
     if (p) ctx.say(p, 'wheel');
     s.shouts.wheel = 14;
   }
+  // the searchlight runs dry: whoever stands nearest asks for oil
+  const lamp = s.stations.find((st) => st.kind === 'searchlight');
+  if (lamp && lamp.charge < 0.15 && s.shouts.oil <= 0) {
+    const p = (lamp.occupant && s.players.find((pp) => pp.id === lamp.occupant)) || ctx.closestPlayer(lamp.x, lamp.y);
+    if (p) ctx.say(p, 'oil');
+    s.shouts.oil = 25;
+  }
   if (s.shouts.water <= 0) {
     for (let i = 0; i < s.compartments.length; i++) {
       const c = s.compartments[i]!;

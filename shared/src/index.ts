@@ -19,6 +19,7 @@ export {
   ROCK_LOOKAHEAD,
   SEARCHLIGHT_PIVOT,
   Simulation,
+  OBJECT_NAMES,
   getShipLayout,
   monsterHead,
   type Hint,
@@ -32,3 +33,4 @@ export * from './net/host';
 export * from './net/predict';
 export * from './net/codec';
 export * from './navigation';
+export { LOOT_NAMES, LOOT_OBJECTS, rollLoot } from './systems/crates';

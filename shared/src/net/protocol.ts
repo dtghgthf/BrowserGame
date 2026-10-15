@@ -9,7 +9,7 @@ import type { TuningPatch } from '../tuning';
  */
 
 /** Bumped whenever the messages below change incompatibly. */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 export const ROOM_NAME = 'ship';
 export const DEFAULT_SERVER_PORT = 2567;

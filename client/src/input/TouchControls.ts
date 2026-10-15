@@ -15,6 +15,9 @@ const ICONS: Record<HintIcon, string> = {
   grab: 'ui_i_grab',
   drop: 'ui_i_drop',
   fire: 'ui_i_fire',
+  crate: 'ui_i_crate',
+  ball: 'ui_i_ball',
+  oil: 'ui_i_oil',
 };
 
 type ButtonKey = 'jump' | 'interact' | 'pick';

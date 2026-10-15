@@ -201,9 +201,23 @@ describe('leak, pump and repair', () => {
     expect(vAfter).toBeLessThan(vBefore + leakIn * 6 - strokes * DEFAULT_TUNING.gameplay.pumpStroke * 0.9);
     tap(sim, 'a', 'interact');
 
-    // get a plank from the workshop
+    // saw a plank at the workshop, then pick it up
     const ws = sim.state.stations.find((s) => s.kind === 'workshop')!;
     sim.teleportPlayer('a', ws.x, ws.y - PLAYER_HALF_HEIGHT - 0.02);
+    run(sim, 0.3);
+    tap(sim, 'a', 'interact');
+    expect(sim.state.players[0]!.station).toBe(ws.id);
+    const timber = sim.state.voyage.timber;
+    const planksBefore = sim.state.objects.filter((o) => o.kind === 'plank').length;
+    for (let k = 0; k < DEFAULT_TUNING.gameplay.sawStrokes + 1; k++) {
+      run(sim, 0.3, () => ({ a: input({ left: k % 2 === 0, right: k % 2 === 1 }) }));
+    }
+    expect(sim.state.voyage.timber).toBe(timber - 1);
+    expect(sim.state.objects.filter((o) => o.kind === 'plank').length).toBe(planksBefore + 1);
+    tap(sim, 'a', 'interact');
+    run(sim, 1);
+    const made = sim.state.objects.filter((o) => o.kind === 'plank').sort((a, b) => b.id - a.id)[0]!;
+    sim.teleportPlayer('a', made.x, made.y - 0.3);
     run(sim, 0.3);
     tap(sim, 'a', 'pick');
     const plankId = sim.state.players[0]!.carrying;

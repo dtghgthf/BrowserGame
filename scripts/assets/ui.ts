@@ -197,6 +197,9 @@ function icons(): PropSprite[] {
     icon('ui_i_grab', ['            ', '  dddddddd  ', '  dgddddgd  ', '  dddddddd  ', '  dgddddgd  ', '  dddddddd  ', '            ', '     ww     ', '    wwww    ', '   wwwwww   ', '     ww     ', '     ww     ']),
     icon('ui_i_drop', ['     ww     ', '     ww     ', '   wwwwww   ', '    wwww    ', '     ww     ', '            ', '  dddddddd  ', '  dgddddgd  ', '  dddddddd  ', '  dgddddgd  ', '  dddddddd  ', '            ']),
     icon('ui_i_fire', ['     y      ', '  y  yy  y  ', '   yyrryy   ', ' yyrrwwrryy ', '  yrwwwwry  ', ' yyrwwwwryy ', '  yrrwwrry  ', '   yyrryy   ', '  y  yy  y  ', '     y      ', '            ', '            ']),
+    icon('ui_i_crate', ['            ', '   d    d   ', '    d  d    ', '  dddddddd  ', '  dgddddgd  ', '  dddddddd  ', '  dd dd dd  ', '  dddddddd  ', '  dgddddgd  ', '  dddddddd  ', '            ', '            ']),
+    icon('ui_i_ball', ['            ', '            ', '    gggg    ', '   gwgggg   ', '  ggwggggg  ', '  gggggggg  ', '  gggggggg  ', '  gggggggg  ', '   gggggg   ', '    gggg    ', '            ', '            ']),
+    icon('ui_i_oil', ['            ', '     y      ', '    yyy     ', '   yyyyy    ', '   yyyyy    ', '  ggggggg   ', '  gdddddg  g', '  gdddddggg ', '  gdddddg   ', '  ggggggg   ', '            ', '            ']),
     icon('ui_i_ping', ['            ', '    rrrr    ', '   rrwwrr   ', '  rrrwwrrr  ', '  rrrwwrrr  ', '  rrrrrrrr  ', '   rrwwrr   ', '    rrrr    ', '     rr     ', '     rr     ', '      r     ', '            ']),
   ];
 }

@@ -49,7 +49,10 @@ const INPUT = obj<PlayerInput>({
   target: nullable('f32'),
 });
 
-const BUBBLES = ['leak', 'water', 'plank', 'help', 'wheel', 'rock', 'monster', 'land'] as const;
+const BUBBLES = ['leak', 'water', 'plank', 'help', 'wheel', 'rock', 'monster', 'land', 'rat', 'oil', 'wood'] as const;
+const OBJECT_KINDS = ['crate', 'barrel', 'plank', 'bucket', 'oilcan', 'ball'] as const;
+const LOOT = ['plank', 'timber', 'ball', 'oilcan', 'bucket', 'coins', 'hammer', 'crowbar', 'rat'] as const;
+const STATION_KINDS = ['wheel', 'pump', 'searchlight', 'cannon', 'workshop', 'rack'] as const;
 
 const PLAYER = obj<PlayerState>({
   id: 'str',
@@ -66,7 +69,7 @@ const PLAYER = obj<PlayerState>({
   climbing: nullable('u8'),
   station: nullable('u8'),
   carrying: nullable('u16'),
-  action: nullable(obj<NonNullable<PlayerState['action']>>({ kind: oneOf(['repair']), target: 'u16', progress: 'f32' })),
+  action: nullable(obj<NonNullable<PlayerState['action']>>({ kind: oneOf(['repair', 'open', 'ram']), target: 'u16', progress: 'f32' })),
   anim: oneOf(['idle', 'run', 'jump', 'fall', 'climb', 'station', 'repair', 'swim']),
   animTime: 'f32',
   prevInput: INPUT,
@@ -80,7 +83,7 @@ const PLAYER = obj<PlayerState>({
 
 const OBJECT = obj<ObjectState>({
   id: 'u16',
-  kind: oneOf(['crate', 'barrel', 'plank']),
+  kind: oneOf(OBJECT_KINDS),
   x: 'pos',
   y: 'pos',
   angle: 'ang',
@@ -89,6 +92,9 @@ const OBJECT = obj<ObjectState>({
   av: 'vel',
   carriedBy: nullable('str'),
   spawn: nullable(obj<{ x: number; y: number }>({ x: 'pos', y: 'pos' })),
+  contents: array(oneOf(LOOT)),
+  opened: 'bool',
+  fill: 'f32',
 });
 
 const SHIP = obj<ShipState>({
@@ -123,12 +129,13 @@ const STATE = obj<GameState>({
   stations: array(
     obj<StationState>({
       id: 'u8',
-      kind: oneOf(['wheel', 'pump', 'searchlight', 'cannon', 'workshop']),
+      kind: oneOf(STATION_KINDS),
       x: 'pos',
       y: 'pos',
       occupant: nullable('str'),
       value: 'f32',
       aux: 'f32',
+      charge: 'f32',
     }),
   ),
   // events travel separately (see SnapshotMessage)
@@ -147,6 +154,11 @@ const STATE = obj<GameState>({
     monstersRepelled: 'u16',
     leaksRepaired: 'u16',
     landSighted: 'bool',
+    timber: 'u16',
+    coins: 'u32',
+    cratesOpened: 'u16',
+    hammer: 'bool',
+    crowbar: 'bool',
   }),
   rocks: array(obj<RockState>({ id: 'u32', x: 'f64', lateral: 'f32', radius: 'f32', spotted: 'bool', hit: 'bool' })),
   monster: nullable(
@@ -172,7 +184,7 @@ const STATE = obj<GameState>({
       time: 'f32',
     }),
   ),
-  shouts: obj<ShoutCooldowns>({ wheel: 'f32', water: 'f32', rock: 'f32' }),
+  shouts: obj<ShoutCooldowns>({ wheel: 'f32', water: 'f32', rock: 'f32', oil: 'f32' }),
   nextId: 'u32',
 });
 

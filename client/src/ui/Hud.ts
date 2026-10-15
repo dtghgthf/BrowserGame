@@ -89,6 +89,13 @@ export class Hud {
     this.g.rect(4, 105, 92, 2).fill(C.edge);
     this.g.rect(4, 105, Math.round(92 * prog), 2).fill(C.gold);
 
+    // ---- stock: wood for the workshop, coins, tools
+    const v = state.voyage;
+    this.g.rect(4, 109, 92, 9).fill({ color: C.panel, alpha: 0.75 });
+    this.text('wood', `HOLZ ${v.timber}`, 7, 111, v.timber > 0 ? C.text : C.warn);
+    this.text('coins', `MÜNZEN ${v.coins}`, 44, 111, C.gold);
+    this.text('tools', `${v.hammer ? 'H' : ''}${v.crowbar ? 'B' : ''}`, 88, 111, C.dim);
+
     // ---- leak warning
     const leaks = state.leaks.filter((l) => l.active).length;
     if (leaks > 0 && Math.floor(time * 2.5) % 2 === 0) {
@@ -116,7 +123,7 @@ export class Hud {
         this.text(`hint${i}`, line, x, baseY, C.text);
       }
       if (p.action) {
-        this.bar(Math.round(width / 2 - 20), baseY - 8, 40, 3, p.action.progress / 1.6, C.gold);
+        this.bar(Math.round(width / 2 - 20), baseY - 8, 40, 3, p.action.progress / sim.actionDuration(p.action.kind), C.gold);
       }
       // station controls are drawn by StationWidget (interactive) for the primary player
       if (p.station !== null && i > 0) {
@@ -134,9 +141,9 @@ export class Hud {
       const label = `RAUM ${net.code}`;
       const crew = `${state.players.length}/4 AN BORD`;
       // under the course panel (the top right corner belongs to the menu buttons)
-      this.g.rect(4, 110, 92, 17).fill({ color: C.panel, alpha: 0.75 });
-      this.text('room', label, 7, 113, C.gold);
-      this.text('crew', crew, 7, 120, C.dim);
+      this.g.rect(4, 120, 92, 17).fill({ color: C.panel, alpha: 0.75 });
+      this.text('room', label, 7, 123, C.gold);
+      this.text('crew', crew, 7, 130, C.dim);
       const problem = !net.synced ? 'VERBINDE ...' : net.status === 'reconnecting' ? 'VERBINDUNG WEG - VERBINDE NEU ...' : '';
       if (problem && Math.floor(time * 2) % 2 === 0) {
         const pw = this.font.measure(problem);
@@ -151,6 +158,7 @@ export class Hud {
         ['LEUCHTTURM ERREICHT!', C.gold],
         [`FELSEN: ${v.rocksPassed} UMSCHIFFT  ${v.rocksDestroyed} ZERSCHOSSEN  ${v.rocksHit} GERAMMT`, C.text],
         [`KRAKEN VERJAGT: ${v.monstersRepelled}   LECKS GEFLICKT: ${v.leaksRepaired}`, C.text],
+        [`KISTEN GEÖFFNET: ${v.cratesOpened}   MÜNZEN: ${v.coins}`, C.text],
         [`NEUE FAHRT IN ${Math.ceil(state.statusTimer)}`, C.dim],
       ];
       const w = Math.max(...lines.map(([t]) => this.font.measure(t)));

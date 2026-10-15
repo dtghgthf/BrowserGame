@@ -167,3 +167,25 @@ Format: **Entscheidung** – Begründung.
   vorausberechneten Bahn (Ruder + Strömung über 50 s) lief sofort aus dem Bild. Die Strömung ist jetzt halb so stark
   (Steuern soll nötig, aber keine Daueraufgabe sein); `shared/src/navigation.ts` rechnet Spur und Gefahr für Karte,
   Felsen-Platzierung und den „Ruder!“-Zuruf gleich.
+
+## Phase 5 – Mehr zu tun an Bord
+- **Gefahren-Logik als Systeme (`shared/src/systems/*`)** statt weiter in `simulation.ts`: reine Funktionen über ein
+  `SimContext`-Interface, das `Simulation` implementiert (emit, say, rand, leakAt, …). Neue Begegnungen sind so eigene
+  Module; `simulation.ts` bleibt bei Spielern, Physik und Wasser.
+- **Kisten haben Inhalt, ausgewürfelt beim Erzeugen** (seeded RNG im State) statt beim Öffnen: Alle Geräte sehen dasselbe,
+  und die Vorhersage kann das Öffnen exakt nachrechnen. 1–3 Dinge aus einer gewichteten Tabelle (`systems/crates.ts`);
+  eine Ratte kommt allein und frisst ein Stück Holz.
+- **Werkzeuge gelten für die ganze Crew** (Hammer = schneller flicken, Brecheisen = schneller öffnen) statt als
+  Trage-Gegenstände: man trägt ohnehin schon Planken, ein zweiter Slot wäre auf dem iPad unhandlich.
+- **Planken sind jetzt eine Ressource:** Die Werkbank ist eine Station, an der man (wie an der Pumpe) hin und her sägt;
+  jede Planke kostet ein Holz aus dem Vorrat (Start 6). Holz gibt es in Kisten und durch Zerlegen leerer Kisten an der
+  Werkbank. Vorher gab es unbegrenzt Planken per Knopfdruck – Lecks waren nur eine Laufaufgabe.
+- **Kanone laden:** Nach dem Schuss ist sie leer (`charge` 0). Allein lädt der Kanonier langsam selbst (3,2 s); ein
+  Helfer holt eine Kugel am Kugelgestell, lädt sie (E) und stopft sie fest (kurze Aktion) – das geht schneller und der
+  Kanonier kann dabei weiter zielen. Allein spielbar, zu zweit besser.
+- **Scheinwerfer verbrennt Öl** (Tank reicht ~3 min), flackert bei Reserve, geht dann aus; Nachfüllen mit der Ölkanne,
+  die Kanne am Ölfass auffüllen. Gibt dem Laufen zwischen den Decks einen weiteren Grund.
+- Pumpen-Verschleiß aus dem Plan bewusst weggelassen: Die Pumpe ist schon die anstrengendste Station, eine Zwangspause
+  hätte nur genervt.
+- Für Aktionen, die etwas Getragenes benutzen (Öl abfüllen, Kugel laden), haben Vorrang vor Luken in der Nähe – sonst
+  schnappt die Luke über dem Fass den Tastendruck weg.
