@@ -1,7 +1,8 @@
 import { EMPTY_INPUT, type PlayerInput } from '@lw/shared';
 
-type Key = keyof PlayerInput;
-const EDGE_KEYS: Key[] = ['jump', 'interact', 'pick'];
+type BoolKey = Exclude<keyof PlayerInput, 'target'>;
+const EDGE_KEYS: BoolKey[] = ['jump', 'interact', 'pick'];
+const BOOL_KEYS: BoolKey[] = ['left', 'right', 'up', 'down', 'jump', 'interact', 'pick'];
 
 /**
  * Turns device state into one PlayerInput per simulation tick. Presses are
@@ -9,19 +10,21 @@ const EDGE_KEYS: Key[] = ['jump', 'interact', 'pick'];
  * that happens between two ticks) is never lost.
  */
 export class InputSampler {
-  private readonly latched: Partial<Record<Key, boolean>> = {};
+  private readonly latched: Partial<Record<BoolKey, boolean>> = {};
   private readonly held: PlayerInput = { ...EMPTY_INPUT };
 
   /** Updates the held state for this frame (call once per rendered frame). */
   setHeld(input: PlayerInput): void {
-    for (const k of Object.keys(input) as Key[]) {
+    for (const k of BOOL_KEYS) {
       if (input[k] && !this.held[k] && EDGE_KEYS.includes(k)) this.latched[k] = true;
       this.held[k] = input[k];
     }
+    // analog station target: the latest value wins, it is not latched
+    this.held.target = input.target;
   }
 
   /** Registers a press even if the key was released again within the same frame. */
-  press(k: Key): void {
+  press(k: BoolKey): void {
     this.latched[k] = true;
   }
 

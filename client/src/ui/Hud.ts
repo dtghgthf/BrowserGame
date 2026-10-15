@@ -86,8 +86,8 @@ export class Hud {
       const keyE = i === 0 ? 'E' : 'ENTER';
       const keyF = i === 0 ? 'F' : 'STRG';
       const parts: string[] = [];
-      if (hints.interact) parts.push(`[${keyE}] ${hints.interact}`);
-      if (hints.pick) parts.push(`[${keyF}] ${hints.pick}`);
+      if (hints.interact) parts.push(`[${keyE}] ${hints.interact.label}`);
+      if (hints.pick) parts.push(`[${keyF}] ${hints.pick.label}`);
       const line = prefix + parts.join('  ');
       if (parts.length) {
         const w = this.font.measure(line);
@@ -98,40 +98,10 @@ export class Hud {
       if (p.action) {
         this.bar(Math.round(width / 2 - 20), baseY - 8, 40, 3, p.action.progress / 1.6, C.gold);
       }
-      if (p.station !== null) {
+      // station controls are drawn by StationWidget (interactive) for the primary player
+      if (p.station !== null && i > 0) {
         const st = state.stations[p.station]!;
-        const px = Math.round(width / 2 - 50);
-        const py = baseY - 26;
-        this.g.rect(px, py, 100, 20).fill({ color: C.panel, alpha: 0.85 });
-        this.g.rect(px, py, 100, 1).fill(C.edge);
-        switch (st.kind) {
-          case 'wheel': {
-            this.text(`st${i}`, 'RUDER  A/D DREHEN', px + 3, py + 3, C.gold);
-            this.bar(px + 3, py + 11, 94, 5, 0, C.gold);
-            const rx = px + 3 + 47 + Math.round(st.value * 46);
-            this.g.rect(rx - 1, py + 10, 3, 7).fill(C.gold);
-            this.g.rect(px + 50, py + 11, 1, 5).fill(C.dim);
-            break;
-          }
-          case 'pump': {
-            const comp = state.compartments[1];
-            const cap = sim.waterGeometry[1]?.capacity ?? 1;
-            this.text(`st${i}`, 'PUMPE  A/D IM WECHSEL!', px + 3, py + 3, C.gold);
-            this.bar(px + 3, py + 11, 60, 5, (st.value + 1) / 2, C.gold);
-            this.bar(px + 68, py + 11, 29, 5, (comp?.volume ?? 0) / cap, C.water);
-            break;
-          }
-          case 'searchlight':
-            this.text(`st${i}`, 'SCHEINWERFER', px + 3, py + 3, C.gold);
-            this.text(`st2${i}`, 'A/D SCHWENKEN', px + 3, py + 11, C.dim);
-            break;
-          case 'cannon':
-            this.text(`st${i}`, 'KANONE  A/D ZIELEN', px + 3, py + 3, C.gold);
-            this.text(`st2${i}`, 'FEUERN: PHASE 4', px + 3, py + 11, C.dim);
-            break;
-          default:
-            break;
-        }
+        this.text(`st${i}`, `P${i + 1}: ${st.kind.toUpperCase()}`, Math.round(width / 2 - 30), baseY - 10, C.gold);
       }
       if (p.overboard > 0) {
         const msg = 'MANN ÜBER BORD!';

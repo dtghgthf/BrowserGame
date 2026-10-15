@@ -1,4 +1,5 @@
 import { Canvas, hash, hex, mix, shade, type RGBA } from './canvas';
+import { drawUi } from './ui';
 
 export interface PropSprite {
   name: string;
@@ -383,6 +384,7 @@ export function drawProps(): PropSprite[] {
     ...bubbles(),
     ...lighthouse(),
     moon(),
+    ...drawUi(),
   ];
 }
 

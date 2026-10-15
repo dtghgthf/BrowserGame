@@ -2,6 +2,7 @@ import { autoDetectRenderer, Container, Mesh, RenderTexture, Sprite, type MeshGe
 import { fullscreenQuad, glShader, setQuad } from './gl';
 import { computePixelLayout, type PixelLayout } from './pixelScale';
 import { COMPOSITE_FRAG, QUAD_VERT } from './shaders';
+import { AMBIENT_EXT_TINT, AMBIENT_INT_TINT, DEFAULT_LOOK, FOG_COLOR, type LookTuning } from '../look';
 
 /** One render pass: a root, a camera-transformed world layer and a ship layer (rotated by the roll). */
 export interface PassRoot {
@@ -19,17 +20,6 @@ function makePass(): PassRoot {
   return { root, world, ship };
 }
 
-export interface LookSettings {
-  ambientExt: [number, number, number];
-  ambientInt: [number, number, number];
-  fogColor: [number, number, number];
-  fogDensity: number;
-  fogScatter: number;
-  fogHeight: number;
-  fogEnabled: boolean;
-  lightSteps: number;
-}
-
 /**
  * Quality levels (auto-selected at runtime, or forced with ?quality=):
  *  high   - WebGL nearest upscale, full-res light buffer
@@ -38,16 +28,6 @@ export interface LookSettings {
  */
 export type Quality = 'high' | 'medium' | 'low';
 
-export const DEFAULT_LOOK: LookSettings = {
-  ambientExt: [0.2, 0.25, 0.4],
-  ambientInt: [0.085, 0.075, 0.08],
-  fogColor: [0.2, 0.25, 0.32],
-  fogDensity: 0.75,
-  fogScatter: 1.6,
-  fogHeight: 260,
-  fogEnabled: true,
-  lightSteps: 7,
-};
 
 /**
  * Low-res multi-pass renderer:
@@ -68,7 +48,9 @@ export class GameRenderer {
   /** Emissive / unlit things drawn on top of the composite (lantern flames, bubbles, debug). */
   readonly final = makePass();
   readonly hud = new Container();
-  readonly look: LookSettings = { ...DEFAULT_LOOK };
+  /** Live look values (tuning panel F9). */
+  readonly look: LookTuning = { ...DEFAULT_LOOK };
+  fogEnabled = true;
   readonly rt: { scene: RenderTexture; normal: RenderTexture; mask: RenderTexture; light: RenderTexture; final: RenderTexture };
 
   private readonly composite: Mesh<MeshGeometry, Shader>;
@@ -111,6 +93,7 @@ export class GameRenderer {
           uFog: { value: new Float32Array(4), type: 'vec4<f32>' },
           uMoon: { value: new Float32Array(2), type: 'vec2<f32>' },
           uLightSteps: { value: 7, type: 'f32' },
+          uGrade: { value: new Float32Array([1, 1, 0.075, 0]), type: 'vec4<f32>' },
           uSeaLevel: { value: 0, type: 'f32' },
         },
       }, 'composite'),
@@ -236,15 +219,24 @@ export class GameRenderer {
     cam[0] = this.viewLeft;
     cam[1] = this.viewTop;
     u.uTime = time;
-    (u.uAmbientExt as Float32Array).set(this.look.ambientExt);
-    (u.uAmbientInt as Float32Array).set(this.look.ambientInt);
-    (u.uFogColor as Float32Array).set(this.look.fogColor);
+    const L = this.look;
+    const ext = u.uAmbientExt as Float32Array;
+    const int = u.uAmbientInt as Float32Array;
+    for (let i = 0; i < 3; i++) {
+      ext[i] = AMBIENT_EXT_TINT[i]! * L.ambientExt;
+      int[i] = AMBIENT_INT_TINT[i]! * L.ambientInt;
+    }
+    (u.uFogColor as Float32Array).set(FOG_COLOR);
     const fog = u.uFog as Float32Array;
-    fog[0] = this.look.fogDensity;
-    fog[1] = this.look.fogScatter;
-    fog[2] = this.look.fogHeight;
-    fog[3] = this.look.fogEnabled ? 1 : 0;
-    u.uLightSteps = this.look.lightSteps;
+    fog[0] = L.fogDensity;
+    fog[1] = L.fogScatter;
+    fog[2] = 260;
+    fog[3] = this.fogEnabled ? 1 : 0;
+    u.uLightSteps = Math.max(1, Math.round(L.lightSteps));
+    const grade = u.uGrade as Float32Array;
+    grade[0] = L.exposure;
+    grade[1] = L.gamma;
+    grade[2] = L.beamScatter;
     const moon = u.uMoon as Float32Array;
     moon[0] = Math.round(this.layout.width * 0.32);
     moon[1] = Math.round(this.layout.height * 0.16);

@@ -41,6 +41,7 @@ export class DebugOverlay {
   toggle(): void {
     this.enabled = !this.enabled;
     this.panel.style.display = this.enabled ? 'block' : 'none';
+    document.body.classList.toggle('debug-open', this.enabled);
     this.shipG.visible = this.enabled;
     this.worldG.visible = this.enabled;
   }

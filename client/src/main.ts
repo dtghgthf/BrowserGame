@@ -5,6 +5,7 @@ import { TouchControls } from './input/TouchControls';
 import { configureTextureDefaults, loadImageLayer, loadSheet } from './render/assets';
 import { GameRenderer, type Quality } from './render/GameRenderer';
 import { PixelFont } from './ui/PixelFont';
+import { TuningPanel } from './ui/TuningPanel';
 
 declare global {
   interface Window {
@@ -22,7 +23,7 @@ async function boot(): Promise<void> {
     const forced = params.get('quality');
     const quality: Quality = forced === 'low' || forced === 'medium' || forced === 'high' ? forced : 'high';
     const [sim, renderer, hull, back, player, props] = await Promise.all([
-      Simulation.create({ seed: Number(params.get('seed')) || 1337, seaState: params.has('sea') ? Number(params.get('sea')) : 0.75 }),
+      Simulation.create({ seed: Number(params.get('seed')) || 1337, seaState: params.has('sea') ? Number(params.get('sea')) : undefined }),
       GameRenderer.create(host, quality),
       loadImageLayer('assets/ship_hull.png'),
       loadImageLayer('assets/ship_back.png'),
@@ -31,13 +32,26 @@ async function boot(): Promise<void> {
     ]);
     const font = new PixelFont();
     const keyboard = new Keyboard();
-    const touch = new TouchControls(document.body);
+    const touch = new TouchControls(document.body, props, () => renderer.layout.scale / (window.devicePixelRatio || 1));
     const game = new Game(sim, renderer, { hull, back, player, props }, font, keyboard, touch, document.body);
     window.__game = game;
     game.autoQuality = !forced;
     if (params.has('debug')) game.debug.toggle();
     if (params.has('p2')) game.addLocalPlayer('secondary');
-    window.addEventListener('resize', () => renderer.resize(host));
+    game.tuningPanel = new TuningPanel(
+      {
+        tuning: sim.tuning,
+        look: renderer.look,
+        tune: (patch) => game.command({ type: 'tune', patch }),
+        setSeaState: (value) => game.command({ type: 'seaState', value }),
+      },
+      import.meta.env.DEV || params.has('tune') || params.has('debug'),
+    );
+    if (params.has('tune')) game.tuningPanel.toggle(true);
+    window.addEventListener('resize', () => {
+      renderer.resize(host);
+      touch.relayout();
+    });
     status.remove();
     setupHelp();
     game.start();

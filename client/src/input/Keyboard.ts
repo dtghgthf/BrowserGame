@@ -6,6 +6,8 @@ export class Keyboard {
 
   constructor(target: Window = window) {
     target.addEventListener('keydown', (e) => {
+      // typing into the tuning panel (sliders, text) must not move the player
+      if (isEditable(e.target)) return;
       if (PREVENT.has(e.code)) e.preventDefault();
       if (!e.repeat) {
         this.pressed.add(e.code);
@@ -37,6 +39,10 @@ export class Keyboard {
   }
 }
 
+function isEditable(t: EventTarget | null): boolean {
+  return t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+}
+
 const PREVENT = new Set([
-  'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F2', 'F3', 'F4', 'F6', 'F7', 'F8', 'Tab', 'ShiftRight', 'Enter',
+  'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F2', 'F3', 'F4', 'F6', 'F7', 'F8', 'F9', 'Tab', 'ShiftRight', 'Enter',
 ]);

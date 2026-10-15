@@ -173,6 +173,7 @@ uniform vec3 uFogColor;
 uniform vec4 uFog;             // density, scatter gain, height falloff, enabled
 uniform vec2 uMoon;            // screen px
 uniform float uLightSteps;
+uniform vec4 uGrade;           // exposure, gamma, beam scatter in clear air
 uniform float uSeaLevel;       // world px of calm sea level
 out vec4 finalColor;
 ${NOISE}
@@ -239,8 +240,10 @@ void main() {
     vec3 fogLit = uFogColor * (0.55 + light.a * uFog.y);
     col = mix(col, fogLit, density);
     // thin air scattering so beams are visible even between fog banks
-    col += vec3(0.62, 0.70, 0.78) * light.a * 0.075 * (1.0 - mask.g);
+    col += vec3(0.62, 0.70, 0.78) * light.a * uGrade.z * (1.0 - mask.g);
   }
+  // exposure + gamma (brightness controls of the tuning panel)
+  col = pow(max(col * uGrade.x, vec3(0.0)), vec3(uGrade.y));
   finalColor = vec4(col, 1.0);
 }`;
 

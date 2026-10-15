@@ -22,6 +22,8 @@ import { SeaView } from '../render/SeaView';
 import { ShipView, type GameAssets } from '../render/ShipView';
 import { DebugOverlay, type FrameStats } from '../ui/DebugOverlay';
 import { Hud } from '../ui/Hud';
+import { StationWidget } from '../ui/StationWidget';
+import type { TuningPanel } from '../ui/TuningPanel';
 import type { PixelFont } from '../ui/PixelFont';
 import { emptySnapshot, interpolate, takeSnapshot, type Snapshot } from './snapshot';
 
@@ -39,6 +41,9 @@ export class Game {
   readonly shipView: ShipView;
   readonly sea: SeaView;
   readonly hud: Hud;
+  readonly station: StationWidget;
+  /** Set by main.ts (F9 / gear button). */
+  tuningPanel: TuningPanel | null = null;
   readonly debug: DebugOverlay;
   private readonly spray: Particles;
   private readonly locals: LocalPlayer[] = [];
@@ -80,6 +85,8 @@ export class Game {
     this.shipView = new ShipView(r, assets, sim);
     this.spray = new Particles(r.albedo.world, 500);
     this.hud = new Hud(font);
+    this.station = new StationWidget(r, assets.props, font);
+    r.hud.addChild(this.station.root);
     r.hud.addChild(this.hud.root);
     this.debug = new DebugOverlay(host, r);
     this.angularStations = new Set(sim.state.stations.filter((s) => s.kind === 'searchlight').map((s) => s.id));
@@ -154,7 +161,7 @@ export class Game {
         break;
       }
       case 'F6':
-        this.r.look.fogEnabled = !this.r.look.fogEnabled;
+        this.r.fogEnabled = !this.r.fogEnabled;
         break;
       case 'F2':
         if (this.locals.some((l) => l.id === 'p2')) this.removeLocalPlayer('p2');
@@ -162,6 +169,9 @@ export class Game {
         break;
       case 'F8':
         this.command({ type: 'reset' });
+        break;
+      case 'F9':
+        this.tuningPanel?.toggle();
         break;
       case 'F7': {
         const views = ['final', 'albedo', 'normal', 'light', 'mask'] as const;
@@ -185,6 +195,7 @@ export class Game {
         jump: t.jump || both('Space'),
         interact: t.interact || both('KeyE'),
         pick: t.pick || both('KeyF'),
+        target: this.station.target,
       };
     }
     return {
@@ -352,7 +363,12 @@ export class Game {
     });
     this.spray.update(dt);
     const ids = this.locals.map((l) => l.id);
+    this.station.update(s, v, ids[0]);
     this.hud.update(this.sim, s, ids, width, height, this.time);
+    if (this.touch.isEnabled && ids[0]) {
+      const h = this.sim.interactionHints(ids[0]);
+      this.touch.setContext(h.interact?.icon ?? null, h.pick?.icon ?? null);
+    }
     this.stats.particles = this.spray.count + this.shipView.leakParticles.count;
     this.stats.lightPolys = this.shipView.lights.polygonsComputed;
     this.debug.update(this.sim, s, this.shipView.lights, this.stats, ids[0] ?? 'p1', now);

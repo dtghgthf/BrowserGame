@@ -290,7 +290,8 @@ export class ShipView {
       l.light.y = l.pivotY + Math.cos(l.angle) * 6;
       const t = this.time * 9 + l.seed * 13.7;
       const flicker = 0.88 + 0.07 * Math.sin(t) + 0.05 * Math.sin(t * 2.7 + 1.3) + (Math.sin(t * 0.37 + l.seed) > 0.97 ? -0.25 : 0);
-      l.light.intensity = 1.8 * flicker;
+      l.light.intensity = this.r.look.lanternIntensity * flicker;
+      l.light.radius = this.r.look.lanternRadius;
       l.flame.alpha = 0.75 + 0.25 * flicker;
     }
 
@@ -321,6 +322,7 @@ export class ShipView {
           break;
       }
     });
+    this.searchlight.intensity = this.r.look.searchlightIntensity;
     const pose = this.searchlightPose(view);
     if (pose) {
       this.searchlight.x = pose.x;

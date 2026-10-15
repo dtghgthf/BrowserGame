@@ -64,6 +64,19 @@ const GLYPHS: Record<string, readonly string[]> = {
   '^': ['.#.', '#.#', '...', '...', '...'],
 };
 
+/** Draws text with the pixel font into a 2D canvas context (1 canvas px per font px). */
+export function drawGlyphText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color: string): void {
+  ctx.fillStyle = color;
+  let cx = x;
+  for (const ch of text.toUpperCase()) {
+    const rows = GLYPHS[ch];
+    if (rows) rows.forEach((row, ry) => {
+      for (let rx = 0; rx < 3; rx++) if (row[rx] === '#') ctx.fillRect(cx + rx, y + ry, 1, 1);
+    });
+    cx += 4;
+  }
+}
+
 export const GLYPH_W = 3;
 export const GLYPH_H = 5;
 export const ADVANCE = 4;
