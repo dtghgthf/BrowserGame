@@ -81,3 +81,51 @@ Format: **Entscheidung** – Begründung.
 - **Zoom-Schutz für iOS:** Safari ignoriert `user-scalable=no`. `touchstart/touchmove/touchend` werden außerhalb von
   Bereichen mit Klasse `allow-touch` (Einstellungs-Panel) per `preventDefault` blockiert, dazu `gesturestart` und `dblclick`.
   Pointer-Events (Stick, Buttons, Widgets) sind davon nicht betroffen.
+
+## Phase 3 – Netzwerk
+- **Colyseus 0.18 (`@colyseus/core` + `@colyseus/ws-transport`, Client `@colyseus/sdk`) statt des Meta-Pakets `colyseus`** –
+  das Meta-Paket zieht Auth, Monitor, Playground und Redis mit, die wir nicht brauchen. API anhand der installierten
+  `.d.ts`/Quellen geprüft (0.18 hat u. a. `onDrop`/`onReconnect`, automatisches Neuverbinden im SDK, `defineInput`).
+- **Kein Colyseus-Schema-State, sondern eigene Snapshot-Nachrichten (msgpack).** Unser `GameState` ist schon reines JSON;
+  ihn zusätzlich als Schema zu spiegeln wäre doppelte Arbeit und fehleranfällig. Colyseus' neues eingebautes
+  Prediction-System (`defineInput`, `setFixedTimestep`) setzt Schema-State voraus – unser eigener Weg ist klein (zwei
+  Klassen in `shared/src/net/`) und ohne Server testbar.
+- **Autoritativer Server rechnet die echte Simulation (60 Hz), Snapshot alle 3 Ticks (20 Hz), komplett statt Delta.**
+  ~3 KB pro Snapshot (msgpack) → ~60 KB/s pro Gerät. Bewusst einfach; Delta-Kompression/Quantisierung erst, wenn es nötig wird.
+- **Zustand vollständig in `GameState`:** Controller-Interna (Luftzeit, Sprung-Puffer, Fallgeschwindigkeit,
+  Plattform-Filter), Winkelgeschwindigkeit und Respawn-Punkt der Objekte, Debug-Rollwinkel und Leck-Zeiger lagen vorher im
+  `Simulation`-Objekt. Jetzt kann `Simulation.loadState()` einen Server-Snapshot übernehmen und exakt weiterrechnen
+  (Test: zwei Simulationen laufen nach `loadState` identisch weiter).
+- **Inputs mit Sequenznummer, eine pro Tick; Server bestätigt pro Spieler die letzte angewandte (`acks`).** Der Client
+  wendet eigene Inputs sofort an (Prediction), merkt sie sich und rechnet nach jedem Snapshot ab dem Server-Zustand alle
+  unbestätigten neu (Reconciliation). Andere Spieler werden mit ihrem zuletzt vom Server gesehenen Input weitergerechnet
+  (`prevInput` – erzeugt keine neuen Tastendrücke). Ergebnis im Test: Vorhersage und Server stimmen für denselben Tick auf
+  < 2 cm überein.
+- **Inputs gepackt:** 7 Tasten als Bitmaske + optionaler Analogwert (Steuerrad/Hebel) → `[ersteSeq, bits, target, …]`.
+  Alles vom Netz wird validiert (`decodeInputs`, `parseCommand`, `sanitizeName`, Tuning nur bekannte Schlüssel).
+- **Jitter-Puffer auf dem Server (2 Inputs) und Obergrenze (12):** Inputs kommen in Schüben (WLAN, Framerate). Läuft die
+  Warteschlange leer, wartet der Server, bis wieder 2 da sind, statt jeden Tick einzeln zu „raten“ – jeder geratene Tick
+  kostet den Client eine kleine Korrektur. Ohne Input für 0,25 s bleibt die Figur stehen (Tab im Hintergrund).
+- **Korrekturen werden als ausklingender Versatz gezeigt** (Zeitkonstante 120 ms) statt als Sprung; Sprünge über 2 m
+  (Respawn, Neustart) werden nicht geglättet.
+- **Ereignisse:** Was der eigene Spieler auslöst (Sprung, Aufheben, Luke, Pumpenhub), kommt sofort aus der Vorhersage; alles
+  andere aus den gesammelten Server-Events. So gibt es keine doppelten Effekte durch das Neuberechnen.
+- **Raumcode = Colyseus-`roomId`** (4 Buchstaben ohne I/O, in `onCreate` gesetzt), Räume privat (nur per Code beitretbar).
+- **Host = wer den Raum öffnet:** Nur der Host darf Debug- und Tuning-Befehle senden (im Klassenraum drückt sonst jemand
+  dauernd L). Tuning-Änderungen verteilt der Server an alle; beim Beitreten bekommt jeder die aktuellen Werte.
+- **Neuverbinden:** `onDrop` → `allowReconnection(45 s)`; die Figur bleibt halb durchsichtig an Bord. Das SDK verbindet bei
+  Abbrüchen selbst neu, nach einem Neuladen der Seite hilft das Reconnection-Token in `sessionStorage`.
+- **Protokoll-Version** wird beim Beitreten geprüft (`onAuth`), damit ein alter Client nach einem Server-Update eine klare
+  Meldung bekommt statt seltsamer Fehler.
+- **Server-Zeitmessung selbst:** Das Delta, das Colyseus an `setSimulationInterval` übergibt, war in 0.18 fast 0 (die
+  Raum-Uhr wird an anderer Stelle mitgetickt) – der Server lief dadurch mit ~3 statt 60 Ticks/s. Jetzt misst der Raum die
+  Zeit mit `performance.now()` und füttert den bekannten `FixedStepper`.
+- **Server läuft mit `tsx` direkt aus TypeScript** (auch in Produktion): kein Build-Schritt, `shared/` wird genauso
+  importiert wie im Client. Docker-Image installiert nur Server- und Shared-Abhängigkeiten (~47 MB `node_modules`).
+- **Server-Adresse im Client:** `?server=` → `VITE_SERVER_URL` (Vercel) → im Dev-Modus derselbe Rechner auf Port 2567
+  (damit das iPad im WLAN ohne Einstellungen mitspielen kann) → sonst kein Online-Modus.
+- **Hosting-Empfehlung Fly.io mit `auto_stop_machines`, genau eine Maschine:** Räume liegen im Arbeitsspeicher, also darf
+  es nur eine Instanz geben; die Maschine schläft ohne Verbindungen (bezahlt wird fast nur die Spielzeit).
+- **Lobby und Menü als DOM** (nicht im Pixel-HUD): Texteingabe und iPad-Tastatur funktionieren nur mit echten
+  Eingabefeldern. Profil (Name, Farbe) in `localStorage`.
+- **Raumcode und Besatzung im HUD unter dem Kurs-Panel**, weil oben rechts die Menü-/Einstellungs-Knöpfe liegen.

@@ -1,0 +1,8 @@
+**/node_modules
+client
+!client/package.json
+screenshots
+scripts
+.git
+**/dist
+**/*.png

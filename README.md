@@ -4,7 +4,8 @@ Koop-Browserspiel für 2–4 Spieler: Die Crew steuert ein Schiff durch einen ne
 Das Schiff ist ein Querschnitt mit drei Decks; man läuft zu Stationen (Steuerrad, Scheinwerfer, Pumpe,
 Werkstatt, Kanone) und hält das Schiff zusammen weiter.
 
-**Stand: Phase 1 (spielbares Schiff, lokal) + Phase 2 (Look) sind umgesetzt.** Netzwerk kommt in Phase 3.
+**Stand: Phase 1 (spielbares Schiff), Phase 2 (Look) und Phase 3 (Online-Multiplayer) sind umgesetzt.**
+2–4 Geräte spielen über einen Raumcode zusammen auf einem Schiff; allein üben geht weiterhin ohne Server.
 
 ![Scheinwerfer im Nebel](screenshots/chromium-07-scheinwerfer-nebel.png)
 
@@ -13,8 +14,10 @@ Werkstatt, Kanone) und hält das Schiff zusammen weiter.
 | ![](screenshots/chromium-01-oberdeck.png) | ![](screenshots/chromium-02-unterdeck-leck.png) | ![](screenshots/chromium-04-licht-mitteldeck.png) |
 | **Debug-Overlay (F3)** | **Normal-Buffer (F7)** | **Touch (iPad-Viewport)** |
 | ![](screenshots/chromium-03-debug-overlay.png) | ![](screenshots/chromium-05-normal-buffer.png) | ![](screenshots/chromium-08-touch-ipad.png) |
-| **Steuerrad zum Drehen** | **Einstellungen (F9)** | |
-| ![](screenshots/chromium-09-steuerrad-widget.png) | ![](screenshots/chromium-10-einstellungen.png) | |
+| **Steuerrad zum Drehen** | **Einstellungen (F9)** | **Lobby** |
+| ![](screenshots/chromium-09-steuerrad-widget.png) | ![](screenshots/chromium-10-einstellungen.png) | ![](screenshots/chromium-11-lobby.png) |
+| **Online: zweiter Browser sieht „ANNA“** | | |
+| ![](screenshots/chromium-12-mehrspieler.png) | | |
 
 ---
 
@@ -24,11 +27,12 @@ Voraussetzung: Node.js 22 oder neuer.
 
 ```bash
 npm install
-npm run dev          # Dev-Server auf http://localhost:5173 (auch im WLAN erreichbar)
+npm run dev          # Spiel-Server (Port 2567) + Dev-Server auf http://localhost:5173 (auch im WLAN erreichbar)
 ```
 
 - **iPad / Handy testen:** Rechner und Gerät ins gleiche WLAN, auf dem Gerät `http://<IP-deines-Rechners>:5173` öffnen
-  (die IP zeigt Vite beim Start unter „Network“ an).
+  (die IP zeigt Vite beim Start unter „Network“ an). Im Dev-Modus verbindet sich das Spiel automatisch mit dem
+  Spiel-Server auf demselben Rechner – so könnt ihr schon im WLAN zu mehreren spielen, ohne etwas zu hosten.
 - **Produktions-Build:** `npm run build`, dann `npm run preview` (Port 4173). Der Ordner `client/dist/` ist eine rein
   statische Seite und kann auf jedem Webspace / GitHub Pages / Netlify liegen.
 
@@ -36,11 +40,14 @@ Weitere Befehle:
 
 | Befehl | Was es tut |
 |---|---|
-| `npm test` | Vitest für `shared/` (Simulation) und `client/` (Licht-Polygone, Pixel-Skalierung, Input) |
+| `npm run dev:client` / `npm run dev:server` | nur den Client bzw. nur den Spiel-Server starten |
+| `npm run start:server` | Spiel-Server ohne Datei-Überwachung (so läuft er auch beim Hoster) |
+| `npm test` | Vitest für `shared/` (Simulation, Netzwerk-Logik), `client/` und `server/` (echte Verbindungen zum Raum) |
 | `npm run typecheck` | `tsc --noEmit` für alle Pakete (`shared/` ohne DOM-Typen!) |
 | `npm run build` | Typecheck + Vite-Build des Clients |
 | `npm run assets` | Platzhalter-Grafiken neu erzeugen (von dir ersetzte Dateien bleiben erhalten) |
-| `npm run verify` | Playwright: Dev-Server starten, Szenen-Screenshots nach `screenshots/`, Konsole prüfen, FPS messen |
+| `npm run verify` | Playwright: Server starten, Szenen-Screenshots nach `screenshots/`, Online-Runde mit 2 Browsern, Konsole prüfen, FPS messen |
+| `node scripts/net-lag.mjs 200` | (bei laufendem `npm run dev`) Netzwerk-Gefühl mit 200 ms künstlicher Verzögerung messen |
 
 ### URL-Parameter (praktisch zum Testen, auch auf dem iPad ohne F-Tasten)
 
@@ -53,6 +60,10 @@ Weitere Befehle:
 | `?seed=42` | Zufalls-Seed der Simulation |
 | `?tune` | Einstellungs-Panel direkt öffnen (auch im Produktions-Build) |
 | `?h=300` | andere Ziel-Höhe der internen Auflösung |
+| `?solo` | ohne Lobby direkt allein spielen |
+| `?room=ABCD` | Einladung: Lobby mit eingetragenem Raumcode (so sieht der geteilte Link aus) |
+| `?server=wss://…` | anderen Spiel-Server verwenden (z. B. Laptop über Cloudflare-Tunnel) |
+| `?lag=150` | künstliche Verzögerung in ms (Round Trip) – zum Testen der Vorhersage |
 
 ---
 
@@ -93,6 +104,10 @@ E oder Leertaste verlässt die Station. Auf Touch-Geräten zeigen die Buttons E 
 | F2 | zweiten lokalen Spieler hinzufügen/entfernen |
 | F8 | Neustart |
 | F9 | Einstellungen (auch über ⚙ oben rechts im Dev-Server) |
+| Esc | Menü (Lobby / im Spiel: Raumcode, Einladungslink, Schiff verlassen) – auf Touch-Geräten ☰ oben rechts |
+
+Online dürfen nur die Person, die das Schiff geöffnet hat (Host), Debug-Tasten und das Einstellungs-Panel benutzen; die
+Werte gelten dann für alle an Bord. F2 (zweiter lokaler Spieler) gibt es online nicht – da hat jeder sein Gerät.
 
 ### Einmal durchspielen (Testablauf)
 1. **L** drücken → „LECK!“, die nächste Figur ruft per Sprechblase, im Unterdeck spritzt Wasser herein.
@@ -116,8 +131,65 @@ Seegang, Rollverhalten, Leck-Einstrom, Pumpe und mehr.
   `shared/src/tuning.json` (Spielwerte) und `client/src/look.json` (Grafik). Die Seite lädt dann mit den neuen
   Standardwerten neu – committen, fertig. Das funktioniert auch vom iPad aus, wenn es per WLAN auf den Dev-Server zugreift.
 - Ohne Dev-Server (Produktions-Build) gibt es stattdessen „JSON kopieren“.
-- Die Spielwerte laufen als Befehl durch die Simulation (`{ type: 'tune' }`) – in Phase 3 kann der Server sie genauso
-  übernehmen, damit alle Geräte mit denselben Werten spielen.
+- Die Spielwerte laufen als Befehl durch die Simulation (`{ type: 'tune' }`). Online schickt der Host sie an den Server, der
+  sie an alle Geräte verteilt – alle spielen mit denselben Werten. Wer ein Schiff öffnet, bringt seine lokal eingestellten
+  Werte mit.
+
+---
+
+## Online spielen
+
+1. Alle öffnen das Spiel (im WLAN über den Dev-Server oder über die Vercel-Seite, sobald der Server gehostet ist).
+2. In der Lobby **Namen** eingeben und eine **Mantelfarbe** wählen (ist sie schon vergeben, bekommt man die nächste freie).
+3. Eine Person tippt **„Neues Schiff“** → oben links steht der **Raumcode** (4 Buchstaben, z. B. `KJMX`).
+4. Die anderen tippen den Code ein und **„An Bord“** – oder öffnen den Einladungslink (Menü → „Einladungslink teilen“,
+   auf dem iPad über das Teilen-Menü, z. B. AirDrop).
+5. Maximal 4 Personen pro Schiff. Über den Köpfen der anderen stehen ihre Namen.
+
+**Verbindung weg?** Das Spiel verbindet sich automatisch neu (HUD: „VERBINDUNG WEG – VERBINDE NEU …“). Die Figur bleibt
+so lange halb durchsichtig an Bord. Auch **Neuladen der Seite** setzt einen wieder auf denselben Platz (45 s Zeit).
+
+**Wie es funktioniert (kurz):** Der Server rechnet das Spiel (dieselbe `Simulation` wie im Browser) mit 60 Hz und schickt
+20-mal pro Sekunde den kompletten Zustand. Jedes Gerät rechnet trotzdem selbst weiter und wendet die eigenen Eingaben sofort
+an (**Client-Side-Prediction**); kommt der Server-Zustand, springt es dorthin zurück und rechnet die noch nicht bestätigten
+Eingaben neu (**Reconciliation**). Kleine Abweichungen werden nicht als Ruckler, sondern als kurzes Nachgleiten gezeigt.
+Details in `DECISIONS.md` („Phase 3“).
+
+---
+
+## Server hosten
+
+Der **Client** liegt schon auf Vercel (statische Seite). Der **Spiel-Server** braucht einen Dienst, auf dem ein
+Node-Prozess dauerhaft läuft und WebSockets annimmt – Vercel selbst kann das nicht (nur kurzlebige Funktionen). Weil die
+Vercel-Seite per HTTPS läuft, muss der Server per **`wss://`** (also mit TLS) erreichbar sein.
+
+### Empfehlung: Fly.io (ca. 2–4 $/Monat, eher weniger)
+Die Maschine schläft, wenn niemand verbunden ist, und wacht beim nächsten Besuch in 1–2 s auf – bezahlt wird nur die Zeit,
+in der gespielt wird. Alles Nötige liegt im Repo (`server/Dockerfile`, `fly.toml`).
+
+1. Konto auf [fly.io](https://fly.io) anlegen (Kreditkarte nötig) und `flyctl` installieren
+   (Mac: `brew install flyctl`), dann `fly auth login`.
+2. In `fly.toml` den App-Namen ändern (muss weltweit eindeutig sein, z. B. `leuchtturm-deinname`).
+3. Im Repo-Ordner: `fly launch --no-deploy --copy-config` (Fragen mit den Werten aus `fly.toml` bestätigen), dann
+   **`fly deploy --ha=false`**. Wichtig: genau **eine** Maschine – die Räume liegen im Arbeitsspeicher, bei zwei Maschinen
+   fände man den Raumcode nur auf einer davon. (`fly scale count 1` korrigiert das notfalls.)
+4. Test: `https://<app-name>.fly.dev/` im Browser zeigt „Colyseus 0.18.…“ – dann läuft er.
+5. In **Vercel** → Project → Settings → Environment Variables: `VITE_SERVER_URL` = `wss://<app-name>.fly.dev`
+   (für Production **und** Preview), dann neu deployen. Fertig – die Lobby zeigt jetzt „Neues Schiff“.
+
+Updates: nach Änderungen an `shared/` oder `server/` einfach wieder `fly deploy --ha=false`. Client und Server sollten
+denselben Stand haben; passt die Protokoll-Version nicht, sagt die Lobby „Version passt nicht – bitte Seite neu laden“.
+
+### Alternativen
+| Option | Kosten | Hinweise |
+|---|---|---|
+| **Eigener Laptop + Cloudflare-Tunnel** | 0 € | `npm run start:server`, dann `cloudflared tunnel --url http://localhost:2567` → liefert eine `https://…trycloudflare.com`-Adresse; die Vercel-Seite mit `?server=wss://…trycloudflare.com` öffnen. Ideal zum Testen. |
+| **Render** (Free) | 0 € | Docker-Deploy mit `server/Dockerfile`. Schläft nach 15 min ohne Verkehr ein, Aufwachen dauert ~1 min. |
+| **Hetzner Cloud** (CX23) | ca. 4 €/Monat | Viel Leistung, nah an Köln, aber selbst verwalten: Docker, Domain, Caddy für TLS. |
+| **Railway** | ca. 5 $/Monat | Docker-Deploy, bequem. |
+
+**Schul-WLAN:** Viele Schul-Netze verbieten Verbindungen zwischen Geräten (Client-Isolation). Dann klappt „Laptop als
+Server“ dort nicht – ein gehosteter Server schon.
 
 ---
 
@@ -141,7 +213,11 @@ client/   Rendering (PixiJS v8), Input, HUD
   src/ui/StationWidget.ts    Steuerrad, Pumpenhebel, Kompass-Scheibe
   src/ui/TuningPanel.ts      Einstellungs-Panel (F9)
   public/assets/             Platzhalter-Grafiken (+ README zum Austausch gegen Aseprite-Exporte)
-server/   leer – Phase 3 (Colyseus)
+  src/net/                   Netzwerk: Protokoll, ShipHost (Server-Logik), Predictor (Vorhersage im Client)
+server/   Colyseus-Server: ShipRoom (ein Raum = ein Schiff), Dockerfile
+  src/ShipRoom.ts            Raumcode, 60-Hz-Simulation, Snapshots, Reconnect, Host-Rechte
+client/src/net/              Verbindung (NetLink) und Server-Adresse (config.ts)
+client/src/ui/Lobby.ts       Lobby und Menü
 scripts/  Asset-Generator, Browser-Verifikation
 ```
 
@@ -182,12 +258,20 @@ Begründung stehen in [`DECISIONS.md`](DECISIONS.md), der Arbeitsplan in [`PLAN.
 - Partikel: Gischt an Bug/Heck, Wasserstrahl bzw. Blasen am Leck, Pumpen-Schwall, Spritzer bei Mann über Bord
 - Qualitätsstufen mit Auto-Fallback (siehe Performance)
 
+**Phase 3 – Online**
+- Colyseus-Server (`server/`), der dieselbe `Simulation` autoritativ mit 60 Hz rechnet; 20 Snapshots pro Sekunde
+- Raumcodes aus 4 Buchstaben, max. 4 Spieler, Lobby mit Name + Mantelfarbe, Einladungslink, Menü (Esc / ☰)
+- Client-Side-Prediction + Reconciliation, Korrekturen werden weich ausgeblendet; Jitter-Puffer auf dem Server
+- Automatisches Neuverbinden und Weiterspielen nach dem Neuladen der Seite (45 s), getrennte Spieler halb durchsichtig
+- Host-Rechte: Debug-Tasten und Einstellungs-Panel wirken für alle, Werte werden an alle Geräte verteilt
+- Namensschilder, Raumcode + Besatzung im HUD, Verbindungsstatus, Netzwerk-Werte im Debug-Overlay (F3)
+- Deploy-Dateien für Fly.io (Docker), Tests mit echten Verbindungen
+
 ## Was (noch) nicht fertig ist
-- Netzwerk / Multiplayer über mehrere Geräte (Phase 3) – lokal gehen 2 Spieler an einer Tastatur
+- Pings (auf eine Stelle zeigen) und weitere automatische Sprechblasen – siehe Vorschlag Phase 4
 - Kanone feuern, Seemonster, Gefahren im Nebel, Ziel/Fortschritt (Leuchtturm erreichen), Sturm/Blitze
-- Pings und weitere Sprechblasen, Sound/Musik
+- Sound/Musik
 - Echte Grafiken (alles Platzhalter, aber austauschbar – siehe `client/public/assets/README.md`)
-- Menü, Lobby, Einstellungen
 
 ## Bekannte Probleme
 - **Safari/WebKit nicht automatisch getestet:** In der Build-Umgebung konnte WebKit nicht installiert werden. Das
@@ -203,6 +287,11 @@ Begründung stehen in [`DECISIONS.md`](DECISIONS.md), der Arbeitsplan in [`PLAN.
 - Der Rollwinkel ist absichtlich kräftig; bei empfindlichen Spielern kann das auf Dauer unangenehm sein (Seegang mit `[`
   oder `?sea=` reduzieren).
 - Sehr selten können an exakten Tile-Ecken einzelne Lichtpixel durch Wände „durchblitzen“.
+- **Online: andere Spieler werden vorausberechnet** (sie „machen weiter, was sie zuletzt taten“). Ändern sie plötzlich die
+  Richtung, gleitet ihre Figur bei hoher Verzögerung kurz zurück. Im WLAN (< 50 ms) kaum sichtbar.
+- Online kostet ein Snapshot ca. 3 KB (20/s → ~60 KB/s pro Gerät). Für WLAN kein Problem; bei Bedarf lässt sich das später
+  stark komprimieren.
+- Server-Neustart (z. B. neues Deploy) beendet alle laufenden Schiffe.
 
 ---
 
@@ -244,26 +333,23 @@ Debug-Overlay (F3 bzw. `?debug`).
 - [ ] **Licht:** Schatten der Laternen an Schotten/Decken, Scheinwerfer im Nebel (F6 schaltet den Nebel zum Vergleich ab).
 - [ ] **Zwei Spieler lokal** (F2): beide Steuerungen gleichzeitig, Kamera.
 - [ ] Optional: `npx playwright install webkit` und `npm run verify` für die WebKit-Screenshots.
+- [ ] **Online im WLAN:** `npm run dev`, Mac + iPad (+ Handy) in einen Raum. Fühlt sich die eigene Figur genauso direkt an
+      wie allein? Sehen die anderen flüssig aus? (F3 zeigt rtt, pending, Korrektur in cm.)
+- [ ] **Verbindung weg:** auf dem iPad kurz WLAN aus und wieder an → Figur wird halb durchsichtig, danach geht es weiter.
+      Seite neu laden → wieder auf demselben Platz.
+- [ ] **Einladungslink** über das Teilen-Menü (AirDrop/Nachrichten) öffnen → Lobby mit eingetragenem Code.
+- [ ] **Nach dem Hosten:** Vercel-Seite (HTTPS) mit Fly-Server, 4 Geräte gleichzeitig, auch im Schul-WLAN.
 
 ---
 
-## Vorschlag für Phase 3 (Netzwerk)
+## Vorschlag für Phase 4 (Spielinhalt + Kommunikation)
 
-Ziel: 2–4 Geräte im Klassenraum, eins erstellt einen Raum, die anderen treten mit einem kurzen Code bei.
-
-1. **Server-Paket mit Colyseus** (`server/`): ein Room „ship“, der genau die `Simulation` aus `shared/` mit 60 Hz laufen lässt
-   (Rapier-compat läuft auch in Node). Vor dem Einbau die aktuelle Colyseus-Doku (Version 0.18) für Room-API und
-   State-Sync prüfen – es gab mehrere Breaking Changes.
-2. **Inputs statt Positionen senden:** Clients schicken nur ihr `PlayerInput` (7 Bits) mit Tick-Nummer, z. B. 30× pro
-   Sekunde und bei jeder Änderung. Debug-Befehle laufen schon jetzt als `SimCommand` und können genauso übertragen werden.
-3. **State-Sync:** Der Server sendet ~20–30× pro Sekunde einen Snapshot (Schiff, Spieler, Objekte, Luken, Wasser, Lecks,
-   Stationen – der `GameState` ist bereits reines, serialisierbares JSON). Entweder über Colyseus-Schema (Delta-Patches) oder
-   als kompakter Binär-Snapshot per Message.
-4. **Client:** fremde Spieler/Objekte mit ~100 ms Verzögerung zwischen Snapshots interpolieren (die Snapshot-Interpolation
-   existiert schon); den eigenen Spieler per Client-Side-Prediction lokal vorausrechnen und bei Abweichung sanft korrigieren.
-   Schiffsbewegung und Wellen sind deterministisch aus der Zeit ableitbar → nur die Zeit synchronisieren.
-5. **Kommunikation ohne Sprache:** Pings (Taste/Touch auf eine Stelle → Marker + Icon für alle), mehr automatische
-   Sprechblasen (Wasser steigt, Station unbesetzt, Planke gebraucht), Rollen-Farben der Mäntel.
-6. **Lobby:** Raumcode (4 Buchstaben), Name + Mantelfarbe, Reconnect nach WLAN-Abbruch (Schul-WLAN!).
-7. **Hosting, günstig:** Client als statische Seite (GitHub Pages/Netlify, kostenlos), Colyseus-Server auf einem kleinen
-   VPS für wenige Euro im Monat; für Tests reicht der eigene Laptop im Schul-WLAN.
+1. **Pings:** lange auf eine Stelle tippen / mittlere Maustaste → Marker mit Icon für alle (Leck, Hilfe, hierher, Planke).
+   Nachrichten laufen schon als Befehle über den Server; ein Ping ist nur ein weiterer Typ.
+2. **Mehr automatische Sprechblasen:** „Ruder unbesetzt!“, „Wasser steigt!“, „Luke zu!“ – ausgelöst von der Simulation,
+   damit sie auf allen Geräten gleich erscheinen.
+3. **Gefahren im Nebel:** Felsen und Riffe tauchen auf, die man nur mit dem Scheinwerfer rechtzeitig sieht; Kollision =
+   Leck an der getroffenen Seite. Damit bekommen Steuerrad und Scheinwerfer zusammen eine Aufgabe.
+4. **Ziel:** Strecke bis zum Leuchtturm, Fortschrittsanzeige, Sturm wird stärker, je näher man kommt.
+5. **Kanone:** Kugeln aus der Werkstatt holen, laden, feuern – gegen etwas, das sich im Nebel nähert.
+6. **Sound:** Meeres-Ambience, Holzknarzen, Pumpe, Leck, Nebelhorn (Web Audio, Lautstärke an Schlagseite/Sturm gekoppelt).

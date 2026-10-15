@@ -1,4 +1,4 @@
-# PLAN – Leuchtturmwärter, Phase 1 + 2
+# PLAN – Leuchtturmwärter
 
 Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `npm run typecheck`, `npm test` und einem Commit.
 
@@ -76,3 +76,13 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Stationen mit echten Bedienelementen: Steuerrad drehen, Pumpenhebel ziehen, Kompass-Scheibe für Scheinwerfer/Kanone
 - [x] Touch: Pixel-Art-Stick und -Buttons, Kontext-Icons für E/F, Doppeltipp-/Pinch-Zoom blockiert
 - [x] Tests: Tuning (Patch, Befehl, Datei vollständig), analoger Stations-Input, Look-Werte
+
+## Phase 3 – Netzwerk
+- [x] Simulation: kompletter Zustand in `GameState`, `loadState()`, Spieler mit Name/Farbe
+- [x] Protokoll (gepackte Inputs, Raumcodes, Validierung), `ShipHost` (Server-Logik), `Predictor` (Client) + Tests
+- [x] Colyseus-Server: Raum pro Schiff, 60 Hz, 20 Snapshots/s, Host-Rechte, Neuverbinden; Tests mit echten Clients
+- [x] Client: Prediction/Reconciliation im Spiel-Loop, weiche Korrekturen, Netzwerk-Werte im Debug-Overlay
+- [x] Lobby (Name, Mantelfarbe, Neues Schiff / Code / Allein), Menü (Esc / ☰), Einladungslink, Weiterspielen nach Neuladen
+- [x] Namensschilder, Raumcode im HUD, Verbindungsstatus, getrennte Spieler halb durchsichtig
+- [x] `npm run dev` startet Server + Client; Dockerfile + `fly.toml`; Verifikation mit 2 Browsern
+- [ ] Hosting einrichten (Fly.io-Konto, `VITE_SERVER_URL` in Vercel) – braucht dein Konto, Anleitung im README

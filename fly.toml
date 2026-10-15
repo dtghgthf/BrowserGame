@@ -1,0 +1,27 @@
+# Fly.io config for the game server (see README, "Server hosten").
+# `app` must be globally unique: change it before the first `fly launch`.
+app = "leuchtturm-server"
+primary_region = "fra"
+
+[build]
+  dockerfile = "server/Dockerfile"
+
+[env]
+  PORT = "2567"
+
+[http_service]
+  internal_port = 2567
+  force_https = true
+  # the machine sleeps when nobody is connected and wakes on the next visit (pay only while playing)
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  # rooms live in memory: exactly one machine, never two (deploy with --ha=false)
+  min_machines_running = 0
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 200
+    hard_limit = 250
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
