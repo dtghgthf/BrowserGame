@@ -49,8 +49,12 @@ export type BubbleKey = 'leak' | 'water' | 'plank' | 'help';
 
 export interface PlayerState {
   id: string;
+  /** Display name (lobby). */
+  name: string;
   /** Colour slot 0..3. */
   color: number;
+  /** Disconnected, waiting for a reconnect (rendered faded). */
+  away: boolean;
   x: number;
   y: number;
   vx: number;
@@ -73,6 +77,16 @@ export interface PlayerState {
   overboard: number;
   /** Automatic speech bubble (communication without voice). */
   bubble: { key: BubbleKey; time: number } | null;
+  // Controller internals. They live in the state (not in the simulation object)
+  // so a client can load a server snapshot and re-simulate from it exactly.
+  /** Seconds since the player last stood on the ground (coyote time). */
+  airTime: number;
+  /** Remaining jump buffer in seconds. */
+  jumpBuffer: number;
+  /** Highest downward speed of the current fall (landing events). */
+  fallSpeed: number;
+  /** Whether one-way platforms (open ladder hatches) are currently solid for this player. */
+  solidPlatforms: boolean;
 }
 
 export type ObjectKind = 'crate' | 'barrel' | 'plank';
@@ -85,7 +99,11 @@ export interface ObjectState {
   angle: number;
   vx: number;
   vy: number;
+  /** Angular velocity (rad/s). */
+  av: number;
   carriedBy: string | null;
+  /** Where the object respawns after falling overboard (null = it is removed instead). */
+  spawn: Vec2 | null;
 }
 
 export interface HatchState {
@@ -136,8 +154,8 @@ export interface StationState {
 export type GameEvent =
   | { type: 'leak'; leak: number }
   | { type: 'repaired'; leak: number }
-  | { type: 'pumpStroke'; station: number; volume: number }
-  | { type: 'hatch'; hatch: number; open: boolean }
+  | { type: 'pumpStroke'; player: string | null; station: number; volume: number }
+  | { type: 'hatch'; player: string | null; hatch: number; open: boolean }
   | { type: 'pickup'; player: string; object: number }
   | { type: 'drop'; player: string; object: number }
   | { type: 'jump'; player: string }
@@ -166,4 +184,8 @@ export interface GameState {
   /** Events produced during the last step (cleared at the start of each step). */
   events: GameEvent[];
   nextObjectId: number;
+  /** Debug: roll angle forced by F4 (radians) or null. */
+  forcedRoll: number | null;
+  /** Next leak point tried by the debug leak key. */
+  leakCursor: number;
 }

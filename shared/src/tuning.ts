@@ -152,7 +152,7 @@ export function applyTuningPatch(target: Tuning, patch: unknown): number {
     if (!src || typeof src !== 'object') continue;
     const dst = target[g] as unknown as Record<string, number>;
     for (const [k, v] of Object.entries(src as Record<string, unknown>)) {
-      if (!(k in dst) || typeof v !== 'number' || !Number.isFinite(v)) continue;
+      if (!Object.hasOwn(dst, k) || typeof v !== 'number' || !Number.isFinite(v)) continue;
       dst[k] = v;
       n++;
     }

@@ -62,23 +62,27 @@ export interface SimulationOptions {
   tuning?: TuningPatch;
 }
 
+/** Physics handles of a player. Everything else about the player lives in PlayerState. */
 interface PlayerRuntime {
   body: RigidBody;
   collider: Collider;
-  airTime: number;
-  jumpBuffer: number;
-  fallSpeed: number;
-  spawnIndex: number;
-  filter: number;
-  /** Horizontal input direction of the current tick (for animation). */
+  /** Horizontal input direction of the current tick (for animation, not carried across ticks). */
   moveDir: number;
 }
 
 interface ObjectRuntime {
   body: RigidBody;
   collider: Collider;
-  spawn: Vec2 | null;
 }
+
+export interface AddPlayerOptions {
+  name?: string;
+  /** Preferred colour slot 0..3 (the next free one is used if it is taken). */
+  color?: number;
+}
+
+/** Number of distinct coat colours / spawn points. */
+export const PLAYER_COLORS = 4;
 
 const STATION_KINDS: Partial<Record<MarkerDef['type'], StationKind>> = {
   wheel: 'wheel',
@@ -122,8 +126,6 @@ export class Simulation {
   private hatchColliders: Collider[] = [];
   private readonly players = new Map<string, PlayerRuntime>();
   private readonly objects = new Map<number, ObjectRuntime>();
-  private forcedRoll: number | null = null;
-  private leakCursor = 0;
   private readonly seed: number;
   private readonly initialSeaState: number;
 
@@ -148,7 +150,8 @@ export class Simulation {
 
   /** Rebuilds the physics world and resets the game state. Players are kept. */
   reset(): void {
-    const playerIds = this.state ? this.state.players.map((p) => p.id) : [];
+    const keep = this.state ? this.state.players.map((p) => ({ id: p.id, name: p.name, color: p.color, away: p.away })) : [];
+    const forcedRoll = this.state?.forcedRoll ?? null;
     if (this.world) this.world.free();
     this.players.clear();
     this.objects.clear();
@@ -174,6 +177,8 @@ export class Simulation {
       stations: this.createStations(),
       events: [{ type: 'reset' }],
       nextObjectId: 1,
+      forcedRoll,
+      leakCursor: 0,
     };
     this.layout.hatches.forEach((h) => applyHatchState(this.hatchColliders[h.id]!, h, true));
 
@@ -184,7 +189,7 @@ export class Simulation {
         this.spawnObject(m.type, p.x, p.y - spec.hy - 0.01, true);
       }
     }
-    for (const id of playerIds) this.addPlayer(id);
+    for (const k of keep) this.addPlayer(k.id, k).away = k.away;
   }
 
   private createStations(): StationState[] {
@@ -207,30 +212,24 @@ export class Simulation {
     return { x: p.x, y: p.y - PLAYER_HALF_HEIGHT - 0.02 };
   }
 
-  addPlayer(id: string): PlayerState {
+  addPlayer(id: string, options: AddPlayerOptions = {}): PlayerState {
     const existing = this.state.players.find((p) => p.id === id);
     if (existing) return existing;
     const used = new Set(this.state.players.map((p) => p.color));
-    let color = 0;
-    while (used.has(color)) color++;
+    const wanted = options.color !== undefined && Number.isInteger(options.color) ? ((options.color % PLAYER_COLORS) + PLAYER_COLORS) % PLAYER_COLORS : 0;
+    let color = wanted;
+    for (let i = 0; i < PLAYER_COLORS && used.has(color); i++) color = (wanted + i + 1) % PLAYER_COLORS;
+    if (used.has(color)) {
+      color = 0;
+      while (used.has(color)) color++;
+    }
     const spawn = this.spawnPoint(color);
-    const body = this.world.createRigidBody(
-      RAPIER.RigidBodyDesc.dynamic().setTranslation(spawn.x, spawn.y).lockRotations().setGravityScale(0).setCcdEnabled(true),
-    );
-    const filter = PLAYER_FILTER_BASE | GROUP.PLATFORM;
-    const collider = this.world.createCollider(
-      RAPIER.ColliderDesc.capsule(PLAYER_SHAPE.halfHeight, PLAYER_SHAPE.radius)
-        .setMass(PLAYER_SHAPE.mass)
-        .setFriction(0)
-        .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
-        .setRestitution(0)
-        .setCollisionGroups(groups(GROUP.PLAYER, filter)),
-      body,
-    );
-    this.players.set(id, { body, collider, airTime: 0, jumpBuffer: 0, fallSpeed: 0, spawnIndex: color, filter, moveDir: 0 });
+    this.players.set(id, this.createPlayerBody(spawn.x, spawn.y));
     const p: PlayerState = {
       id,
+      name: options.name ?? '',
       color,
+      away: false,
       x: spawn.x,
       y: spawn.y,
       vx: 0,
@@ -247,9 +246,78 @@ export class Simulation {
       prevInput: { ...EMPTY_INPUT },
       overboard: 0,
       bubble: null,
+      airTime: 0,
+      jumpBuffer: 0,
+      fallSpeed: 0,
+      solidPlatforms: true,
     };
     this.state.players.push(p);
     return p;
+  }
+
+  private createPlayerBody(x: number, y: number): PlayerRuntime {
+    const body = this.world.createRigidBody(
+      RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y).lockRotations().setGravityScale(0).setCcdEnabled(true),
+    );
+    const collider = this.world.createCollider(
+      RAPIER.ColliderDesc.capsule(PLAYER_SHAPE.halfHeight, PLAYER_SHAPE.radius)
+        .setMass(PLAYER_SHAPE.mass)
+        .setFriction(0)
+        .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
+        .setRestitution(0)
+        .setCollisionGroups(groups(GROUP.PLAYER, PLAYER_FILTER_BASE | GROUP.PLATFORM)),
+      body,
+    );
+    return { body, collider, moveDir: 0 };
+  }
+
+  /**
+   * Replaces the whole game state, e.g. with an authoritative snapshot from the
+   * server. Physics bodies are created / removed / moved to match. The state
+   * object is taken over (not copied) - pass a fresh object.
+   */
+  loadState(src: GameState): void {
+    for (const [id, rt] of this.players) {
+      if (src.players.some((p) => p.id === id)) continue;
+      this.world.removeRigidBody(rt.body);
+      this.players.delete(id);
+    }
+    for (const p of src.players) {
+      let rt = this.players.get(p.id);
+      if (!rt) {
+        rt = this.createPlayerBody(p.x, p.y);
+        this.players.set(p.id, rt);
+      }
+      rt.body.setEnabled(p.overboard <= 0);
+      rt.body.setTranslation({ x: p.x, y: p.y }, false);
+      rt.body.setLinvel({ x: p.vx, y: p.vy }, true);
+      rt.collider.setCollisionGroups(groups(GROUP.PLAYER, PLAYER_FILTER_BASE | (p.solidPlatforms ? GROUP.PLATFORM : 0)));
+    }
+    for (const [id, rt] of this.objects) {
+      if (src.objects.some((o) => o.id === id)) continue;
+      this.world.removeRigidBody(rt.body);
+      this.objects.delete(id);
+    }
+    for (const o of src.objects) {
+      let rt = this.objects.get(o.id);
+      if (!rt) {
+        rt = createObjectBody(this.world, o.kind, o.x, o.y);
+        this.objects.set(o.id, rt);
+      }
+      rt.body.setEnabled(o.carriedBy === null);
+      rt.body.setTranslation({ x: o.x, y: o.y }, false);
+      rt.body.setRotation(o.angle, false);
+      rt.body.setLinvel({ x: o.vx, y: o.vy }, false);
+      rt.body.setAngvel(o.av, true);
+    }
+    src.hatches.forEach((h) => {
+      const def = this.layout.hatches[h.id];
+      const collider = this.hatchColliders[h.id];
+      if (def && collider) applyHatchState(collider, def, h.open);
+    });
+    this.world.gravity = { x: src.ship.gravity.x, y: src.ship.gravity.y };
+    this.world.propagateModifiedBodyPositionsToColliders();
+    this.state = src;
   }
 
   /** Moves a player (ship-local meters, body centre). Used by tests and debug tools. */
@@ -259,8 +327,11 @@ export class Simulation {
     if (!rt || !p) return;
     rt.body.setTranslation({ x, y }, true);
     rt.body.setLinvel({ x: 0, y: 0 }, true);
+    this.world.propagateModifiedBodyPositionsToColliders();
     p.x = x;
     p.y = y;
+    p.vx = 0;
+    p.vy = 0;
     p.climbing = null;
   }
 
@@ -277,9 +348,8 @@ export class Simulation {
 
   private spawnObject(kind: ObjectKind, x: number, y: number, rememberSpawn: boolean): ObjectState {
     const id = this.state.nextObjectId++;
-    const { body, collider } = createObjectBody(this.world, kind, x, y);
-    this.objects.set(id, { body, collider, spawn: rememberSpawn ? { x, y } : null });
-    const o: ObjectState = { id, kind, x, y, angle: 0, vx: 0, vy: 0, carriedBy: null };
+    this.objects.set(id, createObjectBody(this.world, kind, x, y));
+    const o: ObjectState = { id, kind, x, y, angle: 0, vx: 0, vy: 0, av: 0, carriedBy: null, spawn: rememberSpawn ? { x, y } : null };
     this.state.objects.push(o);
     return o;
   }
@@ -326,12 +396,12 @@ export class Simulation {
       moment += c.volume * c.centroidX;
     }
     updateShip(s.ship, s.time, dt, { volume, moment }, this.tuning.ship, this.tuning.gameplay.gravity);
-    if (this.forcedRoll !== null) {
-      s.ship.roll = this.forcedRoll;
+    if (s.forcedRoll !== null) {
+      s.ship.roll = s.forcedRoll;
       s.ship.rollVel = 0;
       s.ship.ay = 0;
-      s.ship.gravity.x = Math.sin(this.forcedRoll) * this.tuning.gameplay.gravity;
-      s.ship.gravity.y = Math.cos(this.forcedRoll) * this.tuning.gameplay.gravity;
+      s.ship.gravity.x = Math.sin(s.forcedRoll) * this.tuning.gameplay.gravity;
+      s.ship.gravity.y = Math.cos(s.forcedRoll) * this.tuning.gameplay.gravity;
     }
     this.world.gravity = { x: s.ship.gravity.x, y: s.ship.gravity.y };
 
@@ -375,7 +445,7 @@ export class Simulation {
         this.state.ship.seaState = clamp(c.value, 0, 1.5);
         break;
       case 'debugRoll':
-        this.forcedRoll = c.value;
+        this.state.forcedRoll = c.value;
         break;
       case 'tune':
         applyTuningPatch(this.tuning, c.patch);
@@ -411,10 +481,10 @@ export class Simulation {
     const g = this.state.ship.gravity;
     const feetY = p.y + PLAYER_HALF_HEIGHT;
     const carrying = p.carrying !== null;
-    const grounded = this.probeGround(rt);
+    const grounded = this.probeGround(p, rt);
     p.grounded = grounded;
-    rt.airTime = grounded ? 0 : rt.airTime + dt;
-    rt.jumpBuffer = pressed('jump') ? this.tuning.player.jumpBuffer : Math.max(0, rt.jumpBuffer - dt);
+    p.airTime = grounded ? 0 : p.airTime + dt;
+    p.jumpBuffer = pressed('jump') ? this.tuning.player.jumpBuffer : Math.max(0, p.jumpBuffer - dt);
 
     // an E/jump press that leaves a station or cancels an action is consumed
     let consumed = false;
@@ -425,7 +495,7 @@ export class Simulation {
       if (pressed('interact') || pressed('jump')) {
         this.leaveStation(p);
         consumed = true;
-        rt.jumpBuffer = 0;
+        p.jumpBuffer = 0;
       } else {
         this.operateStation(st, input, dt);
         rt.body.setTranslation({ x: st.x, y: st.y - PLAYER_HALF_HEIGHT - 0.01 }, true);
@@ -440,7 +510,7 @@ export class Simulation {
       if (pressed('interact') || pressed('jump')) {
         p.action = null;
         consumed = true;
-        rt.jumpBuffer = 0;
+        p.jumpBuffer = 0;
       } else {
         p.action.progress += dt;
         const v = rt.body.linvel();
@@ -470,7 +540,7 @@ export class Simulation {
         z !== null && z.hatchId !== null && !this.state.hatches[z.hatchId]!.open && input.down && feetY <= z.top + 0.15;
       if (z && !closedBelow) {
         p.climbing = z.id;
-        rt.jumpBuffer = 0;
+        p.jumpBuffer = 0;
       }
     }
     if (p.climbing !== null) {
@@ -489,9 +559,9 @@ export class Simulation {
       }
       if (vDir > 0 && grounded && feetY >= z.bottom - 0.05) leave = true;
       if (dir !== 0 && grounded && vDir === 0) leave = true;
-      if (rt.jumpBuffer > 0) {
+      if (p.jumpBuffer > 0) {
         leave = true;
-        rt.jumpBuffer = 0;
+        p.jumpBuffer = 0;
         vy = -this.tuning.player.jumpSpeed * 0.55;
         vx = dir * speed;
         this.emit({ type: 'jump', player: p.id });
@@ -517,11 +587,11 @@ export class Simulation {
       vx *= 1 - 2 * dt;
       vy *= 1 - 2.5 * dt;
     }
-    const canJump = grounded || rt.airTime < this.tuning.player.coyoteTime || swimming;
-    if (rt.jumpBuffer > 0 && canJump) {
+    const canJump = grounded || p.airTime < this.tuning.player.coyoteTime || swimming;
+    if (p.jumpBuffer > 0 && canJump) {
       vy = -this.tuning.player.jumpSpeed * (carrying ? this.tuning.player.carryJumpFactor : 1) * (swimming ? 0.7 : 1);
-      rt.jumpBuffer = 0;
-      rt.airTime = this.tuning.player.coyoteTime;
+      p.jumpBuffer = 0;
+      p.airTime = this.tuning.player.coyoteTime;
       this.emit({ type: 'jump', player: p.id });
     }
     vy = clampFall(this.tuning.player, vy);
@@ -530,11 +600,11 @@ export class Simulation {
   }
 
   /** Ray casts below the feet. Uses the player's current collision filter so non-solid platforms are ignored. */
-  private probeGround(rt: PlayerRuntime): boolean {
+  private probeGround(p: PlayerState, rt: PlayerRuntime): boolean {
     const t = rt.body.translation();
     const feet = t.y + PLAYER_HALF_HEIGHT;
     const flags = RAPIER.QueryFilterFlags.EXCLUDE_SENSORS;
-    const grp = groups(GROUP.PLAYER, rt.filter);
+    const grp = groups(GROUP.PLAYER, PLAYER_FILTER_BASE | (p.solidPlatforms ? GROUP.PLATFORM : 0));
     for (const dx of [-0.16, 0, 0.16]) {
       const ray = new RAPIER.Ray({ x: t.x + dx, y: feet - 0.1 }, { x: 0, y: 1 });
       const hit = this.world.castRay(ray, 0.16, true, flags, grp, rt.collider);
@@ -563,15 +633,14 @@ export class Simulation {
         }
       }
     }
-    const filter = PLAYER_FILTER_BASE | (solid ? GROUP.PLATFORM : 0);
-    if (filter !== rt.filter) {
-      rt.filter = filter;
-      rt.collider.setCollisionGroups(groups(GROUP.PLAYER, filter));
+    if (solid !== p.solidPlatforms) {
+      p.solidPlatforms = solid;
+      rt.collider.setCollisionGroups(groups(GROUP.PLAYER, PLAYER_FILTER_BASE | (solid ? GROUP.PLATFORM : 0)));
     }
   }
 
   private respawnPlayer(p: PlayerState, rt: PlayerRuntime): void {
-    const s = this.spawnPoint(rt.spawnIndex);
+    const s = this.spawnPoint(p.color);
     rt.body.setEnabled(true);
     rt.body.setTranslation(s, true);
     rt.body.setLinvel({ x: 0, y: 0 }, true);
@@ -613,7 +682,7 @@ export class Simulation {
       const fromBelow = headY > g.bottom - 0.1 && headY - g.bottom < 1.4;
       const open = this.state.hatches[h.id]!.open;
       if (fromAbove || fromBelow) {
-        candidates.push({ d: dx + 0.25, label: open ? 'Luke schließen' : 'Luke öffnen', icon: 'hatch', run: () => this.toggleHatch(h.id) });
+        candidates.push({ d: dx + 0.25, label: open ? 'Luke schließen' : 'Luke öffnen', icon: 'hatch', run: () => this.toggleHatch(h.id, p.id) });
       }
     }
     for (const leak of this.state.leaks) {
@@ -718,7 +787,7 @@ export class Simulation {
             c.volume -= removed;
             refreshSurface(this.waterGeometry[comp]!, c);
             st.aux += 1;
-            this.emit({ type: 'pumpStroke', station: st.id, volume: removed });
+            this.emit({ type: 'pumpStroke', player: st.occupant, station: st.id, volume: removed });
           }
         }
         break;
@@ -745,13 +814,13 @@ export class Simulation {
     return compartmentAtLocal(this.layout, st.x, st.y - 0.25);
   }
 
-  private toggleHatch(id: number): void {
+  private toggleHatch(id: number, player: string | null): void {
     const hs = this.state.hatches[id]!;
     const def = this.layout.hatches[id]!;
     if (hs.open && this.hatchBlocked(id)) return;
     hs.open = !hs.open;
     applyHatchState(this.hatchColliders[id]!, def, hs.open);
-    this.emit({ type: 'hatch', hatch: id, open: hs.open });
+    this.emit({ type: 'hatch', player, hatch: id, open: hs.open });
   }
 
   /** A hatch cannot be closed while something sits inside the opening. */
@@ -848,6 +917,10 @@ export class Simulation {
     o.carriedBy = null;
     o.x = pos.x;
     o.y = pos.y;
+    o.angle = 0;
+    o.vx = v.x + p.facing * 0.6;
+    o.vy = Math.min(v.y, 0);
+    o.av = 0;
     if (!silent) this.emit({ type: 'drop', player: p.id, object: o.id });
   }
 
@@ -871,13 +944,13 @@ export class Simulation {
     let idx = point;
     if (idx === undefined) {
       for (let i = 0; i < n; i++) {
-        const cand = (this.leakCursor + i) % n;
+        const cand = (this.state.leakCursor + i) % n;
         if (!this.state.leaks.some((l) => l.point === cand && l.active)) {
           idx = cand;
           break;
         }
       }
-      this.leakCursor = ((idx ?? 0) + 1) % n;
+      this.state.leakCursor = ((idx ?? 0) + 1) % n;
     }
     if (idx === undefined || idx < 0 || idx >= n) return;
     if (this.state.leaks.some((l) => l.point === idx && l.active)) return;
@@ -991,15 +1064,15 @@ export class Simulation {
       if (p.overboard > 0) continue;
       const t = rt.body.translation();
       const v = rt.body.linvel();
-      const wasFalling = rt.fallSpeed;
+      const wasFalling = p.fallSpeed;
       p.x = t.x;
       p.y = t.y;
       p.vx = v.x;
       p.vy = v.y;
-      if (!p.grounded) rt.fallSpeed = Math.max(rt.fallSpeed, v.y);
+      if (!p.grounded) p.fallSpeed = Math.max(p.fallSpeed, v.y);
       else if (wasFalling > 0) {
         if (wasFalling > 5) this.emit({ type: 'land', player: p.id, speed: wasFalling });
-        rt.fallSpeed = 0;
+        p.fallSpeed = 0;
       }
       const comp = compartmentAtLocal(L, p.x, p.y);
       p.inWater =
@@ -1034,6 +1107,7 @@ export class Simulation {
           o.angle = 0;
           o.vx = carrier.vx;
           o.vy = carrier.vy;
+          o.av = 0;
         }
         continue;
       }
@@ -1044,15 +1118,20 @@ export class Simulation {
       o.angle = rt.body.rotation();
       o.vx = v.x;
       o.vy = v.y;
+      o.av = rt.body.angvel();
       if (o.x < minX || o.x > maxX || o.y > maxY) {
         this.emit({ type: 'splash', x: o.x, y: o.y, strength: 0.6 });
-        if (rt.spawn) {
-          rt.body.setTranslation(rt.spawn, true);
+        if (o.spawn) {
+          rt.body.setTranslation(o.spawn, true);
           rt.body.setLinvel({ x: 0, y: 0 }, true);
           rt.body.setRotation(0, true);
           rt.body.setAngvel(0, true);
-          o.x = rt.spawn.x;
-          o.y = rt.spawn.y;
+          o.x = o.spawn.x;
+          o.y = o.spawn.y;
+          o.angle = 0;
+          o.vx = 0;
+          o.vy = 0;
+          o.av = 0;
         } else {
           this.removeObject(o.id);
         }
@@ -1084,6 +1163,6 @@ export class Simulation {
 
   /** The roll is forced to `value` (radians) while not null - used by tests and the debug menu. */
   get forcedRollValue(): number | null {
-    return this.forcedRoll;
+    return this.state.forcedRoll;
   }
 }

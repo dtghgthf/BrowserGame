@@ -6,5 +6,10 @@
   "description": "Authoritative game server (Colyseus) - Phase 3. Empty for now.",
   "scripts": {
     "build": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@colyseus/core": "^0.18.18",
+    "@colyseus/schema": "^5.0.40",
+    "@colyseus/ws-transport": "^0.18.4"
   }
 }
