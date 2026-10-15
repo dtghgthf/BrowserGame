@@ -21,6 +21,8 @@ import { encodePng } from './assets/png';
 import { drawPlayerSheet, PLAYER_FRAME } from './assets/player';
 import { drawProps, packSprites } from './assets/props';
 import { drawBack, drawHull } from './assets/ship';
+import { drawSounds } from './assets/sfx';
+import { encodeWav } from './assets/synth';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, 'client', 'public', 'assets');
@@ -127,6 +129,21 @@ saveCanvas('ship_back', drawBack(layout), 1.2, 0);
   save('props.png', width, H, atlas.data);
   save('props_n.png', width, H, normalMap(atlas, 1.5, 1));
   if (writeAsset('props.json', asepriteJson('props.png', { w: width, h: H }, frames))) console.log(`  props.json (${frames.length} sprites)`);
+}
+// --- placeholder sounds (WAV, 22 kHz mono). Replace any file with your own recording / Ableton export.
+{
+  mkdirSync(join(out, 'sfx'), { recursive: true });
+  const sounds = drawSounds();
+  let bytes = 0;
+  let written = 0;
+  for (const s of sounds) {
+    const wav = encodeWav(s.data);
+    bytes += wav.length;
+    if (writeAsset(`sfx/${s.name}.wav`, wav)) written++;
+  }
+  // the list of sound files the game loads (also lists replaced files)
+  writeFileSync(join(out, 'sfx', 'index.json'), JSON.stringify(sounds.map((s) => s.name), null, 1));
+  console.log(`  sfx/*.wav (${written} of ${sounds.length} written, ${(bytes / 1024).toFixed(0)} KB)`);
 }
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 1));
 console.log('done.');

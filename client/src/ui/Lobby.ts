@@ -1,6 +1,14 @@
 import { MAX_NAME_LENGTH, isRoomCode, normalizeRoomCode, sanitizeName } from '@lw/shared';
 import { PLAYER_COLORS } from '../render/ShipView';
 
+/** What the menu needs from the sound engine. */
+export interface VolumeControl {
+  volume: number;
+  muted: boolean;
+  setVolume(v: number): void;
+  toggleMute(): void;
+}
+
 export interface LobbyActions {
   /** null = no game server configured (only local play). */
   serverUrl: string | null;
@@ -66,6 +74,7 @@ export class Lobby {
   private readonly roomLabel: HTMLDivElement;
   private readonly swatches: HTMLButtonElement[] = [];
   private busy = false;
+  private syncSound: () => void = () => {};
   /** Current room code while online (for the in-game menu). */
   roomCode = '';
 
@@ -73,6 +82,7 @@ export class Lobby {
     parent: HTMLElement,
     private readonly actions: LobbyActions,
     invitedCode: string | null,
+    private readonly sound: VolumeControl | null = null,
   ) {
     this.el = document.createElement('div');
     this.el.className = 'lobby allow-touch hidden';
@@ -99,6 +109,11 @@ export class Lobby {
           <button class="lobby-btn primary lobby-share">Einladungslink teilen</button>
           <button class="lobby-btn lobby-back">Weiterspielen</button>
           <button class="lobby-btn subtle lobby-leave">Schiff verlassen</button>
+        </div>
+        <div class="lobby-sound">
+          <span>Ton</span>
+          <input class="lobby-volume" type="range" min="0" max="100" step="1" />
+          <button class="lobby-mute" title="Ton an/aus (M)">🔊</button>
         </div>
         <div class="lobby-status"></div>
       </div>`;
@@ -149,6 +164,26 @@ export class Lobby {
     q<HTMLButtonElement>('.lobby-leave').addEventListener('click', () => {
       void actions.leave().then(() => this.show('start', 'Du hast das Schiff verlassen.'));
     });
+    const vol = q<HTMLInputElement>('.lobby-volume');
+    const mute = q<HTMLButtonElement>('.lobby-mute');
+    const syncSound = () => {
+      if (!this.sound) return;
+      vol.value = String(Math.round(this.sound.volume * 100));
+      mute.textContent = this.sound.muted ? '🔇' : '🔊';
+    };
+    if (sound) {
+      syncSound();
+      vol.addEventListener('input', () => {
+        sound.setVolume(Number(vol.value) / 100);
+        if (sound.muted) sound.toggleMute();
+        syncSound();
+      });
+      mute.addEventListener('click', () => {
+        sound.toggleMute();
+        syncSound();
+      });
+      this.syncSound = syncSound;
+    } else q<HTMLDivElement>('.lobby-sound').style.display = 'none';
     // keys typed into the menu must not steer the ship
     this.el.addEventListener('keydown', (e) => {
       e.stopPropagation();
@@ -173,6 +208,7 @@ export class Lobby {
     if (message || mode === 'ingame') this.setStatus(message, error);
     this.el.classList.remove('hidden');
     document.body.classList.add('lobby-open');
+    this.syncSound();
   }
 
   hide(): void {

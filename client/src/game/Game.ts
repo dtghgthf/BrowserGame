@@ -20,6 +20,7 @@ import {
   type Simulation,
 } from '@lw/shared';
 import type { NetLink, NetStatus } from '../net/NetLink';
+import type { GameAudio } from '../audio/GameAudio';
 import { InputSampler } from '../input/InputSampler';
 import type { Keyboard } from '../input/Keyboard';
 import type { TouchControls } from '../input/TouchControls';
@@ -89,6 +90,8 @@ export class Game {
   /** Last mouse position over the page (for Q pings). */
   private mouse: { x: number; y: number } | null = null;
   private lighthousePos = { x: 0, y: 0 };
+  /** Sound (set by main.ts). */
+  audio: GameAudio | null = null;
   /** Set while playing online (see goOnline). */
   net: NetState | null = null;
   /** Called when an online session ends for good (room closed, reconnect failed). */
@@ -267,6 +270,9 @@ export class Game {
       }
       case 'F6':
         this.r.fogEnabled = !this.r.fogEnabled;
+        break;
+      case 'KeyM':
+        this.audio?.engine.toggleMute();
         break;
       case 'KeyK':
         this.command({ type: 'debugHazard', what: 'monster' });
@@ -477,6 +483,7 @@ export class Game {
   private handleEvents(events: readonly GameEvent[]): void {
     const s = this.sim.state;
     for (const e of events) {
+      this.audio?.event(e, s);
       if (e.type === 'reset') {
         takeSnapshot(s, this.prev);
         clearCorrections(this.corrections);
@@ -639,6 +646,7 @@ export class Game {
     this.station.update(s, v, ids[0]);
     this.names.update(s, v, ids, left, top, this.time);
     this.pingView.update(s, v, left, top, width, height, this.time);
+    this.audio?.update(dt, s, ids[0]);
     this.hud.update(this.sim, s, ids, width, height, this.time, this.net ? { code: this.net.link.code, status: this.net.status, synced: this.net.predictor.synced } : null);
     if (this.touch.isEnabled && ids[0]) {
       const h = this.sim.interactionHints(ids[0]);

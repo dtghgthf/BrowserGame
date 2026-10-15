@@ -1,4 +1,6 @@
 import { DEFAULT_TUNING, Simulation, diffTuning, normalizeRoomCode, type TuningPatch } from '@lw/shared';
+import { AudioEngine } from './audio/AudioEngine';
+import { GameAudio } from './audio/GameAudio';
 import { Game } from './game/Game';
 import { resolveServerUrl } from './net/config';
 import { NetLink } from './net/NetLink';
@@ -38,6 +40,9 @@ async function boot(): Promise<void> {
     const touch = new TouchControls(document.body, props, () => renderer.layout.scale / (window.devicePixelRatio || 1));
     const game = new Game(sim, renderer, { hull, back, player, props }, font, keyboard, touch, document.body);
     window.__game = game;
+    const audio = new GameAudio(new AudioEngine(), sim);
+    game.audio = audio;
+    game.storm.onLightning = (strength) => audio.thunder(strength);
     game.autoQuality = !forced;
     if (params.has('debug')) game.debug.toggle();
     if (params.has('p2')) game.addLocalPlayer('secondary');
@@ -58,7 +63,7 @@ async function boot(): Promise<void> {
     status.remove();
     setupHelp();
     game.start();
-    await setupOnline(game, sim, params);
+    await setupOnline(game, sim, params, audio.engine);
   } catch (err) {
     console.error(err);
     status.textContent = `Fehler beim Start: ${err instanceof Error ? err.message : String(err)}. WebGL2 wird benötigt.`;
@@ -67,7 +72,7 @@ async function boot(): Promise<void> {
 }
 
 /** Lobby, room code in the URL, reconnect after a reload. */
-async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams): Promise<void> {
+async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams, sound: AudioEngine): Promise<void> {
   const serverUrl = resolveServerUrl(params, import.meta.env, location);
   const lag = Number(params.get('lag')) || 0;
   const setRoomInUrl = (code: string | null) => {
@@ -103,6 +108,7 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams)
       },
     },
     normalizeRoomCode(params.get('room') ?? '') || null,
+    sound,
   );
   game.onNetClosed = (reason) => {
     setRoomInUrl(null);
