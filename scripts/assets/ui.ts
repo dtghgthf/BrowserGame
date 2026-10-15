@@ -196,6 +196,8 @@ function icons(): PropSprite[] {
     icon('ui_i_exit', ['            ', ' rr      rr ', '  rr    rr  ', '   rr  rr   ', '    rrrr    ', '     rr     ', '    rrrr    ', '   rr  rr   ', '  rr    rr  ', ' rr      rr ', '            ', '            ']),
     icon('ui_i_grab', ['            ', '  dddddddd  ', '  dgddddgd  ', '  dddddddd  ', '  dgddddgd  ', '  dddddddd  ', '            ', '     ww     ', '    wwww    ', '   wwwwww   ', '     ww     ', '     ww     ']),
     icon('ui_i_drop', ['     ww     ', '     ww     ', '   wwwwww   ', '    wwww    ', '     ww     ', '            ', '  dddddddd  ', '  dgddddgd  ', '  dddddddd  ', '  dgddddgd  ', '  dddddddd  ', '            ']),
+    icon('ui_i_fire', ['     y      ', '  y  yy  y  ', '   yyrryy   ', ' yyrrwwrryy ', '  yrwwwwry  ', ' yyrwwwwryy ', '  yrrwwrry  ', '   yyrryy   ', '  y  yy  y  ', '     y      ', '            ', '            ']),
+    icon('ui_i_ping', ['            ', '    rrrr    ', '   rrwwrr   ', '  rrrwwrrr  ', '  rrrwwrrr  ', '  rrrrrrrr  ', '   rrwwrr   ', '    rrrr    ', '     rr     ', '     rr     ', '      r     ', '            ']),
   ];
 }
 

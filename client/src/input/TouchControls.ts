@@ -48,6 +48,12 @@ export class TouchControls {
   private stick = { x: 0, y: 0 };
   private enabled = false;
   private px = 3;
+  /** Ping button: tap it, then tap a spot (or tap it twice for "here"). */
+  private readonly ping: PixelButton;
+  private pingMode = false;
+  private pingTimer = 0;
+  /** Called with screen coordinates, or null for "where I stand". */
+  onPing: (clientX: number | null, clientY: number | null) => void = () => {};
 
   constructor(
     parent: HTMLElement,
@@ -93,6 +99,30 @@ export class TouchControls {
       interact: mk('interact', 24, 'E', 'ui_i_hand', 'btn-e'),
       pick: mk('pick', 24, 'F', 'ui_i_grab', 'btn-f'),
     };
+    this.ping = mk('pick', 24, '', 'ui_i_ping', 'btn-ping');
+    this.ping.el.addEventListener('pointerdown', () => {
+      this.ping.pressed = false;
+      if (this.pingMode) {
+        this.setPingMode(false);
+        this.onPing(null, null);
+      } else this.setPingMode(true);
+    });
+    this.ping.el.addEventListener('pointerup', () => {
+      this.ping.down = this.pingMode;
+      this.drawButton(this.ping);
+    });
+    // in ping mode the next tap anywhere marks that spot (before the stick or a station widget gets it)
+    window.addEventListener(
+      'pointerdown',
+      (e) => {
+        if (!this.pingMode || this.ping.el.contains(e.target as Node)) return;
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        this.setPingMode(false);
+        this.onPing(e.clientX, e.clientY);
+      },
+      { capture: true },
+    );
     parent.appendChild(this.root);
 
     zone.addEventListener('pointerdown', (e) => this.stickStart(e));
@@ -142,6 +172,15 @@ export class TouchControls {
     if (b.letter) drawGlyphText(ctx, b.letter, b.size - 8, b.size - 8, b.enabled ? '#f0cc72' : '#7a5520');
   }
 
+  private setPingMode(on: boolean): void {
+    this.pingMode = on;
+    this.ping.down = on;
+    window.clearTimeout(this.pingTimer);
+    if (on) this.pingTimer = window.setTimeout(() => this.setPingMode(false), 4000);
+    this.root.classList.toggle('ping-mode', on);
+    this.drawButton(this.ping);
+  }
+
   /** Updates the context icons of E and F (call every frame; redraws only on change). */
   setContext(interact: HintIcon | null, pick: HintIcon | null): void {
     const e = this.buttons.interact;
@@ -164,7 +203,7 @@ export class TouchControls {
     };
     size(this.base, this.base.width, this.base.height);
     size(this.knob, this.knob.width, this.knob.height);
-    for (const b of Object.values(this.buttons)) {
+    for (const b of [...Object.values(this.buttons), this.ping]) {
       size(b.el, b.size, b.size);
       this.drawButton(b);
     }
@@ -178,6 +217,9 @@ export class TouchControls {
     const f = this.buttons.pick.el.style;
     f.right = `${margin + 3 * p}px`;
     f.bottom = `${margin + 38 * p}px`;
+    const pg = this.ping.el.style;
+    pg.right = `${margin + 32 * p}px`;
+    pg.bottom = `${margin + 30 * p}px`;
     if (this.stickId === null) this.placeStick(margin + 20 * p, window.innerHeight - margin - 22 * p);
   }
 

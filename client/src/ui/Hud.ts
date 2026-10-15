@@ -2,6 +2,7 @@ import { Container, Graphics } from 'pixi.js';
 import type { GameState, Simulation } from '@lw/shared';
 import type { NetStatus } from '../net/NetLink';
 import { PixelFont, PixelText } from './PixelFont';
+import { drawSeaChart } from './SeaChart';
 
 const C = {
   panel: 0x0b1018,
@@ -78,6 +79,14 @@ export class Hud {
     const deg = Math.round((s.roll * 180) / Math.PI);
     this.text('roll', `NEIGUNG ${deg > 0 ? '+' : ''}${deg}°`, 7, 34, Math.abs(deg) > 14 ? C.warn : C.dim);
 
+    // ---- sea chart + distance to the lighthouse
+    drawSeaChart(this.g, 4, 46, 92, 34, state, time);
+    const left = Math.max(0, Math.round(state.voyage.length - s.x));
+    this.text('dist', `${left} M`, 7, 49, C.gold);
+    const prog = Math.min(1, s.x / Math.max(1, state.voyage.length));
+    this.g.rect(4, 81, 92, 2).fill(C.edge);
+    this.g.rect(4, 81, Math.round(92 * prog), 2).fill(C.gold);
+
     // ---- leak warning
     const leaks = state.leaks.filter((l) => l.active).length;
     if (leaks > 0 && Math.floor(time * 2.5) % 2 === 0) {
@@ -123,15 +132,30 @@ export class Hud {
       const label = `RAUM ${net.code}`;
       const crew = `${state.players.length}/4 AN BORD`;
       // under the course panel (the top right corner belongs to the menu buttons)
-      this.g.rect(4, 46, 92, 17).fill({ color: C.panel, alpha: 0.75 });
-      this.text('room', label, 7, 49, C.gold);
-      this.text('crew', crew, 7, 56, C.dim);
+      this.g.rect(4, 86, 92, 17).fill({ color: C.panel, alpha: 0.75 });
+      this.text('room', label, 7, 89, C.gold);
+      this.text('crew', crew, 7, 96, C.dim);
       const problem = !net.synced ? 'VERBINDE ...' : net.status === 'reconnecting' ? 'VERBINDUNG WEG - VERBINDE NEU ...' : '';
       if (problem && Math.floor(time * 2) % 2 === 0) {
         const pw = this.font.measure(problem);
         this.g.rect(Math.round(width / 2 - pw / 2) - 4, 20, pw + 8, 12).fill({ color: C.panel, alpha: 0.9 });
         this.text('net', problem, Math.round(width / 2 - pw / 2), 23, C.warn);
       }
+    }
+
+    if (state.status === 'arrived') {
+      const v = state.voyage;
+      const lines: [string, number][] = [
+        ['LEUCHTTURM ERREICHT!', C.gold],
+        [`FELSEN: ${v.rocksPassed} UMSCHIFFT  ${v.rocksDestroyed} ZERSCHOSSEN  ${v.rocksHit} GERAMMT`, C.text],
+        [`KRAKEN VERJAGT: ${v.monstersRepelled}   LECKS GEFLICKT: ${v.leaksRepaired}`, C.text],
+        [`NEUE FAHRT IN ${Math.ceil(state.statusTimer)}`, C.dim],
+      ];
+      const w = Math.max(...lines.map(([t]) => this.font.measure(t)));
+      const x0 = Math.round(width / 2 - w / 2);
+      const y0 = Math.round(height / 2) - 30;
+      this.g.rect(x0 - 6, y0 - 6, w + 12, lines.length * 10 + 8).fill({ color: C.panel, alpha: 0.9 }).stroke({ color: C.gold, width: 1, pixelLine: true });
+      lines.forEach(([t, col], i) => this.text(`arr${i}`, t, Math.round(width / 2 - this.font.measure(t) / 2), y0 + i * 10, col));
     }
 
     if (state.status === 'sunk') {

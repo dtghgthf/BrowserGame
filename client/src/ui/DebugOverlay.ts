@@ -115,6 +115,8 @@ export class DebugOverlay {
       `gravity (${grav.x.toFixed(2)}, ${grav.y.toFixed(2)})  |g| ${Math.hypot(grav.x, grav.y).toFixed(2)}  dir ${deg(Math.atan2(grav.x, grav.y))}°`,
       `roll ${deg(s.roll)}°  list ${deg(s.list)}°  heave ${s.y.toFixed(2)} m  sea ${s.seaState.toFixed(2)}`,
       `heading ${deg(s.heading)}°  rudder ${s.rudder.toFixed(2)}  speed ${s.speed.toFixed(2)} m/s`,
+      `voyage ${s.x.toFixed(0)} / ${state.voyage.length} m  lateral ${s.lateral.toFixed(1)} m  rocks ${state.rocks.length} (passed ${state.voyage.rocksPassed} hit ${state.voyage.rocksHit} broken ${state.voyage.rocksDestroyed})  next rock ${(state.voyage.nextRockX - s.x).toFixed(0)} m`,
+      `kraken ${state.monster ? `${state.monster.phase} +${state.monster.offset.toFixed(1)} m hp ${state.monster.hp}` : `in ${(state.voyage.nextMonsterX - s.x).toFixed(0)} m`}  balls ${state.balls.length}  pings ${state.pings.length}  status ${state.status}`,
       ``,
       `water ${totals.volume.toFixed(2)} / ${totals.capacity.toFixed(1)} m²  sinkage ${s.sinkage.toFixed(2)} m`,
       ...state.compartments.map((c, i) => `  ${sim.layout.compartments[i]!.name.padEnd(11)} ${c.volume.toFixed(2).padStart(6)} m²  slope ${c.slope.toFixed(3)}`),
@@ -122,7 +124,7 @@ export class DebugOverlay {
       ``,
       ...state.players.map((pp) => `${pp.name || pp.id} ${pp.anim.padEnd(7)} (${pp.x.toFixed(2)}, ${pp.y.toFixed(2)}) v(${pp.vx.toFixed(1)}, ${pp.vy.toFixed(1)}) ${pp.grounded ? 'G' : '-'}${pp.climbing !== null ? 'L' : ''} water ${pp.inWater.toFixed(2)}`),
       ``,
-      `F3 debug  F7 buffer view (${this.r.debugView})  L leak  [ ] sea  F4 fix roll  F6 fog  F2 2 players  F8 reset`,
+      `F3 debug  F7 buffer view (${this.r.debugView})  L leak  [ ] sea  F4 fix roll  F6 fog  F2 2 players  F8 reset  K kraken  J rock  Q ping`,
     ];
     this.panel.textContent = lines.join('\n');
   }

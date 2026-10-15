@@ -51,6 +51,10 @@ export class GameRenderer {
   /** Live look values (tuning panel F9). */
   readonly look: LookTuning = { ...DEFAULT_LOOK };
   fogEnabled = true;
+  /** Multiplies the fog density (the fog thickens towards the lighthouse). */
+  fogScale = 1;
+  /** Lightning flash 0..1, brightens the whole picture for a moment. */
+  flash = 0;
   readonly rt: { scene: RenderTexture; normal: RenderTexture; mask: RenderTexture; light: RenderTexture; final: RenderTexture };
 
   private readonly composite: Mesh<MeshGeometry, Shader>;
@@ -228,13 +232,13 @@ export class GameRenderer {
     }
     (u.uFogColor as Float32Array).set(FOG_COLOR);
     const fog = u.uFog as Float32Array;
-    fog[0] = L.fogDensity;
+    fog[0] = L.fogDensity * this.fogScale;
     fog[1] = L.fogScatter;
     fog[2] = 260;
     fog[3] = this.fogEnabled ? 1 : 0;
     u.uLightSteps = Math.max(1, Math.round(L.lightSteps));
     const grade = u.uGrade as Float32Array;
-    grade[0] = L.exposure;
+    grade[0] = L.exposure * (1 + this.flash * 1.6);
     grade[1] = L.gamma;
     grade[2] = L.beamScatter;
     const moon = u.uMoon as Float32Array;

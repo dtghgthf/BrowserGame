@@ -1,6 +1,10 @@
 import { Sprite } from 'pixi.js';
 import {
+  BOW_OFFSET,
   DEFAULT_TUNING,
+  PLAYER_HALF_HEIGHT,
+  monsterHead,
+  worldToShip,
   EMPTY_INPUT,
   FixedStepper,
   PIXELS_PER_METER,
@@ -22,7 +26,9 @@ import type { TouchControls } from '../input/TouchControls';
 import { frameOf } from '../render/assets';
 import type { GameRenderer } from '../render/GameRenderer';
 import type { LightDef } from '../render/lighting/LightSystem';
+import { HazardView } from '../render/HazardView';
 import { Particles } from '../render/Particles';
+import { StormView } from '../render/StormView';
 import { SeaView } from '../render/SeaView';
 import { ShipView, type GameAssets } from '../render/ShipView';
 import { DebugOverlay, type FrameStats } from '../ui/DebugOverlay';
@@ -31,6 +37,7 @@ import { StationWidget } from '../ui/StationWidget';
 import type { TuningPanel } from '../ui/TuningPanel';
 import type { PixelFont } from '../ui/PixelFont';
 import { NameTags } from '../ui/NameTags';
+import { PingView } from '../ui/PingView';
 import {
   applyCorrections,
   clearCorrections,
@@ -71,6 +78,17 @@ export class Game {
   readonly debug: DebugOverlay;
   private readonly spray: Particles;
   private readonly names: NameTags;
+  readonly hazards: HazardView;
+  readonly storm: StormView;
+  private readonly pingView: PingView;
+  /** Unlit particles (muzzle flash, fireworks). */
+  private readonly fx: Particles;
+  private readonly island: Sprite;
+  /** Camera shake strength in px (decays). */
+  private shake = 0;
+  /** Last mouse position over the page (for Q pings). */
+  private mouse: { x: number; y: number } | null = null;
+  private lighthousePos = { x: 0, y: 0 };
   /** Set while playing online (see goOnline). */
   net: NetState | null = null;
   /** Called when an online session ends for good (room closed, reconnect failed). */
@@ -147,6 +165,18 @@ export class Game {
       occluded: false,
       enabled: true,
     });
+
+    // hazards live between the far and the near sea; the lighthouse stands in the same layer
+    this.hazards = new HazardView(r, assets.props);
+    this.island = new Sprite(frameOf(assets.props, 'rock_a').texture);
+    this.island.anchor.set(0.5, 1);
+    this.island.scale.set(2);
+    this.hazards.landmarks.addChild(this.island, this.lighthouse);
+    this.storm = new StormView(r);
+    this.fx = new Particles(r.final.world, 400);
+    this.pingView = new PingView(assets.props);
+    r.hud.addChildAt(this.pingView.root, 0);
+    this.setupPingInput();
 
     this.addLocalPlayer('primary');
     takeSnapshot(sim.state, this.prev);
@@ -238,6 +268,19 @@ export class Game {
       case 'F6':
         this.r.fogEnabled = !this.r.fogEnabled;
         break;
+      case 'KeyK':
+        this.command({ type: 'debugHazard', what: 'monster' });
+        break;
+      case 'KeyJ':
+        this.command({ type: 'debugHazard', what: 'rock' });
+        break;
+      case 'KeyP':
+        this.command({ type: 'debugAdvance', meters: 200 });
+        break;
+      case 'KeyQ':
+        if (this.mouse) this.pingAtClient(this.mouse.x, this.mouse.y);
+        else this.pingSelf();
+        break;
       case 'F2':
         if (this.net) break; // online everybody has their own device
         if (this.locals.some((l) => l.id === 'p2')) this.removeLocalPlayer('p2');
@@ -255,6 +298,48 @@ export class Game {
         break;
       }
     }
+  }
+
+  /** Right / middle click and Q put a ping on the spot under the mouse; touch uses the ping button. */
+  private setupPingInput(): void {
+    const canvas = this.r.renderer.canvas;
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      this.pingAtClient(e.clientX, e.clientY);
+    });
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.button === 1) {
+        e.preventDefault();
+        this.pingAtClient(e.clientX, e.clientY);
+      }
+    });
+    window.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'mouse') this.mouse = { x: e.clientX, y: e.clientY };
+    });
+    this.touch.onPing = (x, y) => (x === null || y === null ? this.pingSelf() : this.pingAtClient(x, y));
+  }
+
+  /** Ping at a screen position (CSS px). */
+  pingAtClient(clientX: number, clientY: number): void {
+    const rect = this.r.renderer.canvas.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const ix = ((clientX - rect.left) / rect.width) * this.r.layout.width;
+    const iy = ((clientY - rect.top) / rect.height) * this.r.layout.height;
+    const local = worldToShip(this.view.ship, { x: (ix + this.r.viewLeft) / PPM, y: (iy + this.r.viewTop) / PPM });
+    this.ping(local.x, local.y);
+  }
+
+  /** Ping where the own figure stands ("over here!"). */
+  pingSelf(): void {
+    const id = this.locals[0]?.id;
+    const p = this.sim.state.players.find((pp) => pp.id === id);
+    if (p) this.ping(p.x, p.y - PLAYER_HALF_HEIGHT);
+  }
+
+  private ping(x: number, y: number): void {
+    const id = this.locals[0]?.id;
+    if (!id) return;
+    this.command({ type: 'ping', player: id, x, y });
   }
 
   private readDevices(l: LocalPlayer): PlayerInput {
@@ -406,6 +491,60 @@ export class Game {
       } else if (e.type === 'splash') {
         const w = shipToWorld(s.ship, { x: e.x, y: e.y });
         this.splash(w.x * PPM, seaSurfaceY(w.x, s.time, s.ship.seaState) * PPM, 18 * e.strength);
+      } else if (e.type === 'cannonFire') {
+        this.muzzle(e.x * PPM, e.y * PPM, e.angle);
+        this.shake = Math.max(this.shake, 2);
+      } else if (e.type === 'ballSplash') {
+        this.splash(e.x * PPM, seaSurfaceY(e.x, s.time, s.ship.seaState) * PPM, 14);
+      } else if (e.type === 'rockHit' || e.type === 'monsterAttack') {
+        const bow = shipToWorld(s.ship, { x: BOW_OFFSET, y: 0.5 });
+        this.splash(bow.x * PPM, seaSurfaceY(bow.x, s.time, s.ship.seaState) * PPM, e.type === 'rockHit' ? 40 : 22);
+        this.shake = Math.max(this.shake, e.type === 'rockHit' ? 7 : 4);
+      } else if (e.type === 'rockBreak') {
+        const y = seaSurfaceY(e.x, s.time, s.ship.seaState) * PPM;
+        this.splash(e.x * PPM, y, 30);
+        for (let i = 0; i < 26; i++) {
+          this.spray.spawn(e.x * PPM + (Math.random() - 0.5) * 30, y - Math.random() * 20, (Math.random() - 0.5) * 90, -60 - Math.random() * 80, 0.8 + Math.random() * 0.5, Math.random() > 0.5 ? 0x5a616c : 0x343842, 0, 260, 0.2, y + 3);
+        }
+      } else if (e.type === 'monsterHit' || e.type === 'monsterFlee' || e.type === 'monsterAppear') {
+        const h = monsterHead(s);
+        if (h) {
+          this.splash(h.x * PPM, seaSurfaceY(h.x, s.time, s.ship.seaState) * PPM, e.type === 'monsterHit' ? 10 : 30);
+          if (e.type === 'monsterHit') {
+            for (let i = 0; i < 20; i++) this.spray.spawn(h.x * PPM + (Math.random() - 0.5) * 16, h.y * PPM, (Math.random() - 0.5) * 70, -30 - Math.random() * 60, 0.8, 0x2a1030, 0, 200, 0.3, NaN);
+          }
+        }
+      } else if (e.type === 'arrived') {
+        this.fireworks();
+      }
+    }
+  }
+
+  /** Muzzle flash (unlit) and a puff of smoke. World px. */
+  private muzzle(x: number, y: number, angle: number): void {
+    for (let i = 0; i < 18; i++) {
+      const a = angle + (Math.random() - 0.5) * 0.5;
+      const v = 60 + Math.random() * 120;
+      this.fx.spawn(x, y, Math.cos(a) * v, Math.sin(a) * v, 0.12 + Math.random() * 0.15, Math.random() > 0.4 ? 0xfff0a0 : 0xff9a30, 0, 0, 3);
+    }
+    for (let i = 0; i < 16; i++) {
+      const a = angle + (Math.random() - 0.5) * 0.9;
+      const v = 15 + Math.random() * 40;
+      this.spray.spawn(x, y, Math.cos(a) * v, Math.sin(a) * v - 8, 0.8 + Math.random() * 0.8, Math.random() > 0.5 ? 0x8a8e96 : 0x5c6068, 0, -12, 1.2);
+    }
+  }
+
+  private fireworks(): void {
+    const { x, y } = this.lighthousePos;
+    const colors = [0xffe070, 0xff7050, 0x70d0ff, 0xb0ff90, 0xffffff];
+    for (let burst = 0; burst < 5; burst++) {
+      const bx = x + (Math.random() - 0.5) * 120;
+      const by = y - 60 - Math.random() * 50;
+      const col = colors[burst % colors.length]!;
+      for (let i = 0; i < 40; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const v = 20 + Math.random() * 50;
+        this.fx.spawn(bx, by, Math.cos(a) * v, Math.sin(a) * v, 1 + Math.random() * 1.2, col, 0, 30, 0.8);
       }
     }
   }
@@ -437,7 +576,10 @@ export class Game {
     const k = 1 - Math.exp(-dt * 5);
     this.camera.x += (tx - this.camera.x) * k;
     this.camera.y += (ty - this.camera.y) * k;
-    r.setTransforms(this.camera.x, this.camera.y, shipPx.x, shipPx.y, v.ship.roll);
+    this.shake = Math.max(0, this.shake - dt * 14);
+    const sx = (Math.random() - 0.5) * this.shake;
+    const sy = (Math.random() - 0.5) * this.shake;
+    r.setTransforms(this.camera.x + sx, this.camera.y + sy, shipPx.x, shipPx.y, v.ship.roll);
 
     const left = r.viewLeft;
     const top = r.viewTop;
@@ -449,20 +591,39 @@ export class Game {
     const farSurfaceAt = (x: number) => seaSurfaceY(x / PPM, v.time * 0.6, seaState) * PPM;
     this.sea.update(left, left + width, top + height + 8, v.time, surfaceAt, farSurfaceAt);
 
-    // lighthouse far away on the horizon, drifting very slowly
-    const lx = left + width * 0.86;
-    const ly = -34 + 4;
+    // the lighthouse: on the horizon at first, bigger as the ship gets closer, at the end on its island ahead
+    const progress = clamp(v.ship.x / Math.max(1, s.voyage.length), 0, 1);
+    const scale = progress < 0.5 ? 1 : progress < 0.8 ? 2 : 3;
+    let lx = left + width * 0.86;
+    // the far sea band is drawn with a quarter of the wave height, 34 px up
+    let ly = farSurfaceAt(lx) * 0.25 - 31;
+    const islandX = (s.voyage.length + 22) * PPM;
+    const near = islandX < lx;
+    if (near) {
+      lx = islandX;
+      ly = surfaceAt(islandX) - 22;
+    }
+    this.island.visible = near;
+    this.island.position.set(Math.round(lx), Math.round(surfaceAt(islandX) + 18));
+    this.lighthouse.scale.set(scale);
+    this.lighthouseGlow.scale.set(scale);
     this.lighthouse.position.set(Math.round(lx), Math.round(ly));
     this.lighthouseGlow.position.set(Math.round(lx), Math.round(ly));
+    this.lighthousePos = { x: lx, y: ly };
     const phase = this.time * 0.9;
     const beam = Math.cos(phase);
     this.lighthouseLight.x = Math.round(lx);
-    this.lighthouseLight.y = Math.round(ly) - 25;
+    this.lighthouseLight.y = Math.round(ly) - 25 * scale;
+    this.lighthouseLight.radius = 420 * (1 + (scale - 1) * 0.4);
     this.lighthouseLight.cone!.direction = beam > 0 ? Math.PI + 0.06 : 0.06;
     this.lighthouseLight.intensity = 1.3 * Math.pow(Math.abs(Math.sin(phase * 0.5 + 0.3)), 6);
     this.lighthouseGlow.alpha = 0.55 + 0.45 * Math.pow(Math.abs(Math.sin(phase * 0.5 + 0.3)), 4);
 
     this.updateSpray(dt, v);
+    this.hazards.update(s, v, dt, (x) => seaSurfaceY(x, v.time, seaState), (x) => seaSurfaceY(x, v.time * 0.6, seaState) * 0.25 - 34 / PPM);
+    this.storm.update(dt, seaState);
+    r.fogScale = 1 + 0.6 * progress;
+    this.fx.update(dt);
     this.shipView.update(s, v, dt);
     const ls = r.lightScale;
     this.shipView.lights.setResolution(r.lightWidth, r.lightHeight, ls);
@@ -477,6 +638,7 @@ export class Game {
     const ids = this.locals.map((l) => l.id);
     this.station.update(s, v, ids[0]);
     this.names.update(s, v, ids, left, top, this.time);
+    this.pingView.update(s, v, left, top, width, height, this.time);
     this.hud.update(this.sim, s, ids, width, height, this.time, this.net ? { code: this.net.link.code, status: this.net.status, synced: this.net.predictor.synced } : null);
     if (this.touch.isEnabled && ids[0]) {
       const h = this.sim.interactionHints(ids[0]);

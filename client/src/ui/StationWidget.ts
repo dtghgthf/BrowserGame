@@ -4,6 +4,7 @@ import { frameOf, type Sheet } from '../render/assets';
 import type { GameRenderer } from '../render/GameRenderer';
 import type { Snapshot } from '../game/snapshot';
 import { PixelFont, PixelText } from './PixelFont';
+import { drawSeaChart } from './SeaChart';
 
 /** Visual wheel turns for full rudder (±270°). */
 const WHEEL_TURNS = Math.PI * 1.5;
@@ -38,6 +39,7 @@ export class StationWidget {
   private drag: Drag | null = null;
   private roll = 0;
   private value = 0;
+  private time = 0;
   /** Last pointer position (internal px) of the active drag, re-applied every frame. */
   private lastPointer: { x: number; y: number } | null = null;
 
@@ -148,6 +150,7 @@ export class StationWidget {
     this.root.visible = kind !== null;
     if (!kind || !st) return;
     this.roll = view.ship.roll;
+    this.time = view.time;
     this.value = view.stations[st.id]?.value ?? st.value;
     // a held dial keeps pointing at the same screen direction while the ship rolls
     if (this.drag && this.lastPointer && (kind === 'searchlight' || kind === 'cannon')) this.applyPointer(this.lastPointer);
@@ -180,6 +183,8 @@ export class StationWidget {
         // course error (green = on course)
         const err = Math.max(-1, Math.min(1, state.ship.heading));
         this.g.rect(cx + Math.round(err * 23), gy + 5, 1, 2).fill(Math.abs(state.ship.heading) > 0.35 ? 0xe8584a : 0x6cc070);
+        // the sea chart next to the wheel: steer around the red rocks
+        drawSeaChart(this.g, cx + 40, cy - 34, 64, 66, state, this.time);
         title = 'STEUERRAD';
         sub = this.drag ? '' : 'DREHEN: ZIEHEN ODER A/D';
         break;
@@ -211,7 +216,13 @@ export class StationWidget {
         this.needle.position.set(cx, cy);
         this.needle.rotation = this.value + this.roll;
         title = kind === 'searchlight' ? 'SCHEINWERFER' : 'KANONE';
-        sub = this.drag ? '' : kind === 'searchlight' ? 'RICHTUNG ZEIGEN / A-D' : 'ZIELEN - FEUERN: PHASE 4';
+        sub = this.drag ? '' : kind === 'searchlight' ? 'RICHTUNG ZEIGEN / A-D' : st.aux > 0 ? 'LADEN ...' : 'ZIELEN, F = FEUER!';
+        if (kind === 'cannon') {
+          // reload bar under the dial
+          const frac = 1 - Math.min(1, st.aux / 2.2);
+          this.g.rect(cx - 20, cy + 32, 40, 3).fill(0x2c3a4c);
+          this.g.rect(cx - 20, cy + 32, Math.round(40 * frac), 3).fill(frac >= 1 ? 0x6cc070 : 0xe0b860);
+        }
         break;
       }
       default:

@@ -496,6 +496,19 @@ export class Simulation {
       case 'ping':
         this.addPing(c.player, c.x, c.y);
         break;
+      case 'debugHazard': {
+        const s = this.state;
+        if (c.what === 'monster') s.voyage.nextMonsterX = Math.min(s.voyage.nextMonsterX, s.ship.x);
+        else s.rocks.push({ id: this.nextId(), x: s.ship.x + 55, lateral: s.ship.lateral, radius: 2.6, spotted: false, hit: false });
+        break;
+      }
+      case 'debugAdvance': {
+        const s = this.state;
+        s.ship.x += c.meters;
+        s.rocks = [];
+        s.voyage.nextRockX = Math.max(s.voyage.nextRockX, s.ship.x + 60);
+        break;
+      }
       case 'debugRoll':
         this.state.forcedRoll = c.value;
         break;

@@ -56,6 +56,10 @@ export type SimCommand =
   | { type: 'seaState'; value: number }
   | { type: 'debugRoll'; value: number | null }
   | { type: 'tune'; patch: TuningPatch }
+  /** Debug: a rock straight ahead / the kraken right now. */
+  | { type: 'debugHazard'; what: 'rock' | 'monster' }
+  /** Debug: sail forward this many meters. */
+  | { type: 'debugAdvance'; meters: number }
   /** A player marks a spot (ship-local meters). Allowed for everybody online. */
   | { type: 'ping'; player: string; x: number; y: number }
   | { type: 'reset' };
