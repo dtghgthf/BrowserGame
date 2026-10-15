@@ -14,6 +14,7 @@ const ICONS: Record<HintIcon, string> = {
   exit: 'ui_i_exit',
   grab: 'ui_i_grab',
   drop: 'ui_i_drop',
+  fire: 'ui_i_fire',
 };
 
 type ButtonKey = 'jump' | 'interact' | 'pick';

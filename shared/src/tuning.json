@@ -51,6 +51,23 @@
     "sinkFraction": 0.8,
     "sunkResetTime": 5,
     "overboardTime": 2.5,
-    "bubbleTime": 3
+    "bubbleTime": 3,
+    "voyageLength": 1500,
+    "stormGrowth": 0.5,
+    "rockSpacingMin": 45,
+    "rockSpacingMax": 105,
+    "rockSpotRange": 95,
+    "rockSeeRange": 18,
+    "shipBeam": 2.6,
+    "rockShake": 0.5,
+    "cannonReload": 2.2,
+    "ballSpeed": 24,
+    "monsterFirstAt": 0.3,
+    "monsterEvery": 450,
+    "monsterHp": 3,
+    "monsterSpeed": 1.4,
+    "monsterAttackInterval": 7,
+    "arrivedResetTime": 15,
+    "pingTime": 4
   }
 }

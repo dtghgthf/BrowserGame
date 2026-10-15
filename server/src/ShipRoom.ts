@@ -42,6 +42,7 @@ export class ShipRoom extends Room {
   private hostId = '';
   private ticks = 0;
   private lastUpdate = performance.now();
+  private readonly lastPing = new Map<string, number>();
 
   override async onCreate(options: Partial<JoinOptions> & { seaState?: number }): Promise<void> {
     const code = uniqueCode();
@@ -57,10 +58,18 @@ export class ShipRoom extends Room {
 
     this.onMessage(MSG.input, (client, msg: unknown) => this.host.receiveInputs(client.sessionId, decodeInputs(msg)));
     this.onMessage(MSG.command, (client, raw: unknown) => {
-      // debug keys and the tuning panel are reserved for the player who opened the room
-      if (client.sessionId !== this.hostId) return;
       const c = parseCommand(raw);
       if (!c) return;
+      if (c.type === 'ping') {
+        // everybody may ping, a few times per second at most
+        const now = Date.now();
+        if (now - (this.lastPing.get(client.sessionId) ?? 0) < 250) return;
+        this.lastPing.set(client.sessionId, now);
+        this.host.command({ ...c, player: client.sessionId });
+        return;
+      }
+      // debug keys and the tuning panel are reserved for the player who opened the room
+      if (client.sessionId !== this.hostId) return;
       this.host.command(c);
       if (c.type === 'tune') {
         // apply right away, so the patch everybody receives is exactly the server's numbers

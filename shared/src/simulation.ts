@@ -1,4 +1,4 @@
-import { SIM_DT } from './constants';
+import { SIM_DT, WORLD_GRAVITY } from './constants';
 import { copyInput, EMPTY_INPUT, type InputMap, type PlayerInput, type SimCommand } from './input';
 import { COMPARTMENT_NAMES, SHIP_MAP, SHIP_ORIGIN } from './layout/shipMap';
 import { compartmentAtLocal, parseLayout, tileToLocal, type MarkerDef, type ShipLayout } from './layout/parseLayout';
@@ -38,9 +38,11 @@ import type {
   GameState,
   ObjectKind,
   ObjectState,
+  PingKind,
   PlayerState,
   StationKind,
   StationState,
+  VoyageState,
 } from './state';
 import {
   buildCompartmentGeometry,
@@ -96,7 +98,26 @@ const STATION_KINDS: Partial<Record<MarkerDef['type'], StationKind>> = {
 const OPERABLE: ReadonlySet<StationKind> = new Set(['wheel', 'pump', 'searchlight', 'cannon']);
 
 /** Language independent icon for an interaction (touch context buttons). */
-export type HintIcon = 'wheel' | 'pump' | 'searchlight' | 'cannon' | 'workshop' | 'plank' | 'hatch' | 'repair' | 'exit' | 'grab' | 'drop';
+export type HintIcon = 'wheel' | 'pump' | 'searchlight' | 'cannon' | 'workshop' | 'plank' | 'hatch' | 'repair' | 'exit' | 'grab' | 'drop' | 'fire';
+
+/** Rocks closer than this (m ahead of the ship pivot) are created; the sea chart looks this far. */
+export const ROCK_LOOKAHEAD = 160;
+/** World x offset of the bow tip from the ship pivot (m). */
+export const BOW_OFFSET = 15.6;
+/** Where the kraken grabs the bow (m ahead of the pivot). */
+export const MONSTER_ATTACK_OFFSET = 19;
+/** Ship-local position of the searchlight lens pivot and the cannon barrel pivot relative to their station (m). */
+export const SEARCHLIGHT_PIVOT = { x: -5 / 16, y: -12 / 16 } as const;
+export const CANNON_PIVOT = { x: 6 / 16, y: -6 / 16 } as const;
+const CANNON_LENGTH = 14 / 16;
+
+/** World position of the kraken's head. */
+export function monsterHead(state: Pick<GameState, 'ship' | 'time' | 'monster'>): Vec2 | null {
+  const m = state.monster;
+  if (!m) return null;
+  const x = state.ship.x + m.offset;
+  return { x, y: seaSurfaceY(x, state.time, state.ship.seaState) - 1.3 + m.depth * 4 };
+}
 
 export interface Hint {
   label: string;
@@ -161,7 +182,7 @@ export class Simulation {
     const statics = buildStaticColliders(this.world, this.layout);
     this.hatchColliders = statics.hatchColliders;
 
-    const seaState = this.state?.ship.seaState ?? this.initialSeaState;
+    const seaState = this.state?.voyage.seaBase ?? this.initialSeaState;
     this.state = {
       tick: 0,
       time: 0,
@@ -179,6 +200,13 @@ export class Simulation {
       nextObjectId: 1,
       forcedRoll,
       leakCursor: 0,
+      voyage: this.createVoyage(seaState),
+      rocks: [],
+      monster: null,
+      balls: [],
+      pings: [],
+      shouts: { wheel: 6, water: 0, rock: 0 },
+      nextId: 1,
     };
     this.layout.hatches.forEach((h) => applyHatchState(this.hatchColliders[h.id]!, h, true));
 
@@ -190,6 +218,22 @@ export class Simulation {
       }
     }
     for (const k of keep) this.addPlayer(k.id, k).away = k.away;
+  }
+
+  private createVoyage(seaBase: number): VoyageState {
+    const G = this.tuning.gameplay;
+    return {
+      length: G.voyageLength,
+      seaBase,
+      nextRockX: 70,
+      nextMonsterX: G.voyageLength * G.monsterFirstAt,
+      rocksHit: 0,
+      rocksPassed: 0,
+      rocksDestroyed: 0,
+      monstersRepelled: 0,
+      leaksRepaired: 0,
+      landSighted: false,
+    };
   }
 
   private createStations(): StationState[] {
@@ -380,13 +424,17 @@ export class Simulation {
     s.time += dt;
     this.world.timestep = dt;
 
-    if (s.status === 'sunk') {
+    if (s.status === 'sunk' || s.status === 'arrived') {
       s.statusTimer -= dt;
       if (s.statusTimer <= 0) {
         this.reset();
         return;
       }
     }
+
+    // the storm grows on the way to the lighthouse
+    const progress = clamp(s.ship.x / Math.max(1, s.voyage.length), 0, 1);
+    s.ship.seaState = clamp(s.voyage.seaBase + this.tuning.gameplay.stormGrowth * Math.pow(progress, 1.2), 0, 1.6);
 
     // ship motion (uses the water distribution from the previous step)
     let volume = 0;
@@ -416,6 +464,7 @@ export class Simulation {
     this.syncBodies(dt);
     this.updateLeaks(dt);
     updateWater(this.layout, this.waterGeometry, s.compartments, (id) => s.hatches[id]!.open, s.ship.gravity, dt);
+    this.updateVoyage(dt);
     this.checkSinking();
 
     for (const p of s.players) {
@@ -442,7 +491,10 @@ export class Simulation {
         break;
       }
       case 'seaState':
-        this.state.ship.seaState = clamp(c.value, 0, 1.5);
+        this.state.voyage.seaBase = clamp(c.value, 0, 1.5);
+        break;
+      case 'ping':
+        this.addPing(c.player, c.x, c.y);
         break;
       case 'debugRoll':
         this.state.forcedRoll = c.value;
@@ -464,6 +516,22 @@ export class Simulation {
 
   private say(p: PlayerState, key: BubbleKey): void {
     p.bubble = { key, time: this.tuning.gameplay.bubbleTime };
+    this.emit({ type: 'shout', player: p.id, key });
+  }
+
+  /** The player closest to a ship-local point who is on board and free (null if nobody). */
+  private closestPlayer(x: number, y: number, free = false): PlayerState | null {
+    let best: PlayerState | null = null;
+    let bd = Infinity;
+    for (const p of this.state.players) {
+      if (p.overboard > 0 || p.away || (free && p.station !== null)) continue;
+      const d = Math.hypot(p.x - x, p.y - y);
+      if (d < bd) {
+        bd = d;
+        best = p;
+      }
+    }
+    return best;
   }
 
   private updatePlayer(p: PlayerState, input: Readonly<PlayerInput>, dt: number): void {
@@ -497,7 +565,7 @@ export class Simulation {
         consumed = true;
         p.jumpBuffer = 0;
       } else {
-        this.operateStation(st, input, dt);
+        this.operateStation(st, input, dt, !!pressed('pick'));
         rt.body.setTranslation({ x: st.x, y: st.y - PLAYER_HALF_HEIGHT - 0.01 }, true);
         rt.body.setLinvel({ x: 0, y: 0 }, true);
         this.setPlatformFilter(p, rt, true);
@@ -715,7 +783,11 @@ export class Simulation {
     const p = this.state.players.find((pp) => pp.id === id);
     const rt = this.players.get(id);
     if (!p || !rt || p.overboard > 0) return { interact: null, pick: null };
-    if (p.station !== null) return { interact: { label: 'Verlassen', icon: 'exit' }, pick: null };
+    if (p.station !== null) {
+      const st = this.state.stations[p.station];
+      const pick: Hint | null = st?.kind === 'cannon' ? { label: st.aux > 0 ? 'Lädt ...' : 'Feuer!', icon: 'fire' } : null;
+      return { interact: { label: 'Verlassen', icon: 'exit' }, pick };
+    }
     if (p.action) return { interact: { label: 'Abbrechen', icon: 'exit' }, pick: null };
     const c = this.interactionCandidates(p, rt)[0];
     const interact: Hint | null = c ? { label: c.label, icon: c.icon } : null;
@@ -755,7 +827,7 @@ export class Simulation {
    * it towards the target, at most a bit faster than the keys - so touch and
    * keyboard players are equally strong.
    */
-  private operateStation(st: StationState, input: Readonly<PlayerInput>, dt: number): void {
+  private operateStation(st: StationState, input: Readonly<PlayerInput>, dt: number, fire = false): void {
     const G = this.tuning.gameplay;
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     const target = input.target;
@@ -804,6 +876,7 @@ export class Simulation {
         st.value = hasTarget
           ? approach(st.value, clamp(target, -1.3, 0.35), G.cannonSpeed * 1.6 * dt)
           : clamp(st.value + dir * G.cannonSpeed * dt, -1.3, 0.35);
+        if (fire && st.aux <= 0) this.fireCannon(st);
         break;
       case 'workshop':
         break;
@@ -983,6 +1056,7 @@ export class Simulation {
       p.carrying = null;
       this.removeObject(id);
     }
+    this.state.voyage.leaksRepaired++;
     this.emit({ type: 'repaired', leak: leak.id });
   }
 
@@ -1029,6 +1103,294 @@ export class Simulation {
     return { volume, capacity };
   }
 
+  // ---------------------------------------------------------------- phase 4: voyage, hazards, pings
+
+  private nextId(): number {
+    return this.state.nextId++;
+  }
+
+  private rand(min: number, max: number): number {
+    return min + (max - min) * nextRandom(this.state);
+  }
+
+  private updateVoyage(dt: number): void {
+    const s = this.state;
+    const v = s.voyage;
+    const G = this.tuning.gameplay;
+    for (const k of ['wheel', 'water', 'rock'] as const) s.shouts[k] = Math.max(0, s.shouts[k] - dt);
+    for (const pg of s.pings) pg.time -= dt;
+    if (s.pings.some((pg) => pg.time <= 0)) s.pings = s.pings.filter((pg) => pg.time > 0);
+    this.updateBalls(dt);
+    if (s.status !== 'sailing') return;
+
+    const progress = s.ship.x / Math.max(1, v.length);
+    if (s.ship.x >= v.length) {
+      s.status = 'arrived';
+      s.statusTimer = G.arrivedResetTime;
+      s.rocks = [];
+      if (s.monster) s.monster.phase = 'flee';
+      this.emit({ type: 'arrived' });
+      return;
+    }
+    if (!v.landSighted && progress > 0.92) {
+      v.landSighted = true;
+      const p = this.closestPlayer(0, -2);
+      if (p) this.say(p, 'land');
+    }
+    this.updateRocks(progress);
+    this.updateMonster(dt);
+    this.updateShouts();
+  }
+
+  private updateRocks(progress: number): void {
+    const s = this.state;
+    const v = s.voyage;
+    const G = this.tuning.gameplay;
+    const ship = s.ship;
+    // new rocks appear far ahead, denser the closer the lighthouse
+    while (v.nextRockX - ship.x < ROCK_LOOKAHEAD && v.nextRockX < v.length - 40) {
+      const inLane = nextRandom(s) < 0.45;
+      const lateral = ship.lateral + (inLane ? this.rand(-1.5, 1.5) : this.rand(-8, 8));
+      s.rocks.push({ id: this.nextId(), x: v.nextRockX, lateral, radius: this.rand(1.6, 3.4), spotted: false, hit: false });
+      v.nextRockX += this.rand(G.rockSpacingMin, G.rockSpacingMax) * (1 - 0.35 * progress);
+    }
+    const light = this.searchlightRay();
+    for (const r of s.rocks) {
+      const ahead = r.x - ship.x;
+      if (!r.spotted) {
+        const byLight = light !== null && this.inBeam(light, r.x, seaSurfaceY(r.x, s.time, ship.seaState) - 0.6, r.radius, G.rockSpotRange);
+        if (byLight || ahead < G.rockSeeRange) {
+          r.spotted = true;
+          this.emit({ type: 'rockSpotted', rock: r.id });
+          if (byLight && s.shouts.rock <= 0) {
+            const st = s.stations.find((x) => x.kind === 'searchlight');
+            const op = st?.occupant ? s.players.find((p) => p.id === st.occupant) : null;
+            const who = op ?? (st ? this.closestPlayer(st.x, st.y) : null);
+            if (who) this.say(who, 'rock');
+            s.shouts.rock = 6;
+          }
+        }
+      }
+      if (!r.hit && ahead <= BOW_OFFSET) {
+        if (Math.abs(r.lateral - ship.lateral) < r.radius + G.shipBeam) this.hitRock(r.id);
+        else {
+          r.hit = true; // passed (no second check)
+          v.rocksPassed++;
+        }
+      }
+    }
+    if (s.rocks.some((r) => r.x < ship.x - 30)) s.rocks = s.rocks.filter((r) => r.x >= ship.x - 30);
+  }
+
+  private hitRock(id: number): void {
+    const s = this.state;
+    const r = s.rocks.find((x) => x.id === id);
+    if (!r) return;
+    r.hit = true;
+    s.voyage.rocksHit++;
+    s.ship.rollVel += (r.lateral > s.ship.lateral ? -1 : 1) * this.tuning.gameplay.rockShake;
+    this.emit({ type: 'rockHit', rock: r.id, x: r.x });
+    this.emit({ type: 'splash', x: BOW_OFFSET - 1, y: 0.5, strength: 1.4 });
+    this.leakAt('bow');
+    if (r.radius > 2.8) this.leakAt('bottom');
+  }
+
+  /** Opens a new leak in a part of the hull (bow / bottom), if one is still intact there. */
+  private leakAt(where: 'bow' | 'bottom' | 'any'): void {
+    const L = this.layout;
+    const midX = L.width / 2;
+    const candidates = L.leakPoints.filter((lp) => {
+      if (this.state.leaks.some((l) => l.point === lp.id && l.active)) return false;
+      if (where === 'bow') return lp.tx > midX + 8 && lp.inward.y === 0;
+      if (where === 'bottom') return lp.inward.y !== 0 || lp.tx > midX + 8;
+      return true;
+    });
+    if (candidates.length === 0) return;
+    const pick = candidates[Math.floor(nextRandom(this.state) * candidates.length) % candidates.length]!;
+    this.createLeak(pick.id);
+  }
+
+  /** World-space ray of the searchlight (origin, angle), or null. */
+  private searchlightRay(): { x: number; y: number; angle: number } | null {
+    const st = this.state.stations.find((x) => x.kind === 'searchlight');
+    if (!st || st.aux <= 0) return null;
+    const ship = this.state.ship;
+    const o = shipToWorld(ship, { x: st.x + SEARCHLIGHT_PIVOT.x, y: st.y + SEARCHLIGHT_PIVOT.y });
+    return { x: o.x, y: o.y, angle: st.value + ship.roll };
+  }
+
+  private inBeam(ray: { x: number; y: number; angle: number }, x: number, y: number, size: number, range: number): boolean {
+    const d = Math.hypot(x - ray.x, y - ray.y);
+    if (d > range || d < 0.5) return false;
+    const a = Math.atan2(y - ray.y, x - ray.x);
+    return Math.abs(wrapAngle(a - ray.angle)) < 0.1 + Math.atan(size / d);
+  }
+
+  private updateMonster(dt: number): void {
+    const s = this.state;
+    const G = this.tuning.gameplay;
+    const v = s.voyage;
+    if (!s.monster && s.ship.x >= v.nextMonsterX) {
+      v.nextMonsterX += G.monsterEvery;
+      s.monster = { offset: 55, depth: 1, hp: G.monsterHp, phase: 'approach', timer: 0, attackIn: 2, spotted: false, hurt: 0 };
+      this.emit({ type: 'monsterAppear' });
+    }
+    const m = s.monster;
+    if (!m) return;
+    m.timer += dt;
+    m.hurt = Math.max(0, m.hurt - dt);
+    const head = monsterHead(s)!;
+    if (!m.spotted && m.depth < 0.6) {
+      const light = this.searchlightRay();
+      if (m.offset < 26 || (light && this.inBeam(light, head.x, head.y, 2, G.rockSpotRange))) {
+        m.spotted = true;
+        const st = s.stations.find((x) => x.kind === 'searchlight');
+        const who = (st?.occupant && s.players.find((p) => p.id === st.occupant)) || this.closestPlayer(BOW_OFFSET, -1);
+        if (who) this.say(who, 'monster');
+      }
+    }
+    switch (m.phase) {
+      case 'approach':
+        m.depth = Math.max(0, m.depth - dt * 0.5);
+        m.offset = Math.max(MONSTER_ATTACK_OFFSET, m.offset - G.monsterSpeed * dt);
+        if (m.offset <= MONSTER_ATTACK_OFFSET) {
+          m.phase = 'attack';
+          m.timer = 0;
+          m.attackIn = 2.5;
+        }
+        break;
+      case 'attack':
+        m.attackIn -= dt;
+        if (m.attackIn <= 0) {
+          m.attackIn = G.monsterAttackInterval;
+          s.ship.rollVel += 0.25;
+          this.emit({ type: 'monsterAttack' });
+          this.leakAt('bow');
+        }
+        break;
+      case 'flee':
+        m.depth = Math.min(1.2, m.depth + dt * 0.6);
+        m.offset += dt * 3;
+        if (m.depth >= 1.2) s.monster = null;
+        break;
+    }
+  }
+
+  private fireCannon(st: StationState): void {
+    const s = this.state;
+    const G = this.tuning.gameplay;
+    const ship = s.ship;
+    const angle = st.value + ship.roll;
+    const pivot = shipToWorld(ship, { x: st.x + CANNON_PIVOT.x, y: st.y + CANNON_PIVOT.y });
+    const x = pivot.x + Math.cos(angle) * CANNON_LENGTH;
+    const y = pivot.y + Math.sin(angle) * CANNON_LENGTH;
+    s.balls.push({ id: this.nextId(), x, y, vx: Math.cos(angle) * G.ballSpeed + ship.speed, vy: Math.sin(angle) * G.ballSpeed + ship.vy, age: 0 });
+    st.aux = G.cannonReload;
+    ship.rollVel -= 0.06;
+    this.emit({ type: 'cannonFire', player: st.occupant, x, y, angle });
+  }
+
+  private updateBalls(dt: number): void {
+    const s = this.state;
+    if (s.balls.length === 0) return;
+    const ship = s.ship;
+    const head = monsterHead(s);
+    const keep = [];
+    for (const b of s.balls) {
+      b.vy += WORLD_GRAVITY * dt;
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.age += dt;
+      if (head && s.monster && s.monster.phase !== 'flee' && Math.hypot(b.x - head.x, b.y - head.y) < 2.2) {
+        this.hitMonster();
+        continue;
+      }
+      if (b.y > seaSurfaceY(b.x, s.time, ship.seaState)) {
+        this.emit({ type: 'ballSplash', x: b.x, y: b.y });
+        // a rock straight ahead (in the ship's lane) breaks
+        const rock = s.rocks.find((r) => !r.hit && Math.abs(r.x - b.x) < r.radius + 0.8 && Math.abs(r.lateral - ship.lateral) < r.radius + 1);
+        if (rock) {
+          s.rocks = s.rocks.filter((r) => r !== rock);
+          s.voyage.rocksDestroyed++;
+          this.emit({ type: 'rockBreak', rock: rock.id, x: rock.x });
+        }
+        continue;
+      }
+      if (b.age < 8) keep.push(b);
+    }
+    s.balls = keep;
+  }
+
+  private hitMonster(): void {
+    const m = this.state.monster;
+    if (!m) return;
+    m.hp--;
+    m.hurt = 0.4;
+    this.emit({ type: 'monsterHit', hp: m.hp });
+    if (m.hp <= 0) {
+      m.phase = 'flee';
+      m.timer = 0;
+      this.state.voyage.monstersRepelled++;
+      this.emit({ type: 'monsterFlee' });
+    }
+  }
+
+  /** Automatic shouts so the crew knows what is going on without talking. */
+  private updateShouts(): void {
+    const s = this.state;
+    const wheel = s.stations.find((st) => st.kind === 'wheel');
+    if (wheel && !wheel.occupant && Math.abs(s.ship.heading) > 0.45 && s.shouts.wheel <= 0) {
+      const p = this.closestPlayer(wheel.x, wheel.y, true);
+      if (p) this.say(p, 'wheel');
+      s.shouts.wheel = 14;
+    }
+    if (s.shouts.water <= 0) {
+      for (let i = 0; i < s.compartments.length; i++) {
+        const c = s.compartments[i]!;
+        const cap = this.waterGeometry[i]!.capacity;
+        if (cap > 0 && c.volume / cap > 0.3) {
+          const p = this.closestPlayer(c.centroidX, c.surfaceY, true);
+          if (p) this.say(p, 'water');
+          s.shouts.water = 18;
+          break;
+        }
+      }
+    }
+  }
+
+  /** What a ping at a ship-local spot means, from what is there. */
+  pingKindAt(x: number, y: number): PingKind {
+    const s = this.state;
+    for (const leak of s.leaks) {
+      if (!leak.active) continue;
+      const lp = this.leakInteriorPoint(leak.point);
+      if (Math.hypot(lp.x - x, lp.y - y) < 1.4) return 'leak';
+    }
+    for (const st of s.stations) {
+      if (Math.abs(st.x - x) < 1.2 && y > st.y - 2 && y < st.y + 0.5) return st.kind === 'workshop' ? 'plank' : st.kind;
+    }
+    for (const h of this.layout.hatches) {
+      const g = hatchGeometry(this.layout, h);
+      if (Math.abs(g.x - x) < g.width / 2 + 0.4 && Math.abs(g.top - y) < 0.8) return 'hatch';
+    }
+    const L = this.layout;
+    const tx = x / L.tileSize + L.origin.x;
+    const outside = tx < 0 || tx > L.width || (compartmentAtLocal(L, x, y) < 0 && y > 0.5);
+    if (outside) return 'danger';
+    return 'here';
+  }
+
+  private addPing(player: string, x: number, y: number): void {
+    const s = this.state;
+    if (!s.players.some((p) => p.id === player) || !Number.isFinite(x) || !Number.isFinite(y)) return;
+    x = clamp(x, -60, 60);
+    y = clamp(y, -30, 30);
+    const kind = this.pingKindAt(x, y);
+    s.pings = s.pings.filter((pg) => pg.player !== player);
+    s.pings.push({ id: this.nextId(), player, kind, x, y, time: this.tuning.gameplay.pingTime });
+    this.emit({ type: 'ping', player, kind });
+  }
+
   // ---------------------------------------------------------------- objects & sync
 
   private updateObjectForces(dt: number): void {
@@ -1057,7 +1419,10 @@ export class Simulation {
     const minX = (0 - L.origin.x - 3) * L.tileSize;
     const maxX = (L.width - L.origin.x + 3) * L.tileSize;
     const maxY = (L.height - L.origin.y + 2) * L.tileSize;
-    for (const ws of s.stations) if (ws.kind === 'workshop' && ws.value > 0) ws.value = Math.max(0, ws.value - dt);
+    for (const ws of s.stations) {
+      if (ws.kind === 'workshop' && ws.value > 0) ws.value = Math.max(0, ws.value - dt);
+      if (ws.kind === 'cannon' && ws.aux > 0) ws.aux = Math.max(0, ws.aux - dt);
+    }
 
     for (const p of s.players) {
       const rt = this.players.get(p.id)!;

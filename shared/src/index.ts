@@ -11,7 +11,19 @@ export * from './fixedStepper';
 export * from './layout/parseLayout';
 export * from './layout/shipMap';
 export { GROUP, OBJECT_SPECS, initPhysics } from './physics';
-export { Simulation, getShipLayout, type Hint, type HintIcon, type SimulationOptions } from './simulation';
+export {
+  BOW_OFFSET,
+  CANNON_PIVOT,
+  MONSTER_ATTACK_OFFSET,
+  ROCK_LOOKAHEAD,
+  SEARCHLIGHT_PIVOT,
+  Simulation,
+  getShipLayout,
+  monsterHead,
+  type Hint,
+  type HintIcon,
+  type SimulationOptions,
+} from './simulation';
 export * from './tuning';
 export { PLAYER_COLORS, type AddPlayerOptions } from './simulation';
 export * from './net/protocol';

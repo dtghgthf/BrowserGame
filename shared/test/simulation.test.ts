@@ -10,6 +10,8 @@ import {
   type SimCommand,
 } from '../src';
 
+/** Index of the leak point in the stern of the lower deck (tile 6,22). */
+const STERN_LEAK = 1;
 const deg = (d: number) => (d * Math.PI) / 180;
 const input = (over: Partial<PlayerInput> = {}): PlayerInput => ({ ...EMPTY_INPUT, ...over });
 
@@ -172,9 +174,9 @@ describe('leak, pump and repair', () => {
   it('a leak lets water in, the pump removes it, a plank repairs it', async () => {
     const sim = await Simulation.create({ seaState: 0 });
     sim.addPlayer('a');
-    run(sim, 0.5, () => ({}), [{ type: 'debugLeak', point: 0 }]);
+    run(sim, 0.5, () => ({}), [{ type: 'debugLeak', point: STERN_LEAK }]);
     expect(sim.state.leaks[0]!.active).toBe(true);
-    const comp = sim.layout.leakPoints[0]!.compartment;
+    const comp = sim.layout.leakPoints[STERN_LEAK]!.compartment;
     run(sim, 10);
     const v10 = sim.state.compartments[comp]!.volume;
     expect(v10).toBeGreaterThan(1);
@@ -209,7 +211,7 @@ describe('leak, pump and repair', () => {
     expect(sim.state.objects.find((o) => o.id === plankId)!.kind).toBe('plank');
 
     // walk to the leak and repair it
-    const lp = sim.leakInteriorPoint(0);
+    const lp = sim.leakInteriorPoint(STERN_LEAK);
     sim.teleportPlayer('a', lp.x - 0.3, lp.y);
     run(sim, 0.5);
     tap(sim, 'a', 'interact');
@@ -225,9 +227,9 @@ describe('leak, pump and repair', () => {
 
   it('water in the hull increases the list towards the flooded side', async () => {
     const sim = await Simulation.create({ seaState: 0 });
-    run(sim, 0.2, () => ({}), [{ type: 'debugLeak', point: 0 }]);
+    run(sim, 0.2, () => ({}), [{ type: 'debugLeak', point: STERN_LEAK }]);
     run(sim, 40);
-    const leakX = sim.leakHullPoint(0).x;
+    const leakX = sim.leakHullPoint(STERN_LEAK).x;
     const list = sim.state.ship.list;
     expect(Math.sign(list)).toBe(Math.sign(leakX));
     expect(Math.abs(list)).toBeGreaterThan(deg(2));

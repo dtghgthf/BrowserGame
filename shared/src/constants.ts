@@ -17,3 +17,6 @@ export const GRAVITY = 22;
 
 /** Maximum supported number of players. */
 export const MAX_PLAYERS = 4;
+
+/** Gravity for things flying outside the ship (cannonballs), m/s². Lower than the stylised player gravity for nice arcs. */
+export const WORLD_GRAVITY = 12;

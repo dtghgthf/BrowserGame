@@ -86,12 +86,12 @@ describe('ship layout parser', () => {
     }
   });
 
-  it('finds the leak points on the lower deck hull', () => {
-    expect(layout.leakPoints).toHaveLength(2);
-    for (const lp of layout.leakPoints) {
-      expect(layout.compartments[lp.compartment]!.name).toBe('Unterdeck');
-      expect(layout.tiles[lp.ty * layout.width + lp.tx]).toBe(TileKind.Solid);
-    }
+  it('finds the leak points in the hull (4 lower deck, 1 middle deck at the bow)', () => {
+    expect(layout.leakPoints).toHaveLength(5);
+    const names = layout.leakPoints.map((lp) => layout.compartments[lp.compartment]!.name);
+    expect(names.filter((n) => n === 'Unterdeck')).toHaveLength(4);
+    expect(names.filter((n) => n === 'Mitteldeck')).toHaveLength(1);
+    for (const lp of layout.leakPoints) expect(layout.tiles[lp.ty * layout.width + lp.tx]).toBe(TileKind.Solid);
   });
 
   it('has all station markers', () => {

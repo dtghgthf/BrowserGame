@@ -16,6 +16,7 @@ export function createShipState(M: Readonly<ShipTuning> = DEFAULT_TUNING.ship, g
     rollVel: 0,
     list: 0,
     heading: 0.15,
+    lateral: 0,
     rudder: 0,
     speed: M.speed,
     gravity: { x: 0, y: gravity },
@@ -84,6 +85,7 @@ export function updateShip(
   ship.heading = clamp(ship.heading + (ship.rudder * M.turnRate + courseDrift(t)) * dt, -1.3, 1.3);
   ship.speed = M.speed * (0.35 + 0.65 * Math.cos(ship.heading));
   ship.x += ship.speed * dt;
+  ship.lateral += M.speed * Math.sin(ship.heading) * dt;
 
   // list from water distribution and rudder heel
   const maxList = M.maxListDeg * DEG;

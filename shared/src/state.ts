@@ -23,8 +23,10 @@ export interface ShipState {
   rollVel: number;
   /** Static heel caused by water in the hull and the rudder (radians, part of the roll target). */
   list: number;
-  /** Course error in radians (0 = heading straight for the lighthouse). */
+  /** Course error in radians (0 = parallel to the course line towards the lighthouse). */
   heading: number;
+  /** Sideways offset from the course line (m, top-down view; + = starboard). Decides which rocks are in the way. */
+  lateral: number;
   /** Rudder position -1..1 (set by the steering wheel). */
   rudder: number;
   /** Forward speed in m/s. */
@@ -45,7 +47,7 @@ export interface PlayerAction {
   progress: number;
 }
 
-export type BubbleKey = 'leak' | 'water' | 'plank' | 'help';
+export type BubbleKey = 'leak' | 'water' | 'plank' | 'help' | 'wheel' | 'rock' | 'monster' | 'land';
 
 export interface PlayerState {
   id: string;
@@ -151,6 +153,86 @@ export interface StationState {
   aux: number;
 }
 
+/** A rock ahead in the fog. Coordinates in the top-down sense: along the course (world x) and sideways. */
+export interface RockState {
+  id: number;
+  /** World x (distance along the course). */
+  x: number;
+  /** Sideways position (m), compare with ship.lateral. */
+  lateral: number;
+  radius: number;
+  /** Seen by the crew (searchlight or close enough): shown on the sea chart. */
+  spotted: boolean;
+  /** The ship already ran into it. */
+  hit: boolean;
+}
+
+export type MonsterPhase = 'approach' | 'attack' | 'flee';
+
+/** The kraken: surfaces ahead in the fog, grabs the bow and punches leaks until it is shot away. */
+export interface MonsterState {
+  /** Distance ahead of the ship pivot (m, world x offset). */
+  offset: number;
+  /** 0 = surfaced, 1 = submerged. */
+  depth: number;
+  hp: number;
+  phase: MonsterPhase;
+  /** Seconds in the current phase. */
+  timer: number;
+  /** Seconds until the next attack (phase attack). */
+  attackIn: number;
+  spotted: boolean;
+  /** > 0 right after a hit (seconds, for the flash). */
+  hurt: number;
+}
+
+/** A cannonball in flight (world coordinates). */
+export interface BallState {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  age: number;
+}
+
+export type PingKind = 'here' | 'help' | 'danger' | 'leak' | 'hatch' | 'plank' | 'wheel' | 'pump' | 'searchlight' | 'cannon';
+
+/** A marker a player put on a spot (communication without voice). Ship-local position. */
+export interface PingState {
+  id: number;
+  player: string;
+  kind: PingKind;
+  x: number;
+  y: number;
+  /** Seconds left. */
+  time: number;
+}
+
+export interface VoyageState {
+  /** Distance to the lighthouse at the start (m); the ship has arrived when ship.x reaches it. */
+  length: number;
+  /** Sea state without the storm (debug keys change this one). */
+  seaBase: number;
+  /** World x where the next rock appears / the next kraken surfaces. */
+  nextRockX: number;
+  nextMonsterX: number;
+  rocksHit: number;
+  rocksPassed: number;
+  rocksDestroyed: number;
+  monstersRepelled: number;
+  leaksRepaired: number;
+  /** Set when the crew first saw the lighthouse up close (one shout). */
+  landSighted: boolean;
+}
+
+/** Cooldowns of the automatic shouts (seconds). */
+export interface ShoutCooldowns {
+  wheel: number;
+  water: number;
+  rock: number;
+}
+
 export type GameEvent =
   | { type: 'leak'; leak: number }
   | { type: 'repaired'; leak: number }
@@ -164,9 +246,21 @@ export type GameEvent =
   | { type: 'station'; player: string; station: number; enter: boolean }
   | { type: 'overboard'; player: string }
   | { type: 'sunk' }
-  | { type: 'reset' };
+  | { type: 'reset' }
+  | { type: 'rockSpotted'; rock: number }
+  | { type: 'rockHit'; rock: number; x: number }
+  | { type: 'rockBreak'; rock: number; x: number }
+  | { type: 'cannonFire'; player: string | null; x: number; y: number; angle: number }
+  | { type: 'ballSplash'; x: number; y: number }
+  | { type: 'monsterAppear' }
+  | { type: 'monsterAttack' }
+  | { type: 'monsterHit'; hp: number }
+  | { type: 'monsterFlee' }
+  | { type: 'ping'; player: string; kind: PingKind }
+  | { type: 'shout'; player: string; key: BubbleKey }
+  | { type: 'arrived' };
 
-export type GameStatus = 'sailing' | 'sunk';
+export type GameStatus = 'sailing' | 'sunk' | 'arrived';
 
 export interface GameState {
   tick: number;
@@ -188,4 +282,12 @@ export interface GameState {
   forcedRoll: number | null;
   /** Next leak point tried by the debug leak key. */
   leakCursor: number;
+  voyage: VoyageState;
+  rocks: RockState[];
+  monster: MonsterState | null;
+  balls: BallState[];
+  pings: PingState[];
+  shouts: ShoutCooldowns;
+  /** Id counter for rocks, balls and pings. */
+  nextId: number;
 }

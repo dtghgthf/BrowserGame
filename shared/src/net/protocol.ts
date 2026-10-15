@@ -160,6 +160,9 @@ export function parseCommand(raw: unknown): SimCommand | null {
     }
     case 'reset':
       return { type: 'reset' };
+    case 'ping':
+      // the server fills in who pinged
+      return finite(c.x) && finite(c.y) ? { type: 'ping', player: typeof c.player === 'string' ? c.player : '', x: c.x, y: c.y } : null;
     default:
       return null;
   }

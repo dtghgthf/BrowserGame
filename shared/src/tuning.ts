@@ -64,6 +64,24 @@ export interface GameplayTuning {
   sunkResetTime: number;
   overboardTime: number;
   bubbleTime: number;
+  /** Phase 4: voyage, storm, hazards. */
+  voyageLength: number;
+  stormGrowth: number;
+  rockSpacingMin: number;
+  rockSpacingMax: number;
+  rockSpotRange: number;
+  rockSeeRange: number;
+  shipBeam: number;
+  rockShake: number;
+  cannonReload: number;
+  ballSpeed: number;
+  monsterFirstAt: number;
+  monsterEvery: number;
+  monsterHp: number;
+  monsterSpeed: number;
+  monsterAttackInterval: number;
+  arrivedResetTime: number;
+  pingTime: number;
 }
 
 export interface Tuning {
@@ -130,6 +148,23 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     sunkResetTime: 5,
     overboardTime: 2.5,
     bubbleTime: 3,
+    voyageLength: 1500,
+    stormGrowth: 0.5,
+    rockSpacingMin: 45,
+    rockSpacingMax: 105,
+    rockSpotRange: 95,
+    rockSeeRange: 18,
+    shipBeam: 2.6,
+    rockShake: 0.5,
+    cannonReload: 2.2,
+    ballSpeed: 24,
+    monsterFirstAt: 0.3,
+    monsterEvery: 450,
+    monsterHp: 3,
+    monsterSpeed: 1.4,
+    monsterAttackInterval: 7,
+    arrivedResetTime: 15,
+    pingTime: 4,
   },
 };
 

@@ -127,7 +127,7 @@ async function runBrowser(name, launcher) {
 
   // 2) lower deck: leak at the bow, water rising, spray from the leak
   await placePlayer(page, 55, 24);
-  await page.evaluate(() => window.__game.command({ type: 'debugLeak', point: 1 }));
+  await page.evaluate(() => window.__game.command({ type: 'debugLeak', point: 3 }));
   await sleep(12000);
   await shot('02-unterdeck-leck');
 
