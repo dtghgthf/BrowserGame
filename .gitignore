@@ -5,3 +5,6 @@ dist/
 test-results/
 playwright-report/
 .DS_Store
+
+# private notes (former README)
+NOTIZEN.md

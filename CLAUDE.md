@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-"Leuchtturmwärter": a 2–4 player co-op browser game (pixel-art ship cross-section, PixiJS v8 + Rapier2D, Colyseus online play). Code and comments are English; docs (`README.md`, `DECISIONS.md`, `PLAN.md`, asset README) and all in-game text are German. Record non-obvious design decisions in `DECISIONS.md` and progress in `PLAN.md`.
+"Leuchtturmwärter": a 2–4 player co-op browser game (pixel-art ship cross-section, PixiJS v8 + Rapier2D, Colyseus online play). Code and comments are English; docs (`README.md` = public GitHub page, `DECISIONS.md`, `PLAN.md`, asset README) and all in-game text are German. Record non-obvious design decisions in `DECISIONS.md` and progress in `PLAN.md`. Detailed developer notes (controls, debug keys, hosting, known issues, manual tests) live in the gitignored `NOTIZEN.md` (local only).
 
 ## Commands
 
