@@ -34,7 +34,7 @@ async function boot(): Promise<void> {
     // the ship: the standard one (hand-made art) or one from the editor (art drawn now)
     const ship = resolveShip(params);
     const layout = ship.code ? layoutFromDesign(ship.design) : undefined;
-    const generated = layout ? shipLayers(layout) : null;
+    const generated = layout ? shipLayers(layout, ship.design.decorOff) : null;
     const [sim, renderer, hull, back, player, props] = await Promise.all([
       Simulation.create({
         layout,

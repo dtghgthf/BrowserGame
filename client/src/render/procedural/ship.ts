@@ -34,7 +34,8 @@ function tileAt(layout: ShipLayout, tx: number, ty: number): number {
  * Where the deck, mast, yard, crow's nest and rigging go, derived from the
  * layout (for the standard ship these are exactly its hand-placed positions).
  */
-export function shipFeatures(layout: ShipLayout) {
+export function shipFeatures(layout: ShipLayout, off: ReadonlySet<number> = NO_OFF) {
+  const isOff = (tx: number, ty: number) => off.has(ty * layout.width + tx);
   const solidish = (tx: number, ty: number) => {
     const k = tileAt(layout, tx, ty);
     return k === TileKind.Solid || k === TileKind.Hatch;
@@ -65,18 +66,36 @@ export function shipFeatures(layout: ShipLayout) {
     deckFrom = 1;
     deckTo = layout.width - 2;
   }
-  // crow's nests: hatches above the deck, each platform is the run of tiles around its hatch; a mast stands under each
-  // (at the ladder up to it), without any nest one mast in the middle of the deck
+  // a mast switched off in the editor: a switch on its column above the deck (or on the deck under it)
+  const mastOff = (col: number) => {
+    for (let ty = 0; ty <= deckRow; ty++) if (isOff(col, ty)) return true;
+    return false;
+  };
+  // crow's nests: hatches above the deck with open air below (a platform up the mast - a hatch into a raised deck is
+  // none), each platform is the run of tiles around its hatch; a mast stands under each (at the ladder up to it),
+  // without any nest one mast in the middle of the deck
   const masts: { col: number; nest: { row: number; from: number; to: number } | null }[] = [];
+  let nests = 0;
   for (const h of layout.hatches.filter((hh) => hh.ty < deckRow).sort((a, b) => a.tx - b.tx)) {
+    let open = 0;
+    for (let i = 0; i < h.width; i++) if (tileAt(layout, h.tx + i, h.ty + 1) === TileKind.Exterior) open++;
+    if (open * 2 < h.width) continue;
+    nests++;
     let a = h.tx;
     let b = h.tx + h.width - 1;
     while (solidish(a - 1, h.ty)) a--;
     while (solidish(b + 1, h.ty)) b++;
     const ladder = layout.ladders.find((l) => l.tx >= h.tx && l.tx < h.tx + h.width);
-    masts.push({ col: ladder ? ladder.tx : h.tx, nest: { row: h.ty, from: a, to: b } });
+    const col = ladder ? ladder.tx : h.tx;
+    let switchedOff = mastOff(col);
+    for (let x = a; x <= b && !switchedOff; x++) if (isOff(x, h.ty)) switchedOff = true;
+    if (!switchedOff) masts.push({ col, nest: { row: h.ty, from: a, to: b } });
   }
-  if (masts.length === 0) masts.push({ col: Math.round((deckFrom + deckTo) / 2), nest: null });
+  const middle = Math.round((deckFrom + deckTo) / 2);
+  // (crow's nests switched off do not bring the middle mast back)
+  if (nests === 0 && !mastOff(middle)) masts.push({ col: middle, nest: null });
+  // railing columns switched off (a switch on the deck tile or just above it)
+  const railOff = (tx: number) => isOff(tx, deckRow) || isOff(tx, deckRow - 1);
   // the stern post the aft stay is tied to
   let sternTop = deckRow;
   for (let ty = 0; ty < deckRow; ty++) {
@@ -86,11 +105,18 @@ export function shipFeatures(layout: ShipLayout) {
     }
   }
   const clampCol = (c: number) => Math.max(deckFrom, Math.min(deckTo, c));
-  return { deckRow, deckFrom, deckTo, bowCol, masts, sternTop, clampCol };
+  return { deckRow, deckFrom, deckTo, bowCol, masts, sternTop, clampCol, railOff, interior: (tx: number, ty: number) => tileAt(layout, tx, ty) === TileKind.Interior };
+}
+
+const NO_OFF: ReadonlySet<number> = new Set();
+
+/** Tile indices (ty * width + tx) of a design's decoration switches. */
+export function decorOffSet(layout: ShipLayout, off: readonly { tx: number; ty: number }[] | undefined): Set<number> {
+  return new Set((off ?? []).map((t) => t.ty * layout.width + t.tx));
 }
 
 /** Hull layer: every solid tile, planked, with paint on the outside of the shell. */
-export function drawHull(layout: ShipLayout): Canvas {
+export function drawHull(layout: ShipLayout, off: ReadonlySet<number> = NO_OFF): Canvas {
   const W = layout.width * T;
   const H = layout.height * T;
   const c = new Canvas(W, H);
@@ -156,7 +182,7 @@ export function drawHull(layout: ShipLayout): Canvas {
   }
 
   // bowsprit (decoration beyond the bow)
-  const f = shipFeatures(layout);
+  const f = shipFeatures(layout, off);
   const bx = f.bowCol * T + 6;
   const by = (f.deckRow - 1) * T + 3;
   for (let i = 0; i < 2; i++) c.line(bx, by + i, W - 1, by - 13 + i, i === 0 ? WOOD_HI : WOOD[2]!, 2);
@@ -164,7 +190,7 @@ export function drawHull(layout: ShipLayout): Canvas {
 }
 
 /** Back layer: interior walls, ladders, mast, yard, rigging and railing (drawn behind players). */
-export function drawBack(layout: ShipLayout): Canvas {
+export function drawBack(layout: ShipLayout, off: ReadonlySet<number> = NO_OFF): Canvas {
   const W = layout.width * T;
   const H = layout.height * T;
   const c = new Canvas(W, H);
@@ -209,9 +235,10 @@ export function drawBack(layout: ShipLayout): Canvas {
   }
 
   // far-side railing along the top deck
-  const f = shipFeatures(layout);
+  const f = shipFeatures(layout, off);
   const deckY = f.deckRow * T;
   for (let x = f.deckFrom * T; x < (f.deckTo + 1) * T; x++) {
+    if (f.railOff(Math.floor(x / T))) continue;
     if (x % 16 === 0) c.line(x, deckY - 7, x, deckY - 1, LADDER_DARK, 1.5);
     c.set(x, deckY - 7, LADDER, 1.5);
   }
@@ -221,6 +248,8 @@ export function drawBack(layout: ShipLayout): Canvas {
   f.masts.forEach((m, i) => {
     const mx = m.col * T + 4;
     for (let y = 0; y < deckY; y++) {
+      // not through a raised deck's room
+      if (f.interior(m.col, Math.floor(y / T))) continue;
       for (let k = -2; k <= 2; k++) c.set(mx + k, y, y % 22 === 5 ? METAL : MAST[k + 2]!, 3 - Math.abs(k) * 0.8);
     }
     const yardFrom = f.clampCol(m.col - 7);

@@ -355,3 +355,8 @@ Format: **Entscheidung** – Begründung.
   target2). Startgeschwindigkeit = `ballSpeed`/`ringSpeed` × (`powerMin` + (1 − `powerMin`) × power); Treffer und Schaden
   hängen nicht davon ab. Ziehen ist relativ: seitlich `AIM_RAD_PER_PX` rad/px (nach rechts = im Uhrzeigersinn wie D),
   50 px hoch/runter = volle Stärke.
+- **Deko-Schalter in Schiffen:** `ShipDesign.decorOff` (Kacheln, rein optisch; die Simulation ignoriert sie). Link-Code
+  Version 2 hängt sie hinter den Namen; ohne Schalter bleibt es Version 1, alte Codes ändern sich nicht. Ein Schalter auf der
+  Mastspalte über dem Deck nimmt den Mast (samt Krähennest-Gitter) weg, einer auf dem Deck oder direkt darüber die Reling an
+  dieser Spalte. Krähennest = Luke über dem Deck mit freier Luft darunter; Masten werden nicht durch Innenräume gezeichnet.
+  Beim unveränderten Standard-Grundriss gilt weiter die handgemalte Grafik.

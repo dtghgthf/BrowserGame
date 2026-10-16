@@ -26,6 +26,15 @@ describe('ship designs', () => {
     expect(decodeDesign('')).toBeNull();
   });
 
+  it('decoration switches travel in the code (old codes stay version 1)', () => {
+    expect(encodeDesign(DEFAULT_DESIGN).startsWith(encodeDesign({ ...DEFAULT_DESIGN, decorOff: [] }).slice(0, 4))).toBe(true);
+    const d: ShipDesign = { ...DEFAULT_DESIGN, name: 'Deko', decorOff: [{ tx: 34, ty: 8 }, { tx: 10, ty: 13 }, { tx: 34, ty: 8 }, { tx: 999, ty: 1 }] };
+    const back = decodeDesign(encodeDesign(d))!;
+    expect(back.map).toEqual(DEFAULT_DESIGN.map);
+    expect(back.decorOff).toEqual([{ tx: 34, ty: 8 }, { tx: 10, ty: 13 }].sort((a, b) => a.ty - b.ty || a.tx - b.tx));
+    expect(decodeDesign(encodeDesign(DEFAULT_DESIGN))!.decorOff).toBeUndefined();
+  });
+
   it('finds what is missing or broken', () => {
     const noWheel: ShipDesign = { name: 'x', map: DEFAULT_DESIGN.map.map((r) => r.replace('w', ' ')) };
     expect(errors(noWheel).some((i) => i.message.includes('Steuerrad'))).toBe(true);

@@ -3,7 +3,7 @@ import type { ShipLayout } from '@lw/shared';
 import type { ImageLayer } from '../assets';
 import type { Canvas } from './canvas';
 import { normalMap } from './normals';
-import { drawBack, drawHull } from './ship';
+import { decorOffSet, drawBack, drawHull } from './ship';
 
 /** RGBA pixels -> a nearest-filtered texture (via a 2D canvas). */
 export function textureFromPixels(w: number, h: number, data: Uint8Array): Texture {
@@ -27,6 +27,7 @@ function layer(c: Canvas, strength: number, bevel: number): ImageLayer {
  * Hull and back wall art for a ship from the editor, drawn at runtime with the
  * same code (and the same normal map settings) as the placeholder generator.
  */
-export function shipLayers(layout: ShipLayout): { hull: ImageLayer; back: ImageLayer } {
-  return { hull: layer(drawHull(layout), 1.4, 2), back: layer(drawBack(layout), 1.2, 0) };
+export function shipLayers(layout: ShipLayout, decorOff?: readonly { tx: number; ty: number }[]): { hull: ImageLayer; back: ImageLayer } {
+  const off = decorOffSet(layout, decorOff);
+  return { hull: layer(drawHull(layout, off), 1.4, 2), back: layer(drawBack(layout, off), 1.2, 0) };
 }

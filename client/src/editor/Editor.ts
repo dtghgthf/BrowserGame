@@ -11,7 +11,7 @@ import {
   type DesignIssue,
   type ShipDesign,
 } from '@lw/shared';
-import { drawHull } from '../render/procedural/ship';
+import { decorOffSet, drawBack, drawHull } from '../render/procedural/ship';
 import { deleteShip, saveShip, savedShips } from '../ships';
 
 /** What can be painted: map character, German name, cell colour, short label. */
@@ -44,7 +44,13 @@ const PALETTE: { ch: string; name: string; color: string; label?: string; group:
 const MARKER_COLOR: Record<string, string> = { '@': '#f0e6cc', w: '#e0b860', p: '#5aa8e6', s: '#f0f0a0', c: '#9aa2ae', u: '#7d8590', k: '#c08a52', t: '#e8dcc0', r: '#e05a48', l: '#ffcc66', b: '#a07040', f: '#8a5a32', n: '#c08a52', o: '#d07040', e: '#80b0d0', C: '#6a7078', L: '#b08a40' };
 const COMPARTMENT_TINTS = ['#24323e', '#2e2a3c', '#203a30', '#3a2a24', '#2a3a3a'];
 
-type Tool = 'brush' | 'line' | 'rect' | 'fill';
+/** `decor`: clicks switch the automatic background decoration (mast, crow's nest, railing) off / on at a tile. */
+type Tool = 'brush' | 'line' | 'rect' | 'fill' | 'decor';
+
+interface Snapshot {
+  map: string[];
+  off: string[];
+}
 
 export interface EditorActions {
   /** Sail this ship alone right now. */
@@ -63,8 +69,10 @@ export class Editor {
   readonly el: HTMLDivElement;
   private map: string[][] = [];
   private name = 'Mein Schiff';
-  private readonly undo: string[][] = [];
-  private readonly redo: string[][] = [];
+  private readonly undo: Snapshot[] = [];
+  private readonly redo: Snapshot[] = [];
+  /** Tiles ("x,y") where the background decoration is switched off. */
+  private decorOff = new Set<string>();
   private tool: Tool = 'brush';
   private brush = '#';
   private mirror = false;
@@ -122,6 +130,7 @@ export class Editor {
             <button class="ed-btn ed-tool" data-tool="line">Linie</button>
             <button class="ed-btn ed-tool" data-tool="rect">Rechteck</button>
             <button class="ed-btn ed-tool" data-tool="fill">Füllen</button>
+            <button class="ed-btn ed-tool" data-tool="decor" title="Auf Mast, Krähennest oder Reling tippen: diese Hintergrund-Deko aus- oder wieder einschalten">Deko aus</button>
             <button class="ed-btn ed-mirror">Spiegeln</button>
             <button class="ed-btn ed-hull">Rumpf-Ansicht</button>
             <button class="ed-btn ed-zoom-in" title="Mausrad / zwei Finger">Zoom +</button>
@@ -265,20 +274,30 @@ export class Editor {
   // ---------------------------------------------------------------- model
 
   private design(): ShipDesign {
-    return { name: this.name, map: this.map.map((r) => r.join('')) };
+    const decorOff = [...this.decorOff].map((k) => {
+      const [tx, ty] = k.split(',').map(Number);
+      return { tx: tx!, ty: ty! };
+    });
+    return normalizeDesign({ name: this.name, map: this.map.map((r) => r.join('')), decorOff });
   }
 
   private load(d: ShipDesign): void {
     const n = normalizeDesign(d);
     this.name = n.name || 'Mein Schiff';
     this.map = n.map.map((r) => [...r]);
+    this.decorOff = new Set((n.decorOff ?? []).map((t) => `${t.tx},${t.ty}`));
     this.nameInput.value = this.name;
     this.changed();
     this.layout();
   }
 
-  private snapshot(): string[] {
-    return this.map.map((r) => r.join(''));
+  private snapshot(): Snapshot {
+    return { map: this.map.map((r) => r.join('')), off: [...this.decorOff] };
+  }
+
+  private restore(s: Snapshot): void {
+    this.map = s.map.map((r) => [...r]);
+    this.decorOff = new Set(s.off);
   }
 
   private pushUndo(): void {
@@ -291,7 +310,7 @@ export class Editor {
     const prev = this.undo.pop();
     if (!prev) return;
     this.redo.push(this.snapshot());
-    this.map = prev.map((r) => [...r]);
+    this.restore(prev);
     this.changed();
     this.layout();
   }
@@ -300,7 +319,7 @@ export class Editor {
     const next = this.redo.pop();
     if (!next) return;
     this.undo.push(this.snapshot());
-    this.map = next.map((r) => [...r]);
+    this.restore(next);
     this.changed();
     this.layout();
   }
@@ -322,6 +341,14 @@ export class Editor {
       next.push(row);
     }
     this.map = next;
+    // the decoration switches move with the map
+    this.decorOff = new Set(
+      [...this.decorOff]
+        .map((k) => k.split(',').map(Number))
+        .map(([x, y]) => [x! + dx, y! + dy])
+        .filter(([x, y]) => x! >= 0 && y! >= 0 && x! < w && y! < h)
+        .map(([x, y]) => `${x},${y}`),
+    );
     this.changed();
     this.layout();
   }
@@ -401,6 +428,18 @@ export class Editor {
     }
     const t = this.tileAt(e);
     this.pushUndo();
+    if (this.tool === 'decor') {
+      const w = this.map[0]?.length ?? 0;
+      if (t.x < 0 || t.y < 0 || t.x >= w || t.y >= this.map.length) return;
+      for (const x of this.mirror ? [t.x, w - 1 - t.x] : [t.x]) {
+        const k = `${x},${t.y}`;
+        if (this.decorOff.has(k)) this.decorOff.delete(k);
+        else this.decorOff.add(k);
+      }
+      this.say(this.decorOff.size ? `Deko an ${this.decorOff.size} Stelle(n) aus. Rumpf-Ansicht zeigt das Ergebnis.` : 'Alle Deko an.');
+      this.changed();
+      return;
+    }
     if (this.tool === 'fill') {
       this.fill(t.x, t.y, this.brush);
       this.changed();
@@ -559,12 +598,23 @@ export class Editor {
     if (this.showHull && !this.drag) {
       if (this.hullDirty) {
         try {
-          const art = drawHull(layout);
+          const off = decorOffSet(layout, design.decorOff);
+          const art = drawHull(layout, off);
+          // the background art outside the rooms (mast, rigging, railing, crow's nest) under the hull
+          const back = drawBack(layout, off);
+          const px = new Uint8Array(art.data);
+          for (let i = 0; i < px.length; i += 4) {
+            if (px[i + 3]! > 0) continue;
+            const p = i / 4;
+            const tile = Math.floor(p / art.w / 8) * w + Math.floor((p % art.w) / 8);
+            if (layout.tiles[tile] === TileKind.Interior) continue;
+            for (let j = 0; j < 4; j++) px[i + j] = back.data[i + j]!;
+          }
           this.hullCanvas.width = art.w;
           this.hullCanvas.height = art.h;
           const hc = this.hullCanvas.getContext('2d')!;
           const img = hc.createImageData(art.w, art.h);
-          img.data.set(art.data);
+          img.data.set(px);
           hc.putImageData(img, 0, 0);
           this.hullDirty = false;
         } catch {
@@ -633,6 +683,18 @@ export class Editor {
     c.fillStyle = '#5aa8e6';
     c.textAlign = 'left';
     c.fillText('Wasserlinie', 4, wy - cs * 0.6);
+    // decoration switched off: a crossed-out circle
+    c.strokeStyle = '#ff8a5a';
+    for (const k of this.decorOff) {
+      const [x, y] = k.split(',').map(Number);
+      const cx = x! * cs + cs / 2;
+      const cy = y! * cs + cs / 2;
+      c.beginPath();
+      c.arc(cx, cy, cs * 0.38, 0, Math.PI * 2);
+      c.moveTo(cx - cs * 0.27, cy + cs * 0.27);
+      c.lineTo(cx + cs * 0.27, cy - cs * 0.27);
+      c.stroke();
+    }
     // problems
     c.strokeStyle = '#ff5a44';
     c.lineWidth = 2;

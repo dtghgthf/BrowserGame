@@ -10,6 +10,11 @@ import { COMPARTMENT_NAMES, SHIP_MAP, SHIP_ORIGIN } from './shipMap';
 export interface ShipDesign {
   name: string;
   map: string[];
+  /**
+   * Tiles where the automatic background decoration is switched off (purely
+   * visual): a mast, crow's nest or deck railing drawn there is left out.
+   */
+  decorOff?: { tx: number; ty: number }[];
 }
 
 export const DESIGN_LIMITS = { minWidth: 24, maxWidth: 96, minHeight: 12, maxHeight: 32, maxName: 24 } as const;
@@ -34,7 +39,17 @@ export function isDefaultDesign(d: ShipDesign): boolean {
 /** Pads every row to the same width with exterior air. */
 export function normalizeDesign(d: ShipDesign): ShipDesign {
   const width = Math.max(0, ...d.map.map((r) => r.length));
-  return { name: d.name.slice(0, DESIGN_LIMITS.maxName), map: d.map.map((r) => r.padEnd(width, ' ')) };
+  const out: ShipDesign = { name: d.name.slice(0, DESIGN_LIMITS.maxName), map: d.map.map((r) => r.padEnd(width, ' ')) };
+  // decoration switches: inside the map, each tile once, in reading order (stable link codes)
+  const seen = new Set<number>();
+  const off = (d.decorOff ?? []).filter((t) => {
+    const k = t.ty * width + t.tx;
+    if (!Number.isInteger(t.tx) || !Number.isInteger(t.ty) || t.tx < 0 || t.ty < 0 || t.tx >= width || t.ty >= d.map.length || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  if (off.length) out.decorOff = off.sort((a, b) => a.ty * width + a.tx - (b.ty * width + b.tx)).slice(0, 255).map((t) => ({ tx: t.tx, ty: t.ty }));
+  return out;
 }
 
 /**
@@ -232,9 +247,15 @@ function fromB64(s: string): number[] | null {
 export function encodeDesign(design: ShipDesign): string {
   const d = normalizeDesign(design);
   const w = d.map[0]?.length ?? 0;
-  const bytes: number[] = [1, w, d.map.length];
+  // version 2 carries the decoration switches after the name (version 1 when there are none: old codes stay the same)
+  const off = d.decorOff ?? [];
+  const bytes: number[] = [off.length ? 2 : 1, w, d.map.length];
   const name = [...d.name].map((c) => (c.charCodeAt(0) < 256 ? c.charCodeAt(0) : 63));
   bytes.push(name.length, ...name);
+  if (off.length) {
+    bytes.push(off.length);
+    for (const t of off) bytes.push(t.tx, t.ty);
+  }
   const flat = d.map.join('');
   for (let i = 0; i < flat.length; ) {
     const ch = flat[i]!;
@@ -248,14 +269,21 @@ export function encodeDesign(design: ShipDesign): string {
 
 export function decodeDesign(code: string): ShipDesign | null {
   const b = fromB64(code.trim());
-  if (!b || b[0] !== 1 || b.length < 4) return null;
+  if (!b || (b[0] !== 1 && b[0] !== 2) || b.length < 4) return null;
   const w = b[1]!;
   const h = b[2]!;
   if (w < 1 || h < 1 || w > DESIGN_LIMITS.maxWidth || h > DESIGN_LIMITS.maxHeight) return null;
   const nameLen = b[3]!;
   const name = String.fromCharCode(...b.slice(4, 4 + nameLen));
+  let at = 4 + nameLen;
+  const decorOff: { tx: number; ty: number }[] = [];
+  if (b[0] === 2) {
+    const n = b[at] ?? 0;
+    for (let k = 0; k < n; k++) decorOff.push({ tx: b[at + 1 + k * 2] ?? 0, ty: b[at + 2 + k * 2] ?? 0 });
+    at += 1 + n * 2;
+  }
   let flat = '';
-  for (let i = 4 + nameLen; i + 1 < b.length; i += 2) {
+  for (let i = at; i + 1 < b.length; i += 2) {
     const ch = DESIGN_CHARS[b[i]!];
     if (ch === undefined) return null;
     flat += ch.repeat(b[i + 1]!);
@@ -263,5 +291,5 @@ export function decodeDesign(code: string): ShipDesign | null {
   if (flat.length < w * h) return null;
   const map: string[] = [];
   for (let y = 0; y < h; y++) map.push(flat.slice(y * w, y * w + w));
-  return { name, map };
+  return decorOff.length ? normalizeDesign({ name, map, decorOff }) : { name, map };
 }
