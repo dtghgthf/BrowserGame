@@ -21,6 +21,8 @@ export interface SimContext {
   readonly tuning: Tuning;
   readonly layout: ShipLayout;
   readonly waterGeometry: readonly CompartmentGeometry[];
+  /** Bow tip ahead of the pivot at the waterline (m). */
+  readonly bowOffset: number;
   emit(e: GameEvent): void;
   say(p: PlayerState, key: BubbleKey): void;
   /** Uniform random number in [min, max) from the seeded RNG in the state. */

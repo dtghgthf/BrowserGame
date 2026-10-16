@@ -10,6 +10,8 @@ export * from './player';
 export * from './fixedStepper';
 export * from './layout/parseLayout';
 export * from './layout/shipMap';
+export * from './layout/design';
+export * from './layout/templates';
 export { GROUP, OBJECT_SPECS, initPhysics } from './physics';
 export {
   BOW_OFFSET,

@@ -48,7 +48,7 @@ import {
 import { nextRandom } from './rng';
 import { seaSurfaceY } from './sea';
 import { createShipState, shipToWorld, updateShip } from './ship';
-import { BOW_OFFSET, LIGHTHOUSE_ISLAND, MONSTER_ATTACK_OFFSET, ROCK_LOOKAHEAD, SEARCHLIGHT_PIVOT, CANNON_PIVOT } from './systems/constants';
+import { BOW_OFFSET, LIGHTHOUSE_ISLAND, MONSTER_ATTACK_OFFSET, ROCK_LOOKAHEAD, SEARCHLIGHT_PIVOT, CANNON_PIVOT, hullEnds } from './systems/constants';
 import { fireCannon, updateBalls } from './systems/cannon';
 import type { BeamRay, SimContext } from './systems/context';
 import { openCrate, rollLoot } from './systems/crates';
@@ -221,6 +221,9 @@ export class Simulation implements SimContext {
   readonly baseTuning: Tuning;
   /** The numbers in effect right now (base + run modifiers + biome of the leg + upgrades). */
   tuning!: Tuning;
+  /** Bow tip / stern ahead of / behind the pivot at the waterline (m). */
+  readonly bowOffset: number;
+  readonly sternOffset: number;
   /** Kind of voyage for new runs (the running one is in `state.campaign.mode`). */
   mode: GameMode;
   state!: GameState;
@@ -240,6 +243,10 @@ export class Simulation implements SimContext {
 
   private constructor(options: SimulationOptions) {
     this.layout = options.layout ?? getShipLayout();
+    // the default ship keeps its hand-tuned bow; other ships measure their hull
+    const ends = hullEnds(this.layout);
+    this.bowOffset = options.layout ? ends.bow : BOW_OFFSET;
+    this.sternOffset = options.layout ? ends.stern : 15.8;
     this.waterGeometry = this.layout.compartments.map((c) => buildCompartmentGeometry(this.layout, c));
     this.ladders = this.layout.ladders.map((l) => ladderZone(this.layout, l));
     this.baseTuning = cloneTuning(DEFAULT_TUNING);
@@ -435,6 +442,11 @@ export class Simulation implements SimContext {
       if (k === 2 && L.railMask[ty * L.width + tx] === 0) return tileToLocal(L, tx, ty).y;
     }
     return 0;
+  }
+
+  /** Ship-local x of a harbour stall (spread over the foredeck of this ship). */
+  shopStallX(i: number): number {
+    return (SHOP_STALLS[i] ?? 0) * Math.min(1, this.bowOffset / BOW_OFFSET);
   }
 
   /** Searchlight range with the operator's role. */
@@ -1103,7 +1115,7 @@ export class Simulation implements SimContext {
     const s = this.state;
     if (s.status === 'harbor' && !carried && feetY < this.deckFeetY() + 0.3) {
       s.campaign.shop.forEach((offer, i) => {
-        const dx = Math.abs(SHOP_STALLS[i]! - p.x);
+        const dx = Math.abs(this.shopStallX(i) - p.x);
         if (offer.sold || dx > 0.9) return;
         const info = UPGRADE_INFO[offer.kind];
         const afford = s.voyage.coins >= offer.price;

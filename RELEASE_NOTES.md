@@ -33,6 +33,13 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 - **Rollen:** Zimmermann (flickt und sägt schneller), Maschinist (pumpt mehr), Ausguck (sieht weiter), Kanonier (lädt schneller) – oder einfach Matrose.
 - Eure Bestleistung steht in der Lobby.
 
+## Werft: baut euer eigenes Schiff
+- **In der Lobby auf „Werft“:** Rumpf, Decks, Leitern, Luken und Stationen auf ein Raster malen – Pinsel, Rechteck, Füllen, Spiegeln, Rückgängig.
+- Vorlagen zum Anfangen: der **Kutter** (klein und wendig) und die **Fregatte** (groß, zwei Pumpen) – oder ganz leer.
+- Die Werft prüft live, ob das Schiff seetüchtig ist (dicht? Steuerrad, Pumpe und Werkbank da? alles erreichbar?) und markiert die Problemstellen.
+- **Probefahrt** sofort allein, **„Als mein Schiff“** für die nächste Fahrt – auch online: Wer den Raum erstellt, bestimmt das Schiff, alle anderen bekommen es automatisch.
+- **Link teilen:** Das ganze Schiff steckt im Link.
+
 ---
 
 # Leuchtturmwärter – Release 1.0

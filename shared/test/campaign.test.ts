@@ -6,7 +6,6 @@ import {
   EMPTY_INPUT,
   HARBOR_TIME,
   PLAYER_HALF_HEIGHT,
-  SHOP_STALLS,
   SIM_DT,
   Simulation,
   createCampaign,
@@ -150,7 +149,7 @@ describe('campaign run', () => {
 
     // buy the first offer at its stall on the top deck
     const offer = sim.state.campaign.shop[0]!;
-    stand(sim, SHOP_STALLS[0]!, sim.deckFeetY());
+    stand(sim, sim.shopStallX(0), sim.deckFeetY());
     expect(sim.interactionHints('a').interact?.icon).toBe('buy');
     const coins = sim.state.voyage.coins;
     tap(sim, 'a', 'interact');

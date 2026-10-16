@@ -36,6 +36,8 @@ Je näher der Leuchtturm, desto stärker der Sturm. Reden ist nicht nötig: Ping
 
 Online: „Neues Schiff“ erzeugt einen Raumcode aus 4 Buchstaben, die anderen treten damit bei. „Allein üben“ geht ohne Server.
 
+**Neu in 2.0 (in Arbeit):** Kampagne mit sechs Etappen, Häfen und Upgrades, Tagesfahrt, Rollen, neue Gefahren (Feuer, Piraten, Eis, Strudel, Brecher), Kisten mit Inhalt, Stationen als 2.5D-Diorama und die **Werft** zum Bauen eigener Schiffe. Details in [`RELEASE_NOTES.md`](RELEASE_NOTES.md).
+
 ## Technik
 
 - **TypeScript**, npm-Workspaces: `shared/` (deterministische Simulation, kein DOM), `client/`, `server/`

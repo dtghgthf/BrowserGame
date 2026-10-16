@@ -1,6 +1,5 @@
 import { seaSurfaceY } from '../sea';
 import type { FlotsamState, PlayerState } from '../state';
-import { BOW_OFFSET } from './constants';
 import type { SimContext } from './context';
 import { rollLoot } from './crates';
 
@@ -20,7 +19,7 @@ export function updateFlotsam(ctx: SimContext): void {
       if (who && !who.bubble) ctx.say(who, 'flotsam');
     }
   }
-  if (s.flotsam.some((f) => f.x - s.ship.x < -BOW_OFFSET - 4)) s.flotsam = s.flotsam.filter((f) => f.x - s.ship.x >= -BOW_OFFSET - 4);
+  if (s.flotsam.some((f) => f.x - s.ship.x < -ctx.bowOffset - 4)) s.flotsam = s.flotsam.filter((f) => f.x - s.ship.x >= -ctx.bowOffset - 4);
 }
 
 /** Flotsam alongside (in the ship's lane) a player on the open deck can reach with the boat hook. */
@@ -30,7 +29,7 @@ export function reachableFlotsam(ctx: SimContext, p: PlayerState): FlotsamState 
   for (const f of s.flotsam) {
     if (Math.abs(f.lateral - s.ship.lateral) > G.shipBeam + 0.8) continue;
     const ahead = f.x - s.ship.x;
-    if (Math.abs(ahead) > BOW_OFFSET + 1) continue;
+    if (Math.abs(ahead) > ctx.bowOffset + 1) continue;
     if (Math.abs(ahead - p.x) < 2) return f;
   }
   return null;

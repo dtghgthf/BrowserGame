@@ -16,6 +16,10 @@ export interface LobbyActions {
   create(name: string, color: number, role: Role, mode: GameMode): Promise<void>;
   join(code: string, name: string, color: number, role: Role): Promise<void>;
   solo(role: Role, mode: GameMode): void;
+  /** Opens the shipyard (ship editor). */
+  shipyard(): void;
+  /** Name of the ship new voyages use. */
+  shipName(): string;
   /** Leaves the current online room. */
   leave(): Promise<void>;
 }
@@ -125,6 +129,7 @@ export class Lobby {
           </div>
           <div class="lobby-offline">Online-Modus: kein Server eingerichtet.</div>
           <button class="lobby-btn subtle lobby-solo">Allein üben</button>
+          <div class="lobby-ship"><span class="lobby-ship-name"></span><button class="lobby-btn subtle lobby-yard">Werft: Schiff bauen</button></div>
         </div>
         <div class="lobby-game">
           <div class="lobby-room"></div>
@@ -203,6 +208,10 @@ export class Lobby {
       actions.solo(this.profile.role, this.profile.mode);
     });
     q<HTMLButtonElement>('.lobby-back').addEventListener('click', () => this.hide());
+    q<HTMLButtonElement>('.lobby-yard').addEventListener('click', () => {
+      this.hide();
+      actions.shipyard();
+    });
     q<HTMLButtonElement>('.lobby-share').addEventListener('click', () => void this.share());
     q<HTMLButtonElement>('.lobby-leave').addEventListener('click', () => {
       void actions.leave().then(() => this.show('start', 'Du hast das Schiff verlassen.'));
@@ -262,6 +271,7 @@ export class Lobby {
     document.body.classList.add('lobby-open');
     this.syncSound();
     (this.el.querySelector('.lobby-best') as HTMLDivElement).textContent = bestLine();
+    (this.el.querySelector('.lobby-ship-name') as HTMLSpanElement).textContent = `Schiff: ${this.actions.shipName()}`;
   }
 
   hide(): void {

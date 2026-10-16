@@ -95,8 +95,8 @@ export class NetLink {
     }
   }
 
-  static async create(url: string, name: string, color: number, role: Role, mode: GameMode, lagMs = 0): Promise<NetLink> {
-    const opts: JoinOptions = { name, color, protocol: PROTOCOL_VERSION, role, mode };
+  static async create(url: string, name: string, color: number, role: Role, mode: GameMode, design: string | null, lagMs = 0): Promise<NetLink> {
+    const opts: JoinOptions = { name, color, protocol: PROTOCOL_VERSION, role, mode, ...(design ? { design } : {}) };
     return new NetLink(await new Client(url).create(ROOM_NAME, opts), url, lagMs);
   }
 

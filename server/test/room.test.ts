@@ -6,6 +6,8 @@ import {
   MSG,
   PROTOCOL_VERSION,
   ROOM_NAME,
+  DESIGN_TEMPLATES,
+  encodeDesign,
   encodeInputs,
   unpackSnapshot,
   type SnapshotMessage,
@@ -131,5 +133,24 @@ describe('ShipRoom', () => {
     const client = new Client(`ws://127.0.0.1:${PORT}`);
     await expect(client.create(ROOM_NAME, { name: 'x', color: 0, protocol: 999 })).rejects.toThrow();
     await expect(client.joinById('ZZZZ', { name: 'x', color: 0, protocol: PROTOCOL_VERSION })).rejects.toThrow();
+  });
+
+  it('opens a room with a ship from the editor, a campaign and roles', async () => {
+    const client = new Client(`ws://127.0.0.1:${PORT}`);
+    const code = encodeDesign(DESIGN_TEMPLATES.kutter);
+    const a = watch(await client.create(ROOM_NAME, { name: 'Ida', color: 0, protocol: PROTOCOL_VERSION, design: code, mode: 'campaign', role: 'engineer' }));
+    await until(() => !!a.welcome && !!a.last);
+    expect(a.welcome!.design).toBe(code);
+    expect(a.last!.state.campaign.mode).toBe('campaign');
+    expect(a.last!.state.status).toBe('harbor');
+    expect(a.last!.state.players[0]!.role).toBe('engineer');
+    // the kutter has fewer stations than the standard ship (one compartment less)
+    expect(a.last!.state.compartments.length).toBe(1);
+    // a broken design falls back to the standard ship
+    const b = watch(await client.create(ROOM_NAME, { name: 'Jo', color: 1, protocol: PROTOCOL_VERSION, design: 'kaputt' }));
+    await until(() => !!b.welcome);
+    expect(b.welcome!.design).toBeNull();
+    await a.room.leave();
+    await b.room.leave();
   });
 });

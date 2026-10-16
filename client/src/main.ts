@@ -1,4 +1,4 @@
-import { DEFAULT_TUNING, Simulation, dailySeed, diffTuning, normalizeRoomCode, parseMode, type GameMode, type TuningPatch } from '@lw/shared';
+import { DEFAULT_TUNING, Simulation, dailySeed, diffTuning, layoutFromDesign, normalizeRoomCode, parseMode, type TuningPatch } from '@lw/shared';
 import { AudioEngine } from './audio/AudioEngine';
 import { GameAudio } from './audio/GameAudio';
 import { Game, saveStage3d } from './game/Game';
@@ -11,6 +11,10 @@ import { GameRenderer, type Quality } from './render/GameRenderer';
 import { Lobby } from './ui/Lobby';
 import { PixelFont } from './ui/PixelFont';
 import { TuningPanel } from './ui/TuningPanel';
+import { shipLayers } from './render/procedural/shipTextures';
+import { resolveShip, setCurrentShip } from './ships';
+import { Editor } from './editor/Editor';
+import { decodeDesign, DEFAULT_DESIGN } from '@lw/shared';
 
 declare global {
   interface Window {
@@ -27,15 +31,20 @@ async function boot(): Promise<void> {
     const params = new URLSearchParams(location.search);
     const forced = params.get('quality');
     const quality: Quality = forced === 'low' || forced === 'medium' || forced === 'high' ? forced : 'high';
+    // the ship: the standard one (hand-made art) or one from the editor (art drawn now)
+    const ship = resolveShip(params);
+    const layout = ship.code ? layoutFromDesign(ship.design) : undefined;
+    const generated = layout ? shipLayers(layout) : null;
     const [sim, renderer, hull, back, player, props] = await Promise.all([
       Simulation.create({
+        layout,
         mode: parseMode(params.get('mode') ?? 'campaign'),
         seed: Number(params.get('seed')) || (params.get('mode') === 'daily' ? dailySeed(new Date()) : Math.floor(Math.random() * 2 ** 31)),
         seaState: params.has('sea') ? Number(params.get('sea')) : undefined,
       }),
       GameRenderer.create(host, quality),
-      loadImageLayer('assets/ship_hull.png'),
-      loadImageLayer('assets/ship_back.png'),
+      generated ? Promise.resolve(generated.hull) : loadImageLayer('assets/ship_hull.png'),
+      generated ? Promise.resolve(generated.back) : loadImageLayer('assets/ship_back.png'),
       loadSheet('assets/player', { coat: 'assets/player_coat.png' }),
       loadSheet('assets/props'),
     ]);
@@ -44,6 +53,8 @@ async function boot(): Promise<void> {
     const touch = new TouchControls(document.body, props, () => renderer.layout.scale / (window.devicePixelRatio || 1));
     const game = new Game(sim, renderer, { hull, back, player, props }, font, keyboard, touch, document.body);
     window.__game = game;
+    game.designCode = ship.code;
+    game.designName = ship.design.name;
     const audio = new GameAudio(new AudioEngine(), sim);
     game.audio = audio;
     game.storm.onLightning = (strength) => audio.thunder(strength);
@@ -102,12 +113,14 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
     document.body,
     {
       serverUrl,
-      create: async (name, color, role, mode) => enter(await NetLink.create(serverUrl!, name, color, role, mode, lag), true),
+      create: async (name, color, role, mode) => enter(await NetLink.create(serverUrl!, name, color, role, mode, game.designCode, lag), true),
       join: async (code, name, color, role) => enter(await NetLink.join(serverUrl!, code, name, color, role, lag), false),
       solo: (role, mode) => {
         setRoomInUrl(null);
         game.startSolo(role, mode);
       },
+      shipName: () => game.designName || 'Leuchtturmwärter',
+      shipyard: () => openShipyard(),
       leave: async () => {
         const link = game.net?.link;
         game.goOffline();
@@ -127,6 +140,50 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
       },
     },
   );
+  // the shipyard: an overlay over the game; trying a ship or choosing it reloads the page with it
+  let editor: Editor | null = null;
+  const openShipyard = () => {
+    if (editor) return;
+    const start = (game.designCode && decodeDesign(game.designCode)) || DEFAULT_DESIGN;
+    editor = new Editor(
+      document.body,
+      {
+        test: (code) => {
+          const url = new URL(location.href);
+          url.search = '';
+          url.searchParams.set('ship', code);
+          url.searchParams.set('solo', '');
+          url.searchParams.set('mode', 'single');
+          location.assign(url.toString());
+        },
+        use: (code) => {
+          setCurrentShip(code);
+          const url = new URL(location.href);
+          url.search = '';
+          location.assign(url.toString());
+        },
+        close: () => {
+          editor?.destroy();
+          editor = null;
+          lobby.show(game.net ? 'ingame' : 'start');
+        },
+      },
+      start,
+    );
+  };
+  if (params.has('editor')) {
+    openShipyard();
+    return;
+  }
+
+  // the room sails another ship than this page shows: reload with that ship and take the same seat again
+  game.onDesignMismatch = (design, room) => {
+    const url = new URL(location.href);
+    url.searchParams.set('ship', design ?? 'standard');
+    url.searchParams.set('room', room);
+    url.searchParams.delete('solo');
+    location.replace(url.toString());
+  };
   game.onNetClosed = (reason) => {
     setRoomInUrl(null);
     lobby.show('start', `Verbindung zum Schiff verloren${reason ? ` (${reason})` : ''}.`, true);

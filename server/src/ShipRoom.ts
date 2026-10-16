@@ -14,7 +14,11 @@ import {
   dailySeed,
   diffTuning,
   makeRoomCode,
+  encodeDesign,
+  isDefaultDesign,
+  layoutFromDesign,
   packSnapshot,
+  parseDesignCode,
   parseCommand,
   parseMode,
   parseRole,
@@ -47,6 +51,7 @@ export class ShipRoom extends Room {
   private ticks = 0;
   private lastUpdate = performance.now();
   private readonly lastPing = new Map<string, number>();
+  private designCode: string | null = null;
 
   override async onCreate(options: Partial<JoinOptions> & { seaState?: number }): Promise<void> {
     const code = uniqueCode();
@@ -55,8 +60,13 @@ export class ShipRoom extends Room {
     this.setPatchRate(null);
     await this.setPrivate(true); // joined by code only, never by quick matchmaking
     const mode = parseMode(options?.mode);
+    // a ship from the editor (validated); anything broken = the standard ship
+    const parsed = parseDesignCode(options?.design);
+    const design = parsed && !isDefaultDesign(parsed) ? parsed : null;
+    this.designCode = design ? encodeDesign(design) : null;
     const sim = await Simulation.create({
       mode,
+      layout: design ? layoutFromDesign(design) : undefined,
       // the daily voyage is the same for every crew on the same day
       seed: mode === 'daily' ? dailySeed(new Date()) : Math.floor(Math.random() * 2 ** 31),
       seaState: typeof options?.seaState === 'number' && Number.isFinite(options.seaState) ? options.seaState : undefined,
@@ -123,7 +133,7 @@ export class ShipRoom extends Room {
   }
 
   private welcome(client: Client): void {
-    const msg: WelcomeMessage = { protocol: PROTOCOL_VERSION, code: this.roomId, tuning: diffTuning(DEFAULT_TUNING, this.host.sim.baseTuning) };
+    const msg: WelcomeMessage = { protocol: PROTOCOL_VERSION, code: this.roomId, tuning: diffTuning(DEFAULT_TUNING, this.host.sim.baseTuning), design: this.designCode };
     client.send(MSG.welcome, msg);
     // a snapshot right away, so the client can start without waiting for the next broadcast
     client.send(MSG.snapshot, packSnapshot(this.host.snapshot(this.hostId, false)));

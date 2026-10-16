@@ -130,3 +130,14 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Szenen: Steuerrad (Kompass, Seekarte auf der Pinnwand), Pumpe (Manometer, Wasserstand), Scheinwerfer (Kurbel, Öl,
       Kegel), Kanone (Rückstoß, Laden, Lunte), Werkbank (Säge, Schnitt), Kartentisch (Routenkarte, Kerze), Kiste öffnen
 - [x] Eingabe am projizierten Requisit, Popups in der Szene, Menü-Schalter, `npm run verify` mit 2.5D- und Hafen-Szenen
+
+## Phase 8 – Schiffs-Editor („Werft“)
+- [x] `layout/design.ts`: Schiff als Daten (Name + ASCII-Karte), Prüfung mit deutschen Meldungen (Größe, dichter Rumpf,
+      Pflicht-Stationen, Erreichbarkeit, Leckstellen), Wasserlinie aus dem Volumen, Kodierung als Link-Code; Vorlagen
+      Standard, Kutter, Fregatte
+- [x] Simulation unabhängig vom Standard-Schiff: Bug/Heck aus dem Layout (Felsen, Krake, Piraten, Treibgut, Händler-Stände)
+- [x] Rumpf-/Rückwand-Grafik + Normal Maps zur Laufzeit (`client/src/render/procedural/`), Generator nutzt denselben Code
+- [x] Editor: Palette, Pinsel/Rechteck/Füllen, Spiegeln, Rückgängig/Wiederholen, Rumpf-Ansicht, Live-Prüfung mit markierten
+      Feldern, Speichern auf dem Gerät, Link teilen, Probefahrt, „Als mein Schiff“
+- [x] Online: Raum übernimmt das Schiff des Erstellers (validiert), Beitretende laden es automatisch nach
+- [x] Tests: Kodierung, Prüfung (gute/kaputte Schiffe), Sim mit Vorlagen-Schiffen, Server-Raum mit eigenem Schiff

@@ -2,6 +2,7 @@ import { DEBUG_HAZARDS, EMPTY_INPUT, type DebugHazard, type PlayerInput, type Si
 import type { GameEvent, GameState } from '../state';
 import type { TuningPatch } from '../tuning';
 import { GAME_MODES, ROLES, type GameMode, type Role } from '../campaign';
+import { decodeDesign, validateShipDesign, type ShipDesign } from '../layout/design';
 
 /**
  * Network protocol between the browser and the Colyseus server. Shared so both
@@ -40,6 +41,20 @@ export interface JoinOptions {
   role?: Role;
   /** Only when opening a ship: what kind of voyage. */
   mode?: GameMode;
+  /** Only when opening a ship: a ship from the editor (design code), absent = the standard ship. */
+  design?: string;
+}
+
+/** Longest design code accepted from the network. */
+export const MAX_DESIGN_CODE = 4096;
+
+/** A ship design from the network: decoded and playable (no validation errors), else null. */
+export function parseDesignCode(v: unknown): ShipDesign | null {
+  if (typeof v !== 'string' || v.length === 0 || v.length > MAX_DESIGN_CODE) return null;
+  const d = decodeDesign(v);
+  if (!d) return null;
+  if (validateShipDesign(d).some((i) => i.level === 'error')) return null;
+  return d;
 }
 
 /** A role from the network (anything unknown = no role). */
@@ -57,6 +72,8 @@ export interface WelcomeMessage {
   code: string;
   /** Full tuning difference to the defaults. */
   tuning: TuningPatch;
+  /** The room's ship (design code), null = the standard ship. */
+  design: string | null;
 }
 
 export interface SnapshotMessage {

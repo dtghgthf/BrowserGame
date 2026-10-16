@@ -2,6 +2,11 @@ import type { Vec2 } from '../math';
 import { seaSurfaceY } from '../sea';
 import type { GameState } from '../state';
 import { BOW_OFFSET, MONSTER_ATTACK_OFFSET } from './constants';
+
+/** Where the kraken grabs the bow of this ship (m ahead of the pivot). */
+function attackOffset(ctx: SimContext): number {
+  return MONSTER_ATTACK_OFFSET + (ctx.bowOffset - BOW_OFFSET);
+}
 import type { SimContext } from './context';
 
 /** World position of the kraken's head. */
@@ -30,18 +35,18 @@ export function updateMonster(ctx: SimContext, dt: number): void {
   const head = monsterHead(s)!;
   if (!m.spotted && m.depth < 0.6) {
     const light = ctx.searchlightRay();
-    if (m.offset < 26 || (light && ctx.inBeam(light, head.x, head.y, 2, ctx.spotRange()))) {
+    if (m.offset < ctx.bowOffset + 10 || (light && ctx.inBeam(light, head.x, head.y, 2, ctx.spotRange()))) {
       m.spotted = true;
       const st = s.stations.find((x) => x.kind === 'searchlight');
-      const who = (st?.occupant && s.players.find((p) => p.id === st.occupant)) || ctx.closestPlayer(BOW_OFFSET, -1);
+      const who = (st?.occupant && s.players.find((p) => p.id === st.occupant)) || ctx.closestPlayer(ctx.bowOffset, -1);
       if (who) ctx.say(who, 'monster');
     }
   }
   switch (m.phase) {
     case 'approach':
       m.depth = Math.max(0, m.depth - dt * 0.5);
-      m.offset = Math.max(MONSTER_ATTACK_OFFSET, m.offset - G.monsterSpeed * dt);
-      if (m.offset <= MONSTER_ATTACK_OFFSET) {
+      m.offset = Math.max(attackOffset(ctx), m.offset - G.monsterSpeed * dt);
+      if (m.offset <= attackOffset(ctx)) {
         m.phase = 'attack';
         m.timer = 0;
         m.attackIn = 2.5;

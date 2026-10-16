@@ -6,9 +6,9 @@ import { shipToWorld } from '../ship';
 import type { GameState } from '../state';
 import type { SimContext } from './context';
 
-/** Where the pirates' sloop settles ahead of the pivot (m); closer while the hook holds. */
-const FIGHT_OFFSET = 23;
-const HOOKED_OFFSET = 19.5;
+/** Where the pirates' sloop settles ahead of the bow (m); closer while the hook holds. */
+const FIGHT_GAP = 7.4;
+const HOOKED_GAP = 3.9;
 /** Half length and height of the sloop's hull (hit box for cannon balls). */
 export const PIRATE_HALF_LENGTH = 3.4;
 export const PIRATE_HEIGHT = 3.2;
@@ -63,7 +63,7 @@ export function updatePirates(ctx: SimContext, dt: number): void {
   const pos = pirateShip(s)!;
   if (!pr.spotted) {
     const light = ctx.searchlightRay();
-    if (pr.offset < 40 || (light && ctx.inBeam(light, pos.x, pos.y - 1.5, PIRATE_HALF_LENGTH, ctx.spotRange()))) {
+    if (pr.offset < ctx.bowOffset + 24 || (light && ctx.inBeam(light, pos.x, pos.y - 1.5, PIRATE_HALF_LENGTH, ctx.spotRange()))) {
       pr.spotted = true;
       const st = s.stations.find((x) => x.kind === 'searchlight');
       const who = (st?.occupant && s.players.find((p) => p.id === st.occupant)) || ctx.closestPlayer(10, -1);
@@ -72,14 +72,14 @@ export function updatePirates(ctx: SimContext, dt: number): void {
   }
   switch (pr.phase) {
     case 'approach':
-      pr.offset = Math.max(FIGHT_OFFSET, pr.offset - 4 * dt);
-      if (pr.offset <= FIGHT_OFFSET) {
+      pr.offset = Math.max(ctx.bowOffset + FIGHT_GAP, pr.offset - 4 * dt);
+      if (pr.offset <= ctx.bowOffset + FIGHT_GAP) {
         pr.phase = 'fight';
         pr.timer = 0;
       }
       break;
     case 'fight': {
-      const target = (pr.hook > 0 ? HOOKED_OFFSET : FIGHT_OFFSET) + Math.sin(pr.timer * 0.4) * 2;
+      const target = ctx.bowOffset + (pr.hook > 0 ? HOOKED_GAP : FIGHT_GAP) + Math.sin(pr.timer * 0.4) * 2;
       pr.offset += (target - pr.offset) * Math.min(1, dt * 0.8);
       pr.fireIn -= dt;
       if (pr.fireIn <= 0) {

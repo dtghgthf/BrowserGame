@@ -270,3 +270,24 @@ Format: **Entscheidung** – Begründung.
   auf; die Popups mit den Namen werden in die Szene projiziert. Jeder Druck auf A/D (Brecheisen) beschleunigt das Öffnen
   – so hat die Interaktion auch auf dem iPad etwas zu tun.
 - Abschaltbar im Menü („Stationen in 3D“) und bei Qualitätsstufe *low* immer aus; `?stage3d=0` für Tests.
+
+## Phase 8 – Schiffs-Editor
+- **Ein Schiff ist nur seine ASCII-Karte** (+ Name). Alles andere – Kollision, Licht, Leitern, Kompartimente, Leckstellen,
+  Diorama-Sets – leitet `parseLayout` schon daraus ab. Die Wasserlinie (`origin`) wird aus dem Volumen geschätzt, damit
+  niemand sie von Hand setzen muss.
+- **Prüfung statt Verbot:** Der Editor lässt alles zu und zeigt Fehler (Rumpf undicht, Steuerrad/Pumpe/Werkbank/Startplatz
+  fehlt, Station nicht erreichbar, keine Leckstelle) und Warnungen (keine Kanone/kein Scheinwerfer) mit markierten Feldern.
+  Probefahrt und „Als mein Schiff“ gehen nur ohne Fehler; der Server prüft dasselbe noch einmal und fällt sonst auf das
+  Standard-Schiff zurück.
+- **Kein Server-Speicher:** Schiffe liegen im `localStorage` und reisen als Code (Lauflänge + base64url) im Link
+  (`?ship=…`). Kostenlos, kein Konto, kein Moderationsproblem. Eine Online-Galerie wäre später über Supabase möglich.
+- **Online:** Wer einen Raum erstellt, gibt den Code seines Schiffs mit. Der Server baut die Simulation damit und schickt
+  den Code in der Begrüßung mit; hat ein Beitretender ein anderes Schiff geladen, lädt die Seite mit dem Schiff des Raums neu
+  und tritt mit dem Reconnect-Token wieder bei. Der Codec ist ohnehin layout-unabhängig.
+- **Rumpfgrafik zur Laufzeit:** Die Zeichenfunktionen des Asset-Generators sind reine Pixelpuffer und liegen jetzt in
+  `client/src/render/procedural/`; der Generator importiert sie von dort. Das Standard-Schiff nutzt weiter die
+  (eventuell handgemalten) PNGs, eigene Schiffe bekommen generierte Texturen.
+- **Bug und Heck kommen aus dem Layout** (`hullEnds`): Felsen-Abstand, Krake, Piraten-Schaluppe, Treibgut und die
+  Händler-Stände richten sich nach der Schiffslänge. Für das Standard-Schiff ändert sich nichts.
+- Grenzen: 24–96 × 12–32 Felder, Name bis 24 Zeichen. Upgrade-Slots aus dem Plan (`+`) sind entfallen – alle Upgrades
+  wirken als Tuning-Werte und brauchen keinen Platz im Schiff.

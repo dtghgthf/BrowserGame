@@ -1,6 +1,5 @@
 import { Container, Sprite } from 'pixi.js';
 import {
-  BOW_OFFSET,
   HARBOR_TIME,
   PIXELS_PER_METER,
   SHOP_STALLS,
@@ -69,7 +68,7 @@ export class HarborView {
       // the ship still glides a bit after arriving (4 s from full speed to a stop)
       const since = (c.node < 0 ? 0 : HARBOR_TIME) - state.statusTimer;
       const glide = c.node < 0 ? 0 : Math.max(0, 4 - since) * state.ship.speed * 0.5;
-      this.anchorX = state.ship.x + glide + BOW_OFFSET + 1.5;
+      this.anchorX = state.ship.x + glide + this.sim.bowOffset + 1.5;
     }
     this.harbor.visible = harbor;
     this.glow.visible = harbor;
@@ -92,7 +91,7 @@ export class HarborView {
       st.price.visible = show;
       st.name.visible = false;
       if (!offer || !show) return;
-      const sx = SHOP_STALLS[i]!;
+      const sx = this.sim.shopStallX(i);
       st.crate.setTransform(Math.round(sx * PPM), Math.round(deck * PPM) - 6);
       const f = frameOf(this.props, `up_${offer.kind}`);
       st.icon.texture = f.texture;

@@ -1,6 +1,5 @@
 import { Sprite } from 'pixi.js';
 import {
-  BOW_OFFSET,
   DEFAULT_TUNING,
   LIGHTHOUSE_ISLAND,
   PLAYER_HALF_HEIGHT,
@@ -110,6 +109,11 @@ export class Game {
   audio: GameAudio | null = null;
   /** Set while playing online (see goOnline). */
   net: NetState | null = null;
+  /** Design code of the ship this page sails (null = the standard ship) and its name. */
+  designCode: string | null = null;
+  designName = '';
+  /** The online room sails another ship (main.ts reloads the page with it). */
+  onDesignMismatch: (design: string | null, room: string) => void = () => {};
   /** Called when an online session ends for good (room closed, reconnect failed). */
   onNetClosed: (reason: string) => void = () => {};
   private readonly corrections = emptyCorrections();
@@ -189,7 +193,7 @@ export class Game {
     });
 
     // hazards live between the far and the near sea; the lighthouse stands in the same layer
-    this.hazards = new HazardView(r, assets.props, sim.layout);
+    this.hazards = new HazardView(r, assets.props, sim.layout, sim.bowOffset);
     this.island = new Sprite(frameOf(assets.props, 'rock_a').texture);
     this.island.anchor.set(0.5, 1);
     this.island.scale.set(2);
@@ -245,6 +249,7 @@ export class Game {
     link.onWelcome = (w) => {
       // everybody predicts with the server's numbers
       this.sim.setBaseTuning(w.tuning);
+      if ((w.design ?? null) !== this.designCode) this.onDesignMismatch(w.design ?? null, link.code);
     };
     link.onTuning = (patch) => {
       applyTuningPatch(this.sim.baseTuning, patch);
@@ -544,7 +549,7 @@ export class Game {
       } else if (e.type === 'ballSplash') {
         this.splash(e.x * PPM, seaSurfaceY(e.x, s.time, s.ship.seaState) * PPM, 14);
       } else if (e.type === 'rockHit' || e.type === 'monsterAttack') {
-        const bow = shipToWorld(s.ship, { x: BOW_OFFSET, y: 0.5 });
+        const bow = shipToWorld(s.ship, { x: this.sim.bowOffset, y: 0.5 });
         this.splash(bow.x * PPM, seaSurfaceY(bow.x, s.time, s.ship.seaState) * PPM, e.type === 'rockHit' ? 40 : 22);
         this.shake = Math.max(this.shake, e.type === 'rockHit' ? 7 : 4);
       } else if (e.type === 'rockBreak') {
@@ -580,7 +585,7 @@ export class Game {
         }
       } else if (e.type === 'wave') {
         // a wall of water over the bow
-        const bow = shipToWorld(s.ship, { x: BOW_OFFSET - 2, y: -1 });
+        const bow = shipToWorld(s.ship, { x: this.sim.bowOffset - 2, y: -1 });
         this.splash(bow.x * PPM, seaSurfaceY(bow.x, s.time, s.ship.seaState) * PPM, 70);
         for (let i = 0; i < 60; i++) {
           this.spray.spawn(bow.x * PPM - Math.random() * 40, bow.y * PPM - Math.random() * 20, -60 - Math.random() * 140, -20 - Math.random() * 60, 0.8 + Math.random() * 0.6, Math.random() > 0.4 ? 0xdcecf2 : 0x9fc4d8, 0, 200, 0.3);
@@ -783,8 +788,8 @@ export class Game {
   private updateSpray(dt: number, v: Snapshot): void {
     const s = this.sim.state;
     const ends = [
-      { x: 15.6, y: 0.4, dir: 1 },
-      { x: -15.8, y: 0.4, dir: -1 },
+      { x: this.sim.bowOffset, y: 0.4, dir: 1 },
+      { x: -this.sim.sternOffset, y: 0.4, dir: -1 },
     ];
     ends.forEach((e, i) => {
       const w = shipToWorld(v.ship, e);

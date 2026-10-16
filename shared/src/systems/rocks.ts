@@ -1,7 +1,7 @@
 import { courseLateralAt, predictCourse } from '../navigation';
 import { nextRandom } from '../rng';
 import { seaSurfaceY } from '../sea';
-import { BOW_OFFSET, ROCK_LOOKAHEAD } from './constants';
+import { ROCK_LOOKAHEAD } from './constants';
 import type { SimContext } from './context';
 
 /** Spawns rocks ahead, spots them with the searchlight, checks collisions at the bow. */
@@ -50,7 +50,7 @@ export function updateRocks(ctx: SimContext, progress: number): void {
         }
       }
     }
-    if (!r.hit && ahead <= BOW_OFFSET) {
+    if (!r.hit && ahead <= ctx.bowOffset) {
       if (Math.abs(r.lateral - ship.lateral) < r.radius + G.shipBeam) hitRock(ctx, r.id);
       else {
         r.hit = true; // passed (no second check)
@@ -69,7 +69,7 @@ export function hitRock(ctx: SimContext, id: number): void {
   s.voyage.rocksHit++;
   s.ship.rollVel += (r.lateral > s.ship.lateral ? -1 : 1) * ctx.tuning.gameplay.rockShake;
   ctx.emit({ type: 'rockHit', rock: r.id, x: r.x });
-  ctx.emit({ type: 'splash', x: BOW_OFFSET - 1, y: 0.5, strength: 1.4 });
+  ctx.emit({ type: 'splash', x: ctx.bowOffset - 1, y: 0.5, strength: 1.4 });
   ctx.leakAt('bow');
   if (r.radius > 2.8 && r.kind === 'rock') ctx.leakAt('bottom');
 }

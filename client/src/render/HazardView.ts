@@ -1,6 +1,5 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import {
-  BOW_OFFSET,
   PIXELS_PER_METER,
   RING_ANCHOR,
   hookPoint,
@@ -56,6 +55,7 @@ export class HazardView {
     private readonly r: GameRenderer,
     private readonly props: Sheet,
     private readonly layout: ShipLayout,
+    private readonly bowOffset: number,
   ) {
     // between the far sea band and the near sea: the near sea hides what is under water
     const aw = r.albedo.world;
@@ -145,7 +145,7 @@ export class HazardView {
       });
       if (m.phase === 'attack') {
         // one tentacle wraps over the bow
-        const bow = shipToWorld(view.ship, { x: BOW_OFFSET - 2.2, y: 0.4 });
+        const bow = shipToWorld(view.ship, { x: this.bowOffset - 2.2, y: 0.4 });
         const reach = Math.sin(this.time * 2.2) * 0.12;
         this.grab.setTransform(Math.round(bow.x * PPM + 10), Math.round(surface(bow.x + 0.6) * PPM + 8), -0.75 + reach + view.ship.roll, 1, 1.3);
       }
