@@ -22,7 +22,8 @@
     "ramTime": 0.7,
     "hammerFactor": 0.6,
     "crowbarFactor": 0.5,
-    "cutTime": 1.2
+    "cutTime": 1.2,
+    "lashTime": 1.4
   },
   "ship": {
     "initialSeaState": 0.75,
@@ -106,6 +107,14 @@
     "ringPullStroke": 1.4,
     "rescueWindow": 30,
     "swimSpeed": 1.1,
+    "cargoBreakRoll": 11,
+    "cargoBreakRate": 0.25,
+    "cargoWeight": 2.5,
+    "whirlHold": 0.45,
+    "pumpHeat": 0.022,
+    "pumpCool": 0.04,
+    "pumpHotAt": 0.8,
+    "pumpHotFactor": 0.45,
     "rewardFactor": 1,
     "bilgeRate": 0,
     "hullArmor": 0,

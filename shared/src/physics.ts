@@ -110,3 +110,14 @@ export function createObjectBody(
   );
   return { body, collider };
 }
+
+/** Lashed cargo is a fixed body; loose cargo is dynamic again. */
+export function applyLash(body: RigidBody, lashed: boolean): void {
+  const type = lashed ? RAPIER.RigidBodyType.Fixed : RAPIER.RigidBodyType.Dynamic;
+  if (body.bodyType() === type) return;
+  body.setBodyType(type, true);
+  if (lashed) {
+    body.setLinvel({ x: 0, y: 0 }, false);
+    body.setAngvel(0, false);
+  }
+}

@@ -123,6 +123,7 @@ function icons(): PropSprite[] {
     icon('icon_pirate', ['  ddd  ', ' ddddd ', ' wdwdd ', ' ddddd ', '  w w  ', ' w   w ', 'w     w'], { d: dark, w: hex('#e6e2d8') }),
     icon('icon_overboard', ['  rwr  ', ' w   w ', 'r  s  r', 'w sss w', 'r  s  r', ' w   w ', '~~rwr~~'], { r: red, w: hex('#e6e2d8'), s: hex('#e0b090'), '~': hex('#3d86d6') }),
     icon('icon_whirl', [' bbbbb ', 'b     b', 'b bbb b', 'b b b b', 'b bb  b', 'b     b', ' bbbbb '].map((r) => r), { b: hex('#5aa8e6') }),
+    icon('icon_cargo', ['  r r  ', ' dddddr', 'rdgdgd ', ' ddddd ', ' dgdgdr', 'rddddd ', '~~~~~~~'], { d: hex('#8a5a32'), g: hex('#c08a52'), r: hex('#e8c040'), '~': hex('#7a6038') }),
     icon('icon_flotsam', ['       ', ' ddddd ', ' dgdgd ', ' ddddd ', ' dgdgd ', '~ddddd~', '~~~~~~~'], { d: hex('#8a5a32'), g: hex('#c08a52'), '~': hex('#3d86d6') }),
   ];
 }

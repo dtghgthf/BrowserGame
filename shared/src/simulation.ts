@@ -23,6 +23,7 @@ import { approach, clamp, wrapAngle, type Vec2 } from './math';
 import {
   applyHatchState,
   buildStaticColliders,
+  applyLash,
   createObjectBody,
   GROUP,
   groups,
@@ -50,6 +51,7 @@ import { seaSurfaceY } from './sea';
 import { createShipState, shipToWorld, updateShip } from './ship';
 import { BOW_OFFSET, LIGHTHOUSE_ISLAND, MONSTER_ATTACK_OFFSET, ROCK_LOOKAHEAD, SEARCHLIGHT_PIVOT, CANNON_PIVOT, hullEnds } from './systems/constants';
 import { fireCannon, updateBalls } from './systems/cannon';
+import { cargoMoment, isCargo, updateCargo } from './systems/cargo';
 import type { BeamRay, SimContext } from './systems/context';
 import { openCrate, rollLoot } from './systems/crates';
 import { startEncounter, updateEncounters } from './systems/encounters';
@@ -190,7 +192,13 @@ export type HintIcon =
   | 'bucket'
   | 'ring'
   | 'table'
-  | 'buy';
+  | 'buy'
+  | 'lash';
+
+/** Where a helper stands behind the helmsman (m). */
+const WHEEL_HELPER_GAP = 0.7;
+/** How close to a cargo place a crate must be to be lashed (m). */
+const CARGO_SPOT_RANGE = 1.1;
 
 /** Seconds the ship needs to stop after arriving. */
 const ARRIVE_STOP_TIME = 4;
@@ -369,6 +377,7 @@ export class Simulation implements SimContext {
       const o = this.spawnObject(kind, p.x, p.y - spec.hy - 0.01, true);
       if (kind === 'crate') o.contents = rollLoot(this.state);
       if (kind === 'barrel' || kind === 'oilcan') o.fill = 1;
+      if (isCargo(o)) this.setLashed(o, true);
     }
     for (const k of keep) this.addPlayer(k.id, k).away = k.away;
   }
@@ -498,7 +507,7 @@ export class Simulation implements SimContext {
       const p = tileToLocal(this.layout, m.tx + 0.5, m.ty + 1);
       const value = kind === 'searchlight' ? 0.25 : kind === 'cannon' ? -0.2 : kind === 'ring' ? -2.4 : 0;
       const charge = kind === 'cannon' ? 2 : kind === 'searchlight' ? 1 : 0;
-      stations.push({ id: stations.length, kind, x: p.x, y: p.y, occupant: null, value, aux: kind === 'searchlight' ? 1 : 0, charge });
+      stations.push({ id: stations.length, kind, x: p.x, y: p.y, occupant: null, helper: null, value, aux: kind === 'searchlight' ? 1 : 0, charge });
     }
     return stations;
   }
@@ -605,6 +614,7 @@ export class Simulation implements SimContext {
         rt = createObjectBody(this.world, o.kind, o.x, o.y);
         this.objects.set(o.id, rt);
       }
+      applyLash(rt.body, o.lashed);
       rt.body.setEnabled(o.carriedBy === null);
       rt.body.setTranslation({ x: o.x, y: o.y }, false);
       rt.body.setRotation(o.angle, false);
@@ -648,6 +658,26 @@ export class Simulation implements SimContext {
     this.state.players = this.state.players.filter((pp) => pp.id !== id);
   }
 
+  setLashed(o: ObjectState, lashed: boolean): void {
+    o.lashed = lashed;
+    const rt = this.objects.get(o.id);
+    if (rt) applyLash(rt.body, lashed);
+    if (lashed) {
+      o.vx = 0;
+      o.vy = 0;
+      o.av = 0;
+    }
+  }
+
+  /** Cargo can be lashed where cargo is stowed: next to any crate / barrel place of the ship map. */
+  private nearCargoSpot(o: ObjectState): boolean {
+    return this.layout.markers.some((m) => {
+      if (m.type !== 'crate' && m.type !== 'barrel') return false;
+      const p = tileToLocal(this.layout, m.tx + 0.5, m.ty + 1);
+      return Math.abs(p.x - o.x) < CARGO_SPOT_RANGE && Math.abs(p.y - (o.y + OBJECT_SPECS[o.kind].hy)) < 0.5;
+    });
+  }
+
   private spawnObject(kind: ObjectKind, x: number, y: number, rememberSpawn: boolean): ObjectState {
     const id = this.state.nextObjectId++;
     this.objects.set(id, createObjectBody(this.world, kind, x, y));
@@ -665,6 +695,7 @@ export class Simulation implements SimContext {
       contents: [],
       opened: false,
       fill: 0,
+      lashed: false,
     };
     this.state.objects.push(o);
     return o;
@@ -723,6 +754,7 @@ export class Simulation implements SimContext {
       volume += c.volume;
       moment += c.volume * c.centroidX;
     }
+    moment += cargoMoment(s, this.tuning.gameplay);
     // arrived: the ship slows down and stops in front of the lighthouse island
     const G = this.tuning.gameplay;
     let throttle = s.status === 'arrived' ? clamp((s.statusTimer - (G.arrivedResetTime - ARRIVE_STOP_TIME)) / ARRIVE_STOP_TIME, 0, 1) : 1;
@@ -751,6 +783,7 @@ export class Simulation implements SimContext {
     this.updateLeaks(dt);
     updateWater(this.layout, this.waterGeometry, s.compartments, (id) => s.hatches[id]!.open, s.ship.gravity, dt);
     updateFire(this, dt);
+    updateCargo(this, dt);
     updateRing(this, dt);
     this.updateVoyage(dt);
     this.checkSinking();
@@ -894,7 +927,9 @@ export class Simulation implements SimContext {
         p.jumpBuffer = 0;
       } else {
         this.operateStation(st, input, dt, !!pressed('pick'), (pressed('right') ? 1 : 0) - (pressed('left') ? 1 : 0));
-        rt.body.setTranslation({ x: st.x, y: st.y - PLAYER_HALF_HEIGHT - 0.01 }, true);
+        // a helper at the wheel stands behind the helmsman
+        const sx = st.helper === p.id ? st.x - WHEEL_HELPER_GAP : st.x;
+        rt.body.setTranslation({ x: sx, y: st.y - PLAYER_HALF_HEIGHT - 0.01 }, true);
         rt.body.setLinvel({ x: 0, y: 0 }, true);
         this.setPlatformFilter(p, rt, true);
         return;
@@ -1093,6 +1128,8 @@ export class Simulation implements SimContext {
       }
       if (OPERABLE.has(st.kind) && st.occupant === null && dx < this.tuning.player.stationRange) {
         candidates.push({ d: dx, label: STATION_LABEL[st.kind], icon: st.kind, run: () => this.enterStation(p, rt, st) });
+      } else if (st.kind === 'wheel' && st.occupant !== null && st.helper === null && dx < this.tuning.player.stationRange + 0.4) {
+        candidates.push({ d: dx, label: 'Mit anpacken', icon: 'wheel', run: () => this.enterStation(p, rt, st, true) });
       }
     }
     // a bucket: scoop water (in the hold or over the railing), douse a fire or pour it out
@@ -1132,6 +1169,9 @@ export class Simulation implements SimContext {
       if (o.carriedBy) continue;
       const d = Math.hypot(o.x - p.x, (o.y - p.y) * 0.8);
       if (d > this.tuning.player.pickRange * 1.2) continue;
+      if (isCargo(o) && !o.lashed && !carried && this.nearCargoSpot(o)) {
+        candidates.push({ d: d - 0.35, label: 'Festzurren', icon: 'lash', run: () => (p.action = { kind: 'lash', target: o.id, progress: 0 }) });
+      }
       if (o.kind === 'crate' && !o.opened && !carried) {
         candidates.push({ d: d - 0.2, label: 'Kiste öffnen', icon: 'crate', run: () => (p.action = { kind: 'open', target: o.id, progress: 0 }) });
       } else if (o.kind === 'barrel' && carried?.kind === 'oilcan' && carried.fill < 1 && o.fill > 0) {
@@ -1198,9 +1238,10 @@ export class Simulation implements SimContext {
     return { interact, pick };
   }
 
-  private enterStation(p: PlayerState, rt: PlayerRuntime, st: StationState): void {
+  private enterStation(p: PlayerState, rt: PlayerRuntime, st: StationState, helper = false): void {
     if (p.carrying !== null) this.dropObject(p, rt, false);
-    st.occupant = p.id;
+    if (helper) st.helper = p.id;
+    else st.occupant = p.id;
     p.station = st.id;
     p.climbing = null;
     p.facing = st.kind === 'wheel' ? 1 : p.facing;
@@ -1210,7 +1251,12 @@ export class Simulation implements SimContext {
   private leaveStation(p: PlayerState): void {
     if (p.station === null) return;
     const st = this.state.stations[p.station]!;
-    if (st.occupant === p.id) st.occupant = null;
+    if (st.helper === p.id) st.helper = null;
+    else if (st.occupant === p.id) {
+      // the helper takes over the wheel
+      st.occupant = st.helper;
+      st.helper = null;
+    }
     this.emit({ type: 'station', player: p.id, station: st.id, enter: false });
     p.station = null;
   }
@@ -1249,10 +1295,17 @@ export class Simulation implements SimContext {
           const comp = this.pumpCompartment(st);
           if (comp >= 0) {
             const c = this.state.compartments[comp]!;
-            const removed = Math.min(c.volume, G.pumpStroke * (this.roleOf(st.occupant) === 'engineer' ? G.roleEngineer : 1));
+            const engineer = this.roleOf(st.occupant) === 'engineer';
+            // pumping nonstop heats the pump up: hot strokes move less water (the engineer knows how to go easy on it)
+            const hot = st.charge > G.pumpHotAt;
+            const removed = Math.min(c.volume, G.pumpStroke * (engineer ? G.roleEngineer : 1) * (hot ? G.pumpHotFactor : 1));
             c.volume -= removed;
             refreshSurface(this.waterGeometry[comp]!, c);
             st.aux += 1;
+            if (!engineer) {
+              st.charge = Math.min(1, st.charge + G.pumpHeat);
+              if (!hot && st.charge > G.pumpHotAt) this.emit({ type: 'pumpHot', station: st.id });
+            }
             this.emit({ type: 'pumpStroke', player: st.occupant, station: st.id, volume: removed });
           }
         }
@@ -1392,6 +1445,7 @@ export class Simulation implements SimContext {
     }
     if (best) {
       const ort = this.objects.get(best.id)!;
+      if (best.lashed) this.setLashed(best, false);
       ort.body.setEnabled(false);
       best.carriedBy = p.id;
       p.carrying = best.id;
@@ -1517,6 +1571,8 @@ export class Simulation implements SimContext {
         return P.ramTime;
       case 'cut':
         return P.cutTime;
+      case 'lash':
+        return P.lashTime;
     }
   }
 
@@ -1549,6 +1605,14 @@ export class Simulation implements SimContext {
         p.action = null;
         cutHook(this);
         return;
+      case 'lash': {
+        p.action = null;
+        const o = this.state.objects.find((oo) => oo.id === action.target);
+        if (!o || o.lashed || o.carriedBy || Math.hypot(o.x - p.x, o.y - p.y) > 2) return;
+        this.setLashed(o, true);
+        this.emit({ type: 'lashed', player: p.id, object: o.id });
+        return;
+      }
     }
   }
 
@@ -1869,6 +1933,7 @@ export class Simulation implements SimContext {
     const maxY = (L.height - L.origin.y + 2) * L.tileSize;
     for (const st of s.stations) {
       if (st.kind === 'searchlight' && s.status === 'sailing' && st.charge > 0) st.charge = Math.max(0, st.charge - this.tuning.gameplay.oilBurn * dt);
+      if (st.kind === 'pump' && st.charge > 0) st.charge = Math.max(0, st.charge - this.tuning.gameplay.pumpCool * dt);
     }
 
     for (const p of s.players) {

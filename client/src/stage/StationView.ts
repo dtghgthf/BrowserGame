@@ -17,7 +17,7 @@ import {
 import { animFrame, frameOf, type ImageLayer, type Sheet, type SheetFrame } from '../render/assets';
 import type { GameRenderer } from '../render/GameRenderer';
 import type { LightSystem } from '../render/lighting/LightSystem';
-import { PLAYER_COLORS } from '../render/ShipView';
+import { PLAYER_COLORS, objectFrame } from '../render/ShipView';
 import type { Snapshot } from '../game/snapshot';
 import type { PixelFont } from '../ui/PixelFont';
 import { RouteMap } from '../ui/RouteMap';
@@ -446,7 +446,9 @@ export class StationView {
       }
       // the operator stands at the station, everybody else walks in front of or behind it
       const operating = this.focus?.kind === 'station' ? p.station === this.focus.id : p.id === this.owner;
-      const lane = operating ? sc.operatorZ : p.facing < 0 ? 0.85 : -0.85;
+      // a helper at the wheel stands a step behind the helmsman
+      const helping = this.focus?.kind === 'station' && state.stations[this.focus.id]?.helper === p.id;
+      const lane = helping ? sc.operatorZ - 0.55 : operating ? sc.operatorZ : p.facing < 0 ? 0.85 : -0.85;
       pc.z += (lane - pc.z) * Math.min(1, dt * 4);
       const frame = animFrame(this.assets.player, p.anim === 'station' ? 'station' : p.anim, p.animTime);
       pc.body.setFrame(frame);
@@ -477,7 +479,7 @@ export class StationView {
       if (v.x < rg.x0 || v.x > rg.x1 || Math.abs(v.y - rg.floor) > 2.2) continue;
       seenO.add(o.id);
       let c = this.objects.get(o.id);
-      const name = o.kind === 'crate' && o.opened ? 'crate_open' : o.kind === 'bucket' && o.fill > 0 ? 'bucket_full' : o.kind;
+      const name = objectFrame(o);
       if (!c) {
         c = this.stage.add(this.frame(name), 'cards', 16);
         this.stage.shadow(c, this.frame(name));

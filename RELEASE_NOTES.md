@@ -8,12 +8,14 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 - **Kanone laden:** Nach jedem Schuss ist sie leer. Allein lädt man selbst (langsam) – schneller geht's, wenn jemand eine Kugel vom Kugelgestell holt, mit E einlegt und festdrückt.
 - **Der Scheinwerfer braucht Öl:** Er flackert, wenn es knapp wird. Ölkanne aus dem Mitteldeck holen, am Ölfass im Laderaum nachfüllen.
 - **Werkzeug für alle:** Hammer = schneller flicken, Brecheisen = schneller Kisten öffnen.
+- **Ladung festzurren:** Kisten und Fässer sind im Laderaum festgezurrt. Wenn das Schiff stark krängt, reißen sie los, rutschen zur Seite und machen noch mehr Schlagseite. Zurück an einen Ladeplatz bringen und mit E festzurren.
+- **Die Pumpe wird heiß:** Wer ununterbrochen pumpt, bringt die Pumpe zum Glühen – dann schafft jeder Hub viel weniger. Kurz durchatmen, dann geht's weiter. (Der Maschinist kennt den Trick.)
 
 ## Neue Gefahren
 - **Feuer:** Blitze und Piratenkugeln setzen Decks in Brand. Feuer breitet sich aus und frisst Lecks in den Rumpf. Löschen mit dem Eimer: im gefluteten Raum oder über die Reling schöpfen, dann mit E ins Feuer kippen. Ein Eimer hilft auch beim Lenzen.
 - **Piraten:** Ihre Schaluppe beschießt euch und wirft einen Enterhaken an den Bug – dann wird das Schiff langsamer, bis jemand den Haken kappt. Vier Kanonentreffer verjagen sie, und sie werfen Beute über Bord.
 - **Eisfelder:** Eisschollen brauchen zwei Treffer.
-- **Strudel:** ziehen das Schiff zur Seite. Wer mittendurch fährt, bekommt ein Leck im Kiel.
+- **Strudel:** ziehen das Schiff zur Seite. Wer mittendurch fährt, bekommt ein Leck im Kiel. Zu zweit am Steuerrad („Mit anpacken“) hält man viel besser dagegen.
 - **Treibgut:** Kisten im Wasser – auf der Seekarte gold. Hinsteuern und vom Oberdeck mit E herausfischen.
 - **Brecher im Sturm:** „Welle!“ – zwei Sekunden später spült eine Welle übers Oberdeck. Wer an einer Station steht, hält sich fest.
 - **Mann über Bord:** Ist noch jemand an Bord, kann er den Rettungsring am Heck werfen. Der Schwimmer greift zu, dann Hand über Hand einholen.

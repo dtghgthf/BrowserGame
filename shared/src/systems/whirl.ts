@@ -22,7 +22,17 @@ export function updateWhirl(ctx: SimContext, dt: number): void {
   const d = w.lateral - ship.lateral;
   const dist = Math.hypot(d, ahead);
   if (dist < reach) {
-    const pull = G.whirlPull * (1 - dist / reach);
+    // two at the wheel hold the ship against the pull; alone the helmsman calls for help
+    const wheel = s.stations.find((x) => x.kind === 'wheel');
+    const held = !!wheel?.helper;
+    const pull = G.whirlPull * (1 - dist / reach) * (held ? G.whirlHold : 1);
+    if (!held && s.shouts.wheel <= 0) {
+      const helm = wheel?.occupant ? s.players.find((p) => p.id === wheel.occupant) : null;
+      if (helm) {
+        ctx.say(helm, 'help');
+        s.shouts.wheel = 6;
+      }
+    }
     ship.lateral += Math.sign(d) * pull * 2 * dt;
     ship.heading += Math.sign(d || 1) * pull * 0.35 * dt;
     ship.rollVel += Math.sin(s.time * 2.7) * pull * 0.9 * dt;

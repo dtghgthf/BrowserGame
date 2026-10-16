@@ -472,7 +472,31 @@ function moon(): PropSprite {
   return { name: 'moon', canvas: c, pivot: { x: 7, y: 7 } };
 }
 
+/** Lashed cargo: two hemp straps over the crate / barrel, down to the deck. */
+function lashed(src: PropSprite): PropSprite {
+  const c = new Canvas(src.canvas.w, src.canvas.h);
+  c.blit(src.canvas, 0, 0);
+  const rope = hex('#c8a86a');
+  const ropeD = hex('#7a6038');
+  for (const x of [Math.round(c.w * 0.25), Math.round(c.w * 0.72)]) {
+    for (let y = 0; y < c.h; y++) c.set(x, y, (y + x) % 3 === 0 ? ropeD : rope, 3.4);
+  }
+  // a knot on the top edge
+  c.rect(Math.round(c.w * 0.25) - 1, 0, 3, 2, rope, 3.8);
+  c.set(Math.round(c.w * 0.25), 1, ropeD, 3.8);
+  return { name: `${src.name}_lashed`, canvas: c, pivot: src.pivot };
+}
+
 export function drawProps(): PropSprite[] {
+  const list = drawPropList();
+  for (const name of ['crate', 'crate_open', 'barrel']) {
+    const src = list.find((p) => p.name === name);
+    if (src) list.push(lashed(src));
+  }
+  return list;
+}
+
+function drawPropList(): PropSprite[] {
   return [
     crate(),
     barrel(),

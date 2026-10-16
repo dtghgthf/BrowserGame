@@ -209,6 +209,19 @@ export class GameAudio {
         break;
       case 'whirlAppear':
         break;
+      case 'cargoLoose':
+        a.play('rope_snap', this.at({ x: e.x, y: e.y }, 1));
+        break;
+      case 'lashed': {
+        const p = this.player(state, e.player);
+        if (p) a.play('rope_tie', this.at(p, 0.9));
+        break;
+      }
+      case 'pumpHot': {
+        const st = state.stations[e.station];
+        if (st) a.play('steam', this.at(st, 0.6));
+        break;
+      }
       case 'whirlHit':
       case 'iceHit':
         a.play('rock_hit', { volume: 0.8, rate: e.type === 'iceHit' ? 1.5 : 0.8 });

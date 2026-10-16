@@ -291,3 +291,18 @@ Format: **Entscheidung** – Begründung.
   Händler-Stände richten sich nach der Schiffslänge. Für das Standard-Schiff ändert sich nichts.
 - Grenzen: 24–96 × 12–32 Felder, Name bis 24 Zeichen. Upgrade-Slots aus dem Plan (`+`) sind entfallen – alle Upgrades
   wirken als Tuning-Werte und brauchen keinen Platz im Schiff.
+
+## Nachgeholt nach Phase 8
+- **Ladung los:** Kisten und Fässer starten festgezurrt (feste Physik-Körper). Ab 11° Krängung können Zurrings reißen
+  (Wahrscheinlichkeit wächst mit der Neigung); lose Ladung ist wieder ein normaler Körper. Ihr Einfluss auf die
+  Schlagseite wird wie Wasser gerechnet, aber **relativ zum Stauplatz** (Gewicht × Verschiebung) – sonst hätte das
+  Standard-Schiff schon ohne losgerissene Ladung Schlagseite. Festzurren geht an jedem Ladeplatz (Kisten-/Fass-Marker
+  der Karte) statt an eigenen Zurr-Haken (`g`): funktioniert so automatisch für Editor-Schiffe und braucht keine neue
+  Grafik. Wer eine festgezurrte Kiste aufhebt, bindet sie los; geöffnet wird sie auch festgezurrt. Balance mit Bot-Crew:
+  ruhige See ~0, Sturm ~3, Riff (Felsentreffer) ~6 losgerissene Teile pro Etappe.
+- **Strudel zu zweit:** Das Steuerrad hat einen Helfer-Platz (`StationState.helper`). Mit Helfer wirkt nur 45 % des Sogs;
+  beide können drehen. Verlässt der Steuermann das Rad, übernimmt der Helfer. Allein ruft der Steuermann um Hilfe.
+- **Pumpen-Verschleiß:** Hitze (in `charge` der Pumpe) steigt pro Hub und kühlt ständig ab. Über 80 % schaffen die Hübe nur
+  noch 45 % – eine weiche Grenze statt einer Sperre, damit es nicht nervt. Etwa 30 s Dauerpumpen im schnellen Takt bis
+  „heiß“, wenige Sekunden Pause zum Abkühlen. Der Maschinist erzeugt keine Hitze.
+

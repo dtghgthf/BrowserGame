@@ -73,6 +73,7 @@ const BUBBLES = [
   'overboard',
   'whirl',
   'flotsam',
+  'cargo',
 ] as const;
 const OBJECT_KINDS = ['crate', 'barrel', 'plank', 'bucket', 'oilcan', 'ball'] as const;
 const LOOT = ['plank', 'timber', 'ball', 'oilcan', 'bucket', 'coins', 'hammer', 'crowbar', 'rat'] as const;
@@ -95,7 +96,7 @@ const PLAYER = obj<PlayerState>({
   climbing: nullable('u8'),
   station: nullable('u8'),
   carrying: nullable('u16'),
-  action: nullable(obj<NonNullable<PlayerState['action']>>({ kind: oneOf(['repair', 'open', 'ram', 'cut']), target: 'u16', progress: 'f32' })),
+  action: nullable(obj<NonNullable<PlayerState['action']>>({ kind: oneOf(['repair', 'open', 'ram', 'cut', 'lash']), target: 'u16', progress: 'f32' })),
   anim: oneOf(['idle', 'run', 'jump', 'fall', 'climb', 'station', 'repair', 'swim']),
   animTime: 'f32',
   prevInput: INPUT,
@@ -122,6 +123,7 @@ const OBJECT = obj<ObjectState>({
   contents: array(oneOf(LOOT)),
   opened: 'bool',
   fill: 'f32',
+  lashed: 'bool',
 });
 
 const SHIP = obj<ShipState>({
@@ -160,6 +162,7 @@ const STATE = obj<GameState>({
       x: 'pos',
       y: 'pos',
       occupant: nullable('str'),
+      helper: nullable('str'),
       value: 'f32',
       aux: 'f32',
       charge: 'f32',

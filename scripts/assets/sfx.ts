@@ -210,6 +210,10 @@ function effects(): Sound[] {
   }
   add('wave_crash', reverb(mix(gain(splash(430, 2.2), 1.2), gain(env(biquad(brown(2, 431), 'lowpass', 400), ad(0.05, 0.6)), 1)), 0.35, 1.2, 0.9), 0.9);
   add('hook', mix(gain(env(osc(0.5, () => 1320), ad(0.001, 0.12)), 0.4), gain(env(osc(0.5, () => 1980), ad(0.001, 0.06)), 0.25), knock(440, 1.6, 0.04, 1), [thud(441, 0.6), 0.03]), 0.7);
+  // a lashing snaps: a hard twang, then the crate scrapes away
+  add('rope_snap', mix(gain(env(osc(0.35, (t) => 180 + 900 * Math.exp(-t * 18), 'tri'), ad(0.001, 0.12)), 0.7), [gain(env(biquad(white(0.6, 470), 'bandpass', (t) => 500 + t * 300, 1.4), ad(0.02, 0.4)), 0.5), 0.06], [knock(471, 0.8, 0.05, 1), 0.05]), 0.75);
+  // pulling a lashing tight: two creaks of rope
+  add('rope_tie', mix(gain(creak(472, 0.25, 260), 0.6), [gain(creak(473, 0.2, 320), 0.5), 0.22], [knock(474, 1.4, 0.03, 0.7), 0.42]), 0.6);
   add('ring_throw', env(biquad(white(0.45, 450), 'bandpass', (t) => 900 + 1200 * Math.sin(t * 6), 1.2), ad(0.03, 0.18)), 0.5);
   add('cannon_load', mix(gain(env(osc(0.4, () => 620), ad(0.001, 0.08)), 0.3), knock(460, 0.7, 0.07, 1.2), [thud(461, 1), 0.08]), 0.7);
   {

@@ -130,6 +130,8 @@ describe('loose objects', () => {
   it('crates slide when the ship lists', async () => {
     const sim = await Simulation.create({ seaState: 0 });
     run(sim, 1);
+    // cargo starts lashed down; cut it loose
+    for (const o of sim.state.objects) if (o.lashed) sim.setLashed(o, false);
     const before = sim.state.objects.filter((o) => o.kind === 'crate').map((o) => o.x);
     run(sim, 1.5, () => ({}), [{ type: 'debugRoll', value: deg(14) }]);
     const after = sim.state.objects.filter((o) => o.kind === 'crate').map((o) => o.x);

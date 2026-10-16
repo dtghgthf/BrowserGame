@@ -35,6 +35,8 @@ export interface PlayerTuning {
   crowbarFactor: number;
   /** Seconds to cut a pirate grappling hook. */
   cutTime: number;
+  /** Seconds to lash a loose crate or barrel down at its place in the hold. */
+  lashTime: number;
 }
 
 export interface ShipTuning {
@@ -131,6 +133,17 @@ export interface GameplayTuning {
   ringPullStroke: number;
   rescueWindow: number;
   swimSpeed: number;
+  /** Cargo: roll (deg) above which lashings may snap, chance per second at twice that roll, list weight of a loose crate (m^2 of water). */
+  cargoBreakRoll: number;
+  cargoBreakRate: number;
+  cargoWeight: number;
+  /** Whirlpool pull while only one person holds the wheel (two = 1 - whirlHold of the pull is resisted). */
+  whirlHold: number;
+  /** Pump wear: heat per stroke, cooling per second, heat above which strokes get weak, stroke factor when hot. */
+  pumpHeat: number;
+  pumpCool: number;
+  pumpHotAt: number;
+  pumpHotFactor: number;
   /** Phase 6: coins for a leg x this, passive bilge pump (m^2/s), chance a hit makes no leak (copper). */
   rewardFactor: number;
   bilgeRate: number;
@@ -177,6 +190,7 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     hammerFactor: 0.6,
     crowbarFactor: 0.5,
     cutTime: 1.2,
+    lashTime: 1.4,
   },
   ship: {
     initialSeaState: 0.75,
@@ -260,6 +274,14 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     ringPullStroke: 1.4,
     rescueWindow: 30,
     swimSpeed: 1.1,
+    cargoBreakRoll: 11,
+    cargoBreakRate: 0.25,
+    cargoWeight: 2.5,
+    whirlHold: 0.45,
+    pumpHeat: 0.022,
+    pumpCool: 0.04,
+    pumpHotAt: 0.8,
+    pumpHotFactor: 0.45,
     rewardFactor: 1,
     bilgeRate: 0,
     hullArmor: 0,

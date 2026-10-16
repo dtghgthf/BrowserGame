@@ -62,6 +62,11 @@ function crewStep(s: GameState, sim: Simulation, crew: Crew, timers: Map<string,
     s.pirate.hook = 0;
     timers.set('pirate', 0);
   }
+  // loose cargo is lashed again after a while
+  for (const o of s.objects) if ((o.kind === 'crate' || o.kind === 'barrel') && !o.lashed && o.spawn && tick(`cargo${o.id}`) > crew.repair) {
+    sim.setLashed(o, true);
+    timers.set(`cargo${o.id}`, 0);
+  }
   // pumping the fullest compartment
   let fullest = 0;
   s.compartments.forEach((c, i) => {
@@ -70,7 +75,7 @@ function crewStep(s: GameState, sim: Simulation, crew: Crew, timers: Map<string,
   sim.addWater(fullest, -crew.pump * dt);
 }
 
-async function sail(biome: Biome, seed: number, crew: Crew): Promise<{ survived: boolean; leaks: number; maxWater: number; encounters: string[] }> {
+async function sail(biome: Biome, seed: number, crew: Crew): Promise<{ survived: boolean; leaks: number; maxWater: number; cargo: number; encounters: string[] }> {
   const sim = await Simulation.create({ seed, mode: 'campaign' });
   const c = sim.state.campaign;
   // force a first-column leg of this biome (with the run modifiers stripped: we measure the sea area)
@@ -83,6 +88,7 @@ async function sail(biome: Biome, seed: number, crew: Crew): Promise<{ survived:
   const s0 = sim.state;
   const timers = new Map<string, number>();
   let maxWater = 0;
+  let cargo = 0;
   const encounters = new Set<string>();
   const { capacity } = sim.waterTotals();
   const limit = (s0.voyage.length / Math.max(0.5, sim.tuning.ship.speed)) * 2.5;
@@ -91,6 +97,7 @@ async function sail(biome: Biome, seed: number, crew: Crew): Promise<{ survived:
     if (s.status !== 'sailing') break;
     crewStep(s, sim, crew, timers, SIM_DT);
     sim.step({});
+    cargo += s.events.filter((e) => e.type === 'cargoLoose').length;
     maxWater = Math.max(maxWater, sim.waterTotals().volume / capacity);
     if (s.monster) encounters.add('kraken');
     if (s.pirate) encounters.add('pirates');
@@ -100,27 +107,29 @@ async function sail(biome: Biome, seed: number, crew: Crew): Promise<{ survived:
     if (s.fires.length) encounters.add('fire');
   }
   const s = sim.state;
-  return { survived: s.status === 'harbor' || s.status === 'arrived', leaks: s.leaks.length, maxWater, encounters: [...encounters] };
+  return { survived: s.status === 'harbor' || s.status === 'arrived', leaks: s.leaks.length, maxWater, cargo, encounters: [...encounters] };
 }
 
 const seeds = Number(process.argv[2]) || 12;
 const crew = CREWS[process.argv[3] ?? 'average'] ?? CREWS.average!;
 console.log(`Bot-Crew "${crew.name}", ${seeds} Seeds pro Meeresart (Etappe 3)\n`);
-console.log('Meeresart      überlebt  Lecks Ø  max. Wasser Ø  Begegnungen');
+console.log('Meeresart      überlebt  Lecks Ø  max. Wasser Ø  Ladung los Ø  Begegnungen');
 for (const biome of BIOMES) {
   let survived = 0;
   let leaks = 0;
   let water = 0;
+  let cargo = 0;
   const seen = new Map<string, number>();
   for (let i = 0; i < seeds; i++) {
     const r = await sail(biome, 1000 + i * 17, crew);
     if (r.survived) survived++;
     leaks += r.leaks;
     water += r.maxWater;
+    cargo += r.cargo;
     for (const e of r.encounters) seen.set(e, (seen.get(e) ?? 0) + 1);
   }
   const enc = [...seen].map(([k, n]) => `${k} ${n}`).join(', ');
   console.log(
-    `${biome.padEnd(14)} ${`${Math.round((survived / seeds) * 100)} %`.padStart(7)}  ${(leaks / seeds).toFixed(1).padStart(7)}  ${`${Math.round((water / seeds) * 100)} %`.padStart(13)}  ${enc}`,
+    `${biome.padEnd(14)} ${`${Math.round((survived / seeds) * 100)} %`.padStart(7)}  ${(leaks / seeds).toFixed(1).padStart(7)}  ${`${Math.round((water / seeds) * 100)} %`.padStart(13)}  ${(cargo / seeds).toFixed(1).padStart(12)}  ${enc}`,
   );
 }

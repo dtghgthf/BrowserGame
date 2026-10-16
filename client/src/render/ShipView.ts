@@ -534,10 +534,12 @@ function imageFrame(name: string, layer: ImageLayer): SheetFrame {
   };
 }
 
-function objectFrame(o: ObjectState): string {
-  if (o.kind === 'crate' && o.opened) return 'crate_open';
+/** Sprite name of an object (open / full / lashed variants). */
+export function objectFrame(o: ObjectState): string {
+  const lash = o.lashed && !o.carriedBy ? '_lashed' : '';
+  if (o.kind === 'crate' && o.opened) return `crate_open${lash}`;
   if (o.kind === 'bucket' && o.fill > 0) return 'bucket_full';
-  return o.kind;
+  return o.kind === 'crate' || o.kind === 'barrel' ? `${o.kind}${lash}` : o.kind;
 }
 
 function carriedAngle(o: ObjectState, angle: number): number {

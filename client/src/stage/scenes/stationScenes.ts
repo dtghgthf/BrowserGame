@@ -91,6 +91,14 @@ export function buildWheel(ctx: SceneContext, st: StationState): StationScene {
 
 // ---------------------------------------------------------------- pump
 
+/** Heat above which the pump runs hot (matches the default `pumpHotAt`; only the look depends on it). */
+const PUMP_HOT = 0.8;
+
+function mixTint(a: number, b: number, t: number): number {
+  const ch = (sh: number) => Math.round(((a >> sh) & 255) * (1 - t) + ((b >> sh) & 255) * t);
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
+
 export function buildPump(ctx: SceneContext, st: StationState): StationScene {
   const f = ctx.floorY;
   const x = st.x + 0.45;
@@ -116,14 +124,19 @@ export function buildPump(ctx: SceneContext, st: StationState): StationScene {
     controlRadius: 0.75,
     operatorZ: -0.4,
     lamp: { x: x + 0.6, y: f - 2.4, z: 0.7 },
-    update(state, view, dt) {
+    update(state, view, dt, time) {
       const v = view.stations[st.id]?.value ?? st.value;
       lever.rotation = v * 0.55;
-      // the gauge climbs with every stroke and sinks again
+      // the gauge shows how hot the pump runs (wear) and twitches with every stroke
       if (Math.abs(v - last) > 0.0001) pressure = Math.min(1, pressure + Math.abs(v - last) * 0.25);
       last = v;
       pressure = Math.max(0, pressure - dt * 0.25);
-      needle.rotation = Math.PI * 0.8 + pressure * Math.PI * 1.4;
+      const heat = state.stations[st.id]?.charge ?? 0;
+      needle.rotation = Math.PI * 0.8 + Math.min(1, heat * 0.85 + pressure * 0.15) * Math.PI * 1.4;
+      const hot = heat > PUMP_HOT;
+      const glow = hot ? 0.5 + 0.5 * Math.sin(time * 9) : 0;
+      gauge.tint = hot ? mixTint(0xffffff, 0xff7060, glow) : 0xffffff;
+      body.tint = hot ? mixTint(0xffffff, 0xffb090, glow * 0.6) : 0xffffff;
       // the glass pipe shows how full the hold is
       const comp = state.compartments[state.compartments.length - 1];
       const level = comp ? Math.min(1, comp.volume / 40) : 0;

@@ -116,6 +116,13 @@ export class Hud {
     if (state.fires.length > 0) warnings.push([state.fires.length > 3 ? 'FEUER AN BORD!' : 'FEUER!', 0xff9a40]);
     if (v.waveWarn > 0) warnings.push(['BRECHER! FESTHALTEN!', 0x9ccaf2]);
     if (state.pirate && state.pirate.hook > 0) warnings.push(['ENTERHAKEN AM BUG! KAPPEN!', C.warn]);
+    const loose = state.objects.filter((o) => (o.kind === 'crate' || o.kind === 'barrel') && !o.lashed && !o.carriedBy && o.spawn && Math.abs(o.x - o.spawn.x) > 1).length;
+    if (loose >= 2) warnings.push(['LADUNG LOS! FESTZURREN!', 0xe0b860]);
+    const w = state.whirl;
+    const wheel = state.stations.find((st) => st.kind === 'wheel');
+    if (w && wheel && !wheel.helper && Math.hypot(w.x - state.ship.x, w.lateral - state.ship.lateral) < w.radius * 1.4) {
+      warnings.push(['STRUDEL! ZU ZWEIT ANS STEUERRAD!', 0x9ccaf2]);
+    }
     if (state.players.some((p) => p.overboard > 0 && !localIds.includes(p.id)) && state.stations.some((st) => st.kind === 'ring')) {
       warnings.push(['MANN ÜBER BORD! RETTUNGSRING!', C.warn]);
     }

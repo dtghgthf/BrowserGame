@@ -22,6 +22,7 @@ const ICONS: Record<HintIcon, string> = {
   ring: 'ui_i_ring',
   table: 'ui_i_table',
   buy: 'ui_i_buy',
+  lash: 'ui_i_lash',
 };
 
 type ButtonKey = 'jump' | 'interact' | 'pick';

@@ -11,7 +11,7 @@ import { decodeDesign, validateShipDesign, type ShipDesign } from '../layout/des
  */
 
 /** Bumped whenever the messages below change incompatibly. */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 export const ROOM_NAME = 'ship';
 export const DEFAULT_SERVER_PORT = 2567;

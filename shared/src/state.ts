@@ -46,7 +46,7 @@ export type AnimState = 'idle' | 'run' | 'jump' | 'fall' | 'climb' | 'station' |
  * Timed actions: repair a leak (target = leak id), open a crate (object id),
  * ram the cannon ball home (station id), cut a pirate grappling hook (0).
  */
-export type PlayerActionKind = 'repair' | 'open' | 'ram' | 'cut';
+export type PlayerActionKind = 'repair' | 'open' | 'ram' | 'cut' | 'lash';
 
 export interface PlayerAction {
   kind: PlayerActionKind;
@@ -71,7 +71,8 @@ export type BubbleKey =
   | 'pirate'
   | 'overboard'
   | 'whirl'
-  | 'flotsam';
+  | 'flotsam'
+  | 'cargo';
 
 export interface PlayerState {
   id: string;
@@ -147,6 +148,8 @@ export interface ObjectState {
   opened: boolean;
   /** Bucket: water 0..1, oil can / barrel: oil 0..1. */
   fill: number;
+  /** Cargo lashed down at its place in the hold (a fixed body); breaks loose when the ship heels hard. */
+  lashed: boolean;
 }
 
 export interface HatchState {
@@ -185,6 +188,8 @@ export interface StationState {
   x: number;
   y: number;
   occupant: string | null;
+  /** wheel: a second pair of hands holding it against a whirlpool. */
+  helper: string | null;
   /**
    * wheel: rudder -1..1, pump: handle -1..1, searchlight: beam angle (rad, ship frame),
    * cannon: aim angle, workshop: cooldown seconds.
@@ -194,7 +199,7 @@ export interface StationState {
   aux: number;
   /**
    * cannon: load 0 = empty, 1 = ball inside, 2 = rammed / ready (fractions while the operator loads alone),
-   * searchlight: oil 0..1, workshop: saw progress of the current plank 0..1.
+   * searchlight: oil 0..1, workshop: saw progress of the current plank 0..1, pump: heat 0..1 (wear from pumping nonstop).
    */
   charge: number;
 }
@@ -423,6 +428,9 @@ export type GameEvent =
   | { type: 'pirateFlee' }
   | { type: 'shipHit'; x: number; y: number }
   | { type: 'hook'; on: boolean }
+  | { type: 'cargoLoose'; object: number; x: number; y: number }
+  | { type: 'lashed'; player: string; object: number }
+  | { type: 'pumpHot'; station: number }
   | { type: 'whirlAppear' }
   | { type: 'whirlHit' }
   | { type: 'iceHit'; rock: number; x: number }

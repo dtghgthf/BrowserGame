@@ -141,3 +141,9 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
       Feldern, Speichern auf dem Gerät, Link teilen, Probefahrt, „Als mein Schiff“
 - [x] Online: Raum übernimmt das Schiff des Erstellers (validiert), Beitretende laden es automatisch nach
 - [x] Tests: Kodierung, Prüfung (gute/kaputte Schiffe), Sim mit Vorlagen-Schiffen, Server-Raum mit eigenem Schiff
+
+## Nachgeholt (Abgleich mit dem Plan)
+- [x] Ladung reißt bei starker Krängung los, rutscht und verstärkt die Schlagseite; Festzurren an den Ladeplätzen
+- [x] Zweiter Griffplatz am Steuerrad: zu zweit hält das Schiff gegen den Strudel
+- [x] Pumpe verschleißt bei Dauerbetrieb (Hitze, schwache Hübe, Maschinist ausgenommen)
+

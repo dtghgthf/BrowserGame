@@ -25,6 +25,8 @@ export interface SimContext {
   readonly bowOffset: number;
   emit(e: GameEvent): void;
   say(p: PlayerState, key: BubbleKey): void;
+  /** Lashes cargo down (a fixed body) or lets it go. */
+  setLashed(o: ObjectState, lashed: boolean): void;
   /** Uniform random number in [min, max) from the seeded RNG in the state. */
   rand(min: number, max: number): number;
   /** Next id for rocks, balls, pings, encounters. */

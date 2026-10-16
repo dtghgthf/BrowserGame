@@ -244,8 +244,14 @@ export class StationWidget {
         this.g.rect(cx + 23, cy - 17, 4, 36).fill(0x0b1018);
         const h = Math.round(36 * frac);
         if (h > 0) this.g.rect(cx + 23, cy + 19 - h, 4, h).fill(frac > 0.5 ? 0xe8584a : 0x3d86d6);
+        // heat: pumping nonstop wears the pump - a short rest cools it
+        const hot = st.charge > tuning.gameplay.pumpHotAt;
+        this.g.rect(cx - 34, cy - 18, 5, 38).fill(0x2c3a4c);
+        this.g.rect(cx - 33, cy - 17, 3, 36).fill(0x0b1018);
+        const hh = Math.round(36 * Math.min(1, st.charge));
+        if (hh > 0) this.g.rect(cx - 33, cy + 19 - hh, 3, hh).fill(hot ? (Math.sin(this.time * 9) > 0 ? 0xff5040 : 0xe8a040) : 0xe8a040);
         title = 'PUMPE';
-        sub = this.drag ? `HUB ${st.aux}` : 'HEBEL AUF UND AB / A-D';
+        sub = hot ? 'HEISS! KURZ PAUSE' : this.drag ? `HUB ${st.aux}` : 'HEBEL AUF UND AB / A-D';
         break;
       }
       case 'workshop': {
