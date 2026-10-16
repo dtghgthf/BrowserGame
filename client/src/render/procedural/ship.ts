@@ -30,6 +30,65 @@ function tileAt(layout: ShipLayout, tx: number, ty: number): number {
   return layout.tiles[ty * layout.width + tx]!;
 }
 
+/**
+ * Where the deck, mast, yard, crow's nest and rigging go, derived from the
+ * layout (for the standard ship these are exactly its hand-placed positions).
+ */
+export function shipFeatures(layout: ShipLayout) {
+  const solidish = (tx: number, ty: number) => {
+    const k = tileAt(layout, tx, ty);
+    return k === TileKind.Solid || k === TileKind.Hatch;
+  };
+  // the main deck: the row with the most solid tiles open to the sky
+  let deckRow = 0;
+  let best = -1;
+  for (let ty = 1; ty < layout.height; ty++) {
+    let n = 0;
+    for (let tx = 0; tx < layout.width; tx++) if (solidish(tx, ty) && tileAt(layout, tx, ty - 1) === TileKind.Exterior) n++;
+    if (n > best) {
+      best = n;
+      deckRow = ty;
+    }
+  }
+  // deck extent (railing): columns of that row with open sky above
+  let deckFrom = layout.width;
+  let deckTo = -1;
+  let bowCol = -1;
+  for (let tx = 0; tx < layout.width; tx++) {
+    if (!solidish(tx, deckRow)) continue;
+    bowCol = tx;
+    if (tileAt(layout, tx, deckRow - 1) !== TileKind.Exterior) continue;
+    deckFrom = Math.min(deckFrom, tx);
+    deckTo = Math.max(deckTo, tx);
+  }
+  if (deckTo < 0) {
+    deckFrom = 1;
+    deckTo = layout.width - 2;
+  }
+  // crow's nests: hatches above the deck, each platform is the run of tiles around its hatch; a mast stands under each
+  // (at the ladder up to it), without any nest one mast in the middle of the deck
+  const masts: { col: number; nest: { row: number; from: number; to: number } | null }[] = [];
+  for (const h of layout.hatches.filter((hh) => hh.ty < deckRow).sort((a, b) => a.tx - b.tx)) {
+    let a = h.tx;
+    let b = h.tx + h.width - 1;
+    while (solidish(a - 1, h.ty)) a--;
+    while (solidish(b + 1, h.ty)) b++;
+    const ladder = layout.ladders.find((l) => l.tx >= h.tx && l.tx < h.tx + h.width);
+    masts.push({ col: ladder ? ladder.tx : h.tx, nest: { row: h.ty, from: a, to: b } });
+  }
+  if (masts.length === 0) masts.push({ col: Math.round((deckFrom + deckTo) / 2), nest: null });
+  // the stern post the aft stay is tied to
+  let sternTop = deckRow;
+  for (let ty = 0; ty < deckRow; ty++) {
+    if (solidish(deckFrom - 1, ty)) {
+      sternTop = ty;
+      break;
+    }
+  }
+  const clampCol = (c: number) => Math.max(deckFrom, Math.min(deckTo, c));
+  return { deckRow, deckFrom, deckTo, bowCol, masts, sternTop, clampCol };
+}
+
 /** Hull layer: every solid tile, planked, with paint on the outside of the shell. */
 export function drawHull(layout: ShipLayout): Canvas {
   const W = layout.width * T;
@@ -97,8 +156,9 @@ export function drawHull(layout: ShipLayout): Canvas {
   }
 
   // bowsprit (decoration beyond the bow)
-  const bx = 69 * T + 6;
-  const by = 12 * T + 3;
+  const f = shipFeatures(layout);
+  const bx = f.bowCol * T + 6;
+  const by = (f.deckRow - 1) * T + 3;
   for (let i = 0; i < 2; i++) c.line(bx, by + i, W - 1, by - 13 + i, i === 0 ? WOOD_HI : WOOD[2]!, 2);
   return c;
 }
@@ -149,40 +209,48 @@ export function drawBack(layout: ShipLayout): Canvas {
   }
 
   // far-side railing along the top deck
-  const deckY = 13 * T;
-  for (let x = 4 * T; x < 68 * T; x++) {
+  const f = shipFeatures(layout);
+  const deckY = f.deckRow * T;
+  for (let x = f.deckFrom * T; x < (f.deckTo + 1) * T; x++) {
     if (x % 16 === 0) c.line(x, deckY - 7, x, deckY - 1, LADDER_DARK, 1.5);
     c.set(x, deckY - 7, LADDER, 1.5);
   }
 
-  // mast with metal bands, yard with furled sail, pennant
-  const mx = 34 * T + 4;
-  for (let y = 0; y < deckY; y++) {
-    for (let i = -2; i <= 2; i++) c.set(mx + i, y, y % 22 === 5 ? METAL : MAST[i + 2]!, 3 - Math.abs(i) * 0.8);
-  }
-  const yardY = 7 * T + 2;
-  for (let x = 27 * T; x <= 42 * T; x++) {
-    c.set(x, yardY, LADDER, 2.5);
-    c.set(x, yardY + 1, LADDER_DARK, 2);
-    const bump = Math.floor(x / 4) % 2;
-    for (let k = 1; k <= 3 + bump; k++) c.set(x, yardY - k, SAIL[Math.min(k - 1, 2)]!, 2 + k * 0.3);
-  }
-  for (let i = 0; i < 9; i++) for (let k = 0; k < Math.max(1, 3 - Math.floor(i / 3)); k++) c.set(mx + 3 + i, 1 + k + Math.floor(i / 4), PENNANT, 1);
-
-  // crow's nest back panel (lattice between the railing posts)
-  for (let x = 32 * T; x < 37 * T; x++) {
-    for (let y = 3 * T; y < 4 * T; y++) {
-      if ((y - 3 * T) % 3 === 0 || x % 5 === 0) c.set(x, y, (y - 3 * T) % 3 === 0 ? LADDER : LADDER_DARK, 1.5);
+  // masts with metal bands, yards with furled sails, pennants, crow's nest panels, shrouds and braces
+  const yardY = (f.deckRow - 6) * T + 2;
+  f.masts.forEach((m, i) => {
+    const mx = m.col * T + 4;
+    for (let y = 0; y < deckY; y++) {
+      for (let k = -2; k <= 2; k++) c.set(mx + k, y, y % 22 === 5 ? METAL : MAST[k + 2]!, 3 - Math.abs(k) * 0.8);
     }
-  }
-
-  // rigging
-  c.line(mx, 4, W - 2, 12 * T - 10, ROPE, 1);
-  c.line(mx, 4, 3 * T + 4, 10 * T, ROPE, 1);
-  c.line(mx, yardY + 2, 22 * T, deckY - 1, ROPE, 1);
-  c.line(mx, yardY + 2, 47 * T, deckY - 1, ROPE, 1);
-  c.line(27 * T, yardY, 24 * T, deckY - 1, ROPE, 1);
-  c.line(42 * T, yardY, 45 * T, deckY - 1, ROPE, 1);
+    const yardFrom = f.clampCol(m.col - 7);
+    const yardTo = f.clampCol(m.col + 8);
+    for (let x = yardFrom * T; x <= yardTo * T; x++) {
+      c.set(x, yardY, LADDER, 2.5);
+      c.set(x, yardY + 1, LADDER_DARK, 2);
+      const bump = Math.floor(x / 4) % 2;
+      for (let k = 1; k <= 3 + bump; k++) c.set(x, yardY - k, SAIL[Math.min(k - 1, 2)]!, 2 + k * 0.3);
+    }
+    for (let p = 0; p < 9; p++) for (let k = 0; k < Math.max(1, 3 - Math.floor(p / 3)); k++) c.set(mx + 3 + p, 1 + k + Math.floor(p / 4), PENNANT, 1);
+    // crow's nest back panel (lattice between the railing posts)
+    if (m.nest) {
+      const ny = (m.nest.row - 1) * T;
+      for (let x = (m.nest.from + 1) * T; x < m.nest.to * T; x++) {
+        for (let y = ny; y < ny + T; y++) {
+          if ((y - ny) % 3 === 0 || x % 5 === 0) c.set(x, y, (y - ny) % 3 === 0 ? LADDER : LADDER_DARK, 1.5);
+        }
+      }
+    }
+    // stays: the last mast to the bow, the first to the stern post, between masts mast top to mast top
+    const last = i === f.masts.length - 1;
+    if (last) c.line(mx, 4, W - 2, (f.deckRow - 1) * T - 10, ROPE, 1);
+    else c.line(mx, 4, f.masts[i + 1]!.col * T + 4, 4, ROPE, 1);
+    if (i === 0) c.line(mx, 4, (f.deckFrom - 1) * T + 4, f.sternTop * T, ROPE, 1);
+    c.line(mx, yardY + 2, f.clampCol(m.col - 12) * T, deckY - 1, ROPE, 1);
+    c.line(mx, yardY + 2, f.clampCol(m.col + 13) * T, deckY - 1, ROPE, 1);
+    c.line(yardFrom * T, yardY, f.clampCol(yardFrom - 3) * T, deckY - 1, ROPE, 1);
+    c.line(yardTo * T, yardY, f.clampCol(yardTo + 3) * T, deckY - 1, ROPE, 1);
+  });
 
   // ladders (including the rows of the hatches they pass through)
   for (const l of layout.ladders) {

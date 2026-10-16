@@ -686,8 +686,9 @@ export class Game {
     const myStation = me && me.station !== null ? s.stations[me.station] : undefined;
     if (myStation && this.locals.length === 1 && (myStation.kind === 'ring' || myStation.kind === 'cannon')) {
       const side = myStation.kind === 'ring' ? -1 : myStation.x >= 0 ? 1 : -1;
-      tx += side * r.layout.width * 0.32;
-      ty += 30;
+      // towards the bow the ship moves left, under the HUD column: the cannon shifts less and keeps the gunner in view
+      tx += side * r.layout.width * (myStation.kind === 'ring' ? 0.32 : 0.2);
+      ty += myStation.kind === 'ring' ? 30 : 0;
     }
     // arrived: the camera turns towards the lighthouse island
     if (s.status === 'arrived') {
