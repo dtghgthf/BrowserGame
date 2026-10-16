@@ -58,4 +58,5 @@ npm workspaces: `shared/` (simulation, no DOM, exported as TS source via `export
 **Assets** — `scripts/generate-assets.ts` draws all placeholder PNGs (+ `_n.png` normal maps, Aseprite-format JSON) and synthesises WAVs (`scripts/assets/synth.ts`, `sfx.ts`) into `client/public/assets/`. A hash manifest (`.generated.json`) protects files the user replaced by hand. Conventions for replacements: `client/public/assets/README.md`.
 
 ## Deployment
+`main` is the production branch (Vercel builds the client from it); finished work is pushed / merged to `main`.
 Client: static Vite build (Vercel, needs `VITE_SERVER_URL=wss://…`). Server: `server/Dockerfile` (build from repo root) + `fly.toml`; rooms live in memory, so exactly one machine (`fly deploy --ha=false`). After changes to `shared/` or `server/`, server and client must be redeployed together.
