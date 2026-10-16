@@ -1,10 +1,8 @@
 [
   {
     "browser": "chromium",
-    "ok": false,
-    "errors": [
-      "pageerror: Cannot read properties of undefined (reading 'toFixed')"
-    ],
+    "ok": true,
+    "errors": [],
     "warnings": [],
     "screenshots": [
       "/home/user/BrowserGame/screenshots/chromium-01-oberdeck.png",
@@ -25,25 +23,26 @@
       "/home/user/BrowserGame/screenshots/chromium-19-3d-kiste.png",
       "/home/user/BrowserGame/screenshots/chromium-20-hafen.png",
       "/home/user/BrowserGame/screenshots/chromium-21-kartentisch.png",
+      "/home/user/BrowserGame/screenshots/chromium-22-werft.png",
       "/home/user/BrowserGame/screenshots/chromium-08-touch-ipad.png",
       "/home/user/BrowserGame/screenshots/chromium-11-lobby.png",
       "/home/user/BrowserGame/screenshots/chromium-12-mehrspieler.png"
     ],
     "fps": {
       "high": {
-        "avg": 7.1,
-        "min": 6.5,
-        "samples": 5
+        "avg": 12.1,
+        "min": 10.3,
+        "samples": 14
       },
       "medium": {
-        "avg": 15.2,
-        "min": 7.7,
-        "samples": 7
+        "avg": 31.9,
+        "min": 16.9,
+        "samples": 15
       },
       "low": {
-        "avg": 19.3,
-        "min": 18.2,
-        "samples": 7
+        "avg": 32.4,
+        "min": 29,
+        "samples": 14
       }
     },
     "info": {
@@ -59,23 +58,27 @@
       "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
       "renderer": "WebKit WebGL"
     },
-    "wheelRudder": 0.57,
-    "rockSpotted": false,
-    "cannonBalls": 1,
+    "wheelRudder": 0,
+    "rockSpotted": true,
+    "cannonFired": true,
     "arrived": "arrived",
     "crateOpened": 1,
     "campaign": {
       "status": "campaign",
-      "legs": 13
+      "legs": 15
     },
     "state": {
-      "tick": 640,
+      "tick": 1451,
       "water": [
         0,
         0
       ],
       "leaks": 0,
-      "roll": 2.5
+      "roll": -4.3
+    },
+    "editor": {
+      "check": "Alles seetüchtig!",
+      "name": "Kutter"
     },
     "touch": {
       "controlsVisible": true,
@@ -91,7 +94,7 @@
       }
     },
     "online": {
-      "code": "NVLR",
+      "code": "ZKHP",
       "pingSeen": [
         "here"
       ],
@@ -101,11 +104,22 @@
       ],
       "rtt": 1,
       "stats": {
-        "pending": 6,
-        "replayed": 0,
-        "snapshots": 27,
-        "serverTick": 972
+        "pending": 8,
+        "replayed": 3,
+        "snapshots": 43,
+        "serverTick": 690
       }
     }
+  },
+  {
+    "browser": "webkit",
+    "ok": false,
+    "errors": [
+      "could not launch webkit: browserType.launch: Executable doesn't exist at /opt/pw-browsers/webkit-2215/pw_run.sh"
+    ],
+    "warnings": [],
+    "screenshots": [],
+    "fps": null,
+    "skipped": true
   }
 ]
