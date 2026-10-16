@@ -51,9 +51,15 @@ export class RouteMap {
     return s;
   }
 
+  /** Screen px of the legs that can be chosen next (same order as `nextLegs`) and of the map, from the last draw. */
+  readonly options: { x: number; y: number }[] = [];
+  readonly rect = { x: 0, y: 0, w: 0, h: 0 };
+
   draw(c: CampaignState, x: number, y: number, w: number, h: number, time: number, title = 'ROUTE'): void {
     const g = this.g;
     g.clear();
+    this.options.length = 0;
+    Object.assign(this.rect, { x, y, w, h });
     for (const s of this.icons) s.visible = false;
     // parchment with a darker rim
     g.rect(x, y, w, h).fill(COL.paperDark);
@@ -82,7 +88,9 @@ export class RouteMap {
       return { x: colX(n.col), y: nodeY(n.col, n.row) };
     };
     const cur = currentNode(c);
-    const options = new Set(nextLegs(c).map((n) => n.id));
+    const next = nextLegs(c);
+    const options = new Set(next.map((n) => n.id));
+    for (const n of next) this.options.push(pos(n.id));
     const startX = left - 4;
     const startY = Math.round((top + bottom) / 2);
     const endX = right + 10;

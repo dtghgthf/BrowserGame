@@ -251,6 +251,12 @@ export class ShipView {
       case 'ring':
         add('ring_post', 0, 0);
         break;
+      case 'table': {
+        // the detailed chart table art (32 px/m) at half size
+        const t = add('st_table', 6, 0);
+        t.setTransform(px(st.x) + 6, px(st.y), 0, 0.5, 0.5);
+        break;
+      }
     }
     return { parts, moving, glow };
   }

@@ -260,6 +260,21 @@ describe('man overboard', () => {
     expect(sim.state.players[1]!.bubble?.key).toBe('overboard');
   });
 
+  it('a swimmer stays behind the stern in reach of the life ring line', async () => {
+    const sim = await calm();
+    sim.addPlayer('a');
+    sim.addPlayer('b');
+    run(sim, 0.5);
+    sim.teleportPlayer('a', -40, 0);
+    run(sim, 10);
+    const swimmer = sim.state.players[0]!;
+    expect(swimmer.overboard).toBeGreaterThan(0);
+    const zone = sim.rescueZone();
+    expect(swimmer.seaX).toBeGreaterThanOrEqual(zone.from - 1e-6);
+    expect(swimmer.seaX).toBeLessThanOrEqual(zone.to + 1e-6);
+    expect(zone.to - zone.from).toBeLessThan(DEFAULT_TUNING.gameplay.ringRope);
+  });
+
   it('the ring is thrown, caught and pulled in: the swimmer is back on board', async () => {
     const sim = await calm();
     sim.addPlayer('a');

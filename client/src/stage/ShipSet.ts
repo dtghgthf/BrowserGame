@@ -129,7 +129,7 @@ export class ShipSet {
     // the cut front: the hull art
     this.image(assets.hull, FRONT_Z, ORDER_FRONT, 16, origin);
     this.extrude();
-    for (const st of state.stations) if (st.id !== focusStation && st.kind !== 'table') this.stations.push(this.station(st));
+    for (const st of state.stations) if (st.id !== focusStation) this.stations.push(this.station(st));
     this.buildLanterns();
     this.buildWater(waterGeometry);
     this.buildSea();
@@ -273,6 +273,12 @@ export class ShipSet {
       case 'ring':
         add('ring_post', 0, 0);
         break;
+      case 'table': {
+        const c = this.stage.add(this.frame('st_table'), 'cards', 32);
+        c.pos = { x: st.x + 0.4, y: st.y, z: 0 };
+        parts.push(c);
+        break;
+      }
       default:
         break;
     }

@@ -488,6 +488,12 @@ export class Simulation implements SimContext {
   }
 
   /** Searchlight range with the operator's role. */
+  /** World x range behind the stern where swimmers wait for the life ring (within reach of its line). */
+  rescueZone(): { from: number; to: number } {
+    const stern = shipToWorld(this.state.ship, { x: -this.sternOffset, y: 0 }).x;
+    return { from: stern - (this.tuning.gameplay.ringRope - 2), to: stern - 1.5 };
+  }
+
   spotRange(): number {
     const st = this.state.stations.find((x) => x.kind === 'searchlight');
     const op = st?.occupant ? this.state.players.find((p) => p.id === st.occupant) : undefined;
@@ -952,7 +958,12 @@ export class Simulation implements SimContext {
       // swimming: the ship sails on, the life ring can pull him back
       const holding = this.state.ring?.holder === p.id;
       if (!holding) {
-        p.seaX += ((input.right ? 1 : 0) - (input.left ? 1 : 0)) * this.tuning.gameplay.swimSpeed * dt;
+        const G = this.tuning.gameplay;
+        const ship = this.state.ship;
+        // the swimmer stays in a rescue zone behind the stern (in reach of the line), falling back slowly, and can swim
+        p.seaX += (ship.speed - G.swimDrift) * dt + ((input.right ? 1 : 0) - (input.left ? 1 : 0)) * G.swimSpeed * dt;
+        const zone = this.rescueZone();
+        p.seaX = clamp(p.seaX, zone.from, zone.to);
         p.overboard -= dt;
       }
       if (p.overboard <= 0) this.respawnPlayer(p, rt);
@@ -978,7 +989,9 @@ export class Simulation implements SimContext {
         consumed = true;
         p.jumpBuffer = 0;
       } else {
-        this.operateStation(st, input, dt, !!pressed('pick'), (pressed('right') ? 1 : 0) - (pressed('left') ? 1 : 0), p);
+        // taps step through choices (chart table): right / down = next, left / up = previous
+        const tapDir = (pressed('right') || pressed('down') ? 1 : 0) - (pressed('left') || pressed('up') ? 1 : 0);
+        this.operateStation(st, input, dt, !!pressed('pick'), tapDir, p);
         // a helper at the wheel / chart table stands beside the one using it
         const sx = st.helper === p.id ? st.x - WHEEL_HELPER_GAP : st.x;
         rt.body.setTranslation({ x: sx, y: st.y - PLAYER_HALF_HEIGHT - 0.01 }, true);
@@ -2060,7 +2073,8 @@ export class Simulation implements SimContext {
         const crew = s.players.some((o) => o !== p && o.overboard <= 0 && !o.away);
         const ringStation = s.stations.some((st) => st.kind === 'ring');
         p.overboard = crew && ringStation ? this.tuning.gameplay.rescueWindow : this.tuning.gameplay.overboardTime;
-        p.seaX = shipToWorld(s.ship, { x: p.x, y: p.y }).x;
+        const zone = this.rescueZone();
+        p.seaX = clamp(shipToWorld(s.ship, { x: p.x, y: p.y }).x, zone.from, zone.to);
         rt.body.setEnabled(false);
         this.emit({ type: 'overboard', player: p.id });
         const helper = this.closestPlayer(p.x, p.y);

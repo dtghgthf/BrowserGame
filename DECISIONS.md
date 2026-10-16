@@ -345,3 +345,8 @@ Format: **Entscheidung** – Begründung.
   Rohr/Lampe statt Markierungen am Ort; in 2D Markierungen am Ziel bzw. Pfeile am Rand.
 - **Leuchtturm hinter dem Schiff:** Lichter mit `behindShip` werden im Licht-Shader dort verworfen, wo die Maske Schiff zeigt.
 - **2D-Ebenen:** Spieler liegen jetzt vor der Rumpfgrafik (Geländer im Krähennest schnitt sonst durch die Figur).
+- **Rettungsring bleibt 2D:** Fangen braucht den weiten Blick übers Meer; die Kamera rückt dafür ~1/3 Bildbreite hinter
+  das Heck, die Bedienung sitzt rechts unten. Schwimmer bleiben in einer Rettungszone (`rescueZone()`: bis Leinenlänge − 2 m
+  hinter dem Heck) und fallen mit `swimDrift` zurück – sonst zog das Schiff mit voller Fahrt davon.
+- **Kurze Eingaben:** Richtungstasten werden wie Sprung/E/F bis zum nächsten Tick gehalten, der Ziel-Wert eines Fingertipps
+  ebenfalls (Kartentisch: Antippen der Etappe).

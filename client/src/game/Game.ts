@@ -400,10 +400,10 @@ export class Game {
       const t = this.touch.read();
       const solo = this.locals.length === 1;
       return {
-        left: t.left || k.isDown('KeyA') || (solo && k.isDown('ArrowLeft')),
-        right: t.right || k.isDown('KeyD') || (solo && k.isDown('ArrowRight')),
-        up: t.up || k.isDown('KeyW') || (solo && k.isDown('ArrowUp')),
-        down: t.down || k.isDown('KeyS') || (solo && k.isDown('ArrowDown')),
+        left: t.left || both('KeyA') || (solo && both('ArrowLeft')),
+        right: t.right || both('KeyD') || (solo && both('ArrowRight')),
+        up: t.up || both('KeyW') || (solo && both('ArrowUp')),
+        down: t.down || both('KeyS') || (solo && both('ArrowDown')),
         jump: t.jump || both('Space'),
         interact: t.interact || both('KeyE'),
         pick: t.pick || both('KeyF'),
@@ -678,6 +678,13 @@ export class Game {
     if (targets.length) {
       tx = (targets.reduce((a, p) => a + p.x, 0) / targets.length) * PPM;
       ty = (targets.reduce((a, p) => a + p.y, 0) / targets.length) * PPM + 18;
+    }
+    // at the life ring the camera looks out over the sea behind the stern, the whole length of the line
+    const me = s.players.find((p) => p.id === this.locals[0]?.id);
+    const atRing = me && me.station !== null && s.stations[me.station]?.kind === 'ring';
+    if (atRing && this.locals.length === 1) {
+      tx -= r.layout.width * 0.32;
+      ty += 30;
     }
     // arrived: the camera turns towards the lighthouse island
     if (s.status === 'arrived') {

@@ -135,6 +135,8 @@ export interface GameplayTuning {
   ringPullStroke: number;
   rescueWindow: number;
   swimSpeed: number;
+  /** Overboard: how fast a swimmer falls back behind the stern (m/s) - the ship drags the rescue zone along. */
+  swimDrift: number;
   /** Cargo: roll (deg) above which lashings may snap, chance per second at twice that roll, list weight of a loose crate (m^2 of water). */
   cargoBreakRoll: number;
   cargoBreakRate: number;
@@ -277,6 +279,7 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     ringPullStroke: 1.4,
     rescueWindow: 30,
     swimSpeed: 1.1,
+    swimDrift: 0.35,
     cargoBreakRoll: 11,
     cargoBreakRate: 0.25,
     cargoWeight: 2.5,

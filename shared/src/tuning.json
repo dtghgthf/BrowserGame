@@ -108,6 +108,7 @@
     "ringPullStroke": 1.4,
     "rescueWindow": 30,
     "swimSpeed": 1.1,
+    "swimDrift": 0.35,
     "cargoBreakRoll": 11,
     "cargoBreakRate": 0.25,
     "cargoWeight": 2.5,

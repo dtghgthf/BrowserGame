@@ -94,6 +94,7 @@ export class StationWidget {
     return this.kind === 'ring' && this.pulling ? this.charge : this.value;
   }
   private charge = 0;
+  private releaseTarget = false;
   private value = 0;
   private time = 0;
   /** Last pointer position (internal px) of the active drag, re-applied every frame. */
@@ -146,7 +147,10 @@ export class StationWidget {
     if (!p) return;
     const dx = p.x - this.center.x;
     const dy = p.y - this.center.y;
-    if (Math.hypot(dx, dy) > this.radius + 6) return;
+    // the chart table: anywhere on the map
+    const rr = this.route.rect;
+    const onMap = this.kind === 'table' && this.route.root.visible && p.x >= rr.x && p.x <= rr.x + rr.w && p.y >= rr.y && p.y <= rr.y + rr.h;
+    if (!onMap && Math.hypot(dx, dy) > this.radius + 6) return;
     e.stopPropagation();
     e.preventDefault();
     const g = this.geometry();
@@ -166,7 +170,8 @@ export class StationWidget {
   private onUp(e: PointerEvent): void {
     if (!this.drag || e.pointerId !== this.drag.pointerId) return;
     this.drag = null;
-    this.target = null;
+    // a quick tap (down and up within one frame) must still be read once: the target goes in the next update
+    this.releaseTarget = true;
     this.lastPointer = null;
     e.stopPropagation();
   }
@@ -216,10 +221,17 @@ export class StationWidget {
         // the lever turns with the hand around its pivot: up = -1, down = +1
         this.target = this.relative(p, -1, 1) ?? Math.max(-1, Math.min(1, (p.y - this.center.y) / 16));
         break;
-      case 'table':
-        // point left / right on the chart to pick a way
-        this.target = Math.max(-1, Math.min(1, (p.x - this.center.x) / (this.diorama ? Math.max(8, this.diorama.radius * 0.8) : 60)));
+      case 'table': {
+        // tap the leg on the map: the nearest of the legs that can be chosen
+        const opts = this.route.options;
+        if (opts.length === 0) break;
+        let best = 0;
+        opts.forEach((o, i) => {
+          if (Math.hypot(o.x - p.x, o.y - p.y) < Math.hypot(opts[best]!.x - p.x, opts[best]!.y - p.y)) best = i;
+        });
+        this.target = opts.length > 1 ? -1 + (2 * best) / (opts.length - 1) : 0;
         break;
+      }
       case 'workshop':
         // push and pull the saw sideways - it stays under the finger
         this.target = this.relative(p, -1, 1) ?? Math.max(-1, Math.min(1, (p.x - this.center.x) / 20));
@@ -246,6 +258,8 @@ export class StationWidget {
   }
 
   update(state: GameState, view: Snapshot, playerId: string | undefined, tuning: Readonly<Tuning>): void {
+    if (this.releaseTarget && !this.drag) this.target = null;
+    this.releaseTarget = false;
     const p = state.players.find((pp) => pp.id === playerId);
     const st = p && p.station !== null ? state.stations[p.station] : undefined;
     const kind = st && st.kind !== 'rack' ? st.kind : null;
@@ -274,7 +288,8 @@ export class StationWidget {
     const cx = Math.round(W / 2);
     const cy = H - 60;
     // the helm shares the bottom with its sea chart: the wheel moves a bit to the left
-    const ox = kind === 'wheel' ? -30 : 0;
+    // the helm shares the bottom with its sea chart; the life ring keeps the sea behind the ship free (control on the right)
+    const ox = kind === 'wheel' ? -30 : kind === 'ring' ? Math.round(W / 2) - 58 : 0;
     this.center = this.diorama ? { x: Math.round(this.diorama.center.x), y: Math.round(this.diorama.center.y) } : { x: cx + ox, y: cy };
     this.g.clear();
     this.geometry2d = null;
@@ -380,7 +395,7 @@ export class StationWidget {
         this.route.root.visible = true;
         this.route.draw(state.campaign, cx - 100, cy - 70, 200, 104, this.time, 'SEEKARTE DER FAHRT');
         title = 'KARTENTISCH';
-        if (state.status === 'harbor') sub = `ROUTE WÄHLEN: A/D ODER ZEIGEN · F = ABLEGEN (${Math.ceil(state.statusTimer)})`;
+        if (state.status === 'harbor') sub = `ETAPPE ANTIPPEN ODER W/S · F = ABLEGEN (${Math.ceil(state.statusTimer)})`;
         else sub = state.campaign.nodes.length ? 'UNTERWEGS - IM HAFEN WÄHLT IHR HIER DIE ROUTE' : '';
         break;
       }
@@ -389,18 +404,20 @@ export class StationWidget {
         title = 'RETTUNGSRING';
         if (this.pulling) {
           // hand over hand: the line between the hands
-          const hx = cx + Math.round(st.charge * 16);
+          const rx = cx + ox;
+          const hx = rx + Math.round(st.charge * 16);
           this.geometry2d = { mode: 'linear', axis: { x: 16, y: 0 } };
-          this.g.rect(cx - 30, cy, 60, 1).fill(0xd8c8a0);
+          this.g.rect(rx - 30, cy, 60, 1).fill(0xd8c8a0);
           this.g.rect(hx - 3, cy - 4, 6, 8).fill(0xe0b090);
           this.g.rect(hx - 2, cy - 3, 4, 6).fill(0xc89878);
           const held = state.ring?.holder !== null;
-          sub = held ? 'EINHOLEN: HIN UND HER / A-D' : 'NIEMAND DRAN - F = EINHOLEN';
+          sub = held ? 'EINHOLEN: HIN UND HER / A-D' : 'LEINE EINHOLEN: HIN UND HER · F = SOFORT';
         } else {
+          const rx = cx + ox;
           this.dial.visible = true;
           this.needle.visible = true;
-          this.dial.position.set(cx, cy);
-          this.needle.position.set(cx, cy);
+          this.dial.position.set(rx, cy);
+          this.needle.position.set(rx, cy);
           this.needle.rotation = this.value + this.roll;
           sub = state.ring ? 'FLIEGT ...' : this.drag ? '' : 'ZIELEN, F = WERFEN!';
         }
@@ -453,9 +470,11 @@ export class StationWidget {
     const big = kind === 'table';
     // the helm's texts go above the wheel and the chart (they would run into the chart otherwise)
     const top = big ? cy - 80 : kind === 'wheel' ? cy - 64 : cy - 44;
-    this.title.position.set(Math.round(cx - this.title.textWidth / 2), top);
     this.sub.text = sub;
-    this.sub.position.set(Math.round(cx - this.sub.textWidth / 2), big ? cy + 37 : top + 7);
+    const tx = kind === 'ring' ? Math.min(W - 2 - Math.max(this.title.textWidth, this.sub.textWidth) / 2, cx + ox) : cx;
+    this.title.position.set(Math.round(tx - this.title.textWidth / 2), top);
+    this.sub.text = sub;
+    this.sub.position.set(Math.round(tx - this.sub.textWidth / 2), big ? cy + 37 : top + 7);
     this.sub.visible = sub.length > 0;
   }
 }
