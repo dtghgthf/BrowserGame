@@ -1381,11 +1381,14 @@ export class Simulation implements SimContext {
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     const target = input.target;
     const hasTarget = typeof target === 'number' && Number.isFinite(target);
-    // cannon / life ring: the strength of the shot / throw (W/S or dragging up and down)
+    // cannon / life ring aiming: W/S raise and lower the barrel / the throw, A/D change the strength - towards the
+    // side it points to = stronger (the cannon points to the bow, the ring over the stern)
+    const facing = Math.cos(st.value) >= 0 ? 1 : -1;
+    const elevate = (input.up ? 1 : 0) - (input.down ? 1 : 0);
     const aimPower = () => {
       const t2 = input.target2;
       if (typeof t2 === 'number' && Number.isFinite(t2)) st.power = approach(st.power, clamp(t2, 0, 1), G.powerSpeed * 2 * dt);
-      else st.power = clamp(st.power + ((input.up ? 1 : 0) - (input.down ? 1 : 0)) * G.powerSpeed * dt, 0, 1);
+      else st.power = clamp(st.power + dir * facing * G.powerSpeed * dt, 0, 1);
     };
     switch (st.kind) {
       case 'wheel': {
@@ -1438,7 +1441,7 @@ export class Simulation implements SimContext {
         aimPower();
         st.value = hasTarget
           ? approach(st.value, clamp(target, -1.3, 0.35), G.cannonSpeed * 1.6 * dt)
-          : clamp(st.value + dir * G.cannonSpeed * dt, -1.3, 0.35);
+          : clamp(st.value - elevate * facing * G.cannonSpeed * dt, -1.3, 0.35);
         if (fire && st.charge >= 2) fireCannon(this, st);
         else if (st.charge < 2) {
           // alone the gunner loads by himself (slower than with a helper)
@@ -1491,7 +1494,7 @@ export class Simulation implements SimContext {
             const step = G.cannonSpeed * 1.6 * dt;
             st.value = wrapAngle(st.value + clamp(wrapAngle(target - st.value), -step, step));
           } else {
-            st.value = wrapAngle(st.value + dir * G.cannonSpeed * dt);
+            st.value = wrapAngle(st.value - elevate * facing * G.cannonSpeed * dt);
           }
         }
         if (fire) ringButton(this, st);

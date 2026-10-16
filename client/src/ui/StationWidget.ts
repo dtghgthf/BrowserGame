@@ -10,7 +10,7 @@ import { SeaChart } from './SeaChart';
 
 /** Visual wheel turns for full rudder (±270°). */
 const WHEEL_TURNS = Math.PI * 1.5;
-/** Cannon / life ring: sideways drag turns the barrel (rad per px), dragging up and down sets the strength (px for 0..1). */
+/** Cannon / life ring: dragging up and down raises / lowers the aim (rad per px), sideways sets the strength (px for 0..1). */
 const AIM_RAD_PER_PX = 0.022;
 const POWER_PX = 50;
 
@@ -210,11 +210,13 @@ export class StationWidget {
     return Math.max(lo, Math.min(hi, d.grabValue + d.accum / g.perUnit));
   }
 
-  /** Aiming: sideways = the angle (clockwise to the right, like D), up = stronger, down = weaker. */
+  /** Aiming: up = aim higher, down = lower; sideways towards where it points = stronger (like W/S and A/D). */
   private aimDrag(p: { x: number; y: number }, lo: number, hi: number): void {
     const d = this.drag!;
-    this.target = Math.max(lo, Math.min(hi, d.grabValue + (p.x - d.grabX) * AIM_RAD_PER_PX));
-    this.target2 = Math.max(0, Math.min(1, d.grabPower - (p.y - d.grabY) / POWER_PX));
+    const facing = Math.cos(d.grabValue) >= 0 ? 1 : -1;
+    // screen y grows downwards: dragging up turns the barrel up (anticlockwise when it points right)
+    this.target = Math.max(lo, Math.min(hi, d.grabValue + (p.y - d.grabY) * AIM_RAD_PER_PX * facing));
+    this.target2 = Math.max(0, Math.min(1, d.grabPower + ((p.x - d.grabX) * facing) / POWER_PX));
   }
 
   private applyPointer(p: { x: number; y: number }): void {
@@ -412,7 +414,7 @@ export class StationWidget {
         this.needle.rotation = this.value + this.roll;
         title = kind === 'searchlight' ? 'SCHEINWERFER' : 'KANONE';
         if (kind === 'searchlight') sub = this.drag ? '' : st.charge <= 0 ? 'KEIN ÖL! ÖLKANNE HOLEN' : 'AUFS MEER VORAUS ZEIGEN / A-D';
-        else sub = this.drag ? '' : st.charge < 2 ? `LADEN ${Math.round((st.charge / 2) * 100)}% - SCHNELLER: KUGEL VOM GESTELL STOPFEN` : 'A/D WINKEL · W/S STÄRKE · F = FEUER!';
+        else sub = this.drag ? '' : st.charge < 2 ? `LADEN ${Math.round((st.charge / 2) * 100)}% - SCHNELLER: KUGEL VOM GESTELL STOPFEN` : 'W/S WINKEL · A/D STÄRKE · F = FEUER!';
         // load bar (cannon) / oil gauge (searchlight) under the dial
         const frac = kind === 'cannon' ? Math.min(1, st.charge / 2) : st.charge;
         this.g.rect(dx0 - 20, cy + 32, 40, 3).fill(0x2c3a4c);
@@ -452,7 +454,7 @@ export class StationWidget {
           this.needle.position.set(rx, cy);
           this.needle.rotation = this.value + this.roll;
           this.powerBar(rx - 38, cy, st.power);
-          sub = state.ring ? 'FLIEGT ...' : this.drag ? '' : 'A/D WINKEL · W/S STÄRKE · F = WERFEN!';
+          sub = state.ring ? 'FLIEGT ...' : this.drag ? '' : 'W/S WINKEL · A/D STÄRKE · F = WERFEN!';
         }
         break;
       }

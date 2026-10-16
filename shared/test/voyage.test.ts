@@ -103,12 +103,16 @@ describe('cannon and kraken', () => {
     const far = await land(1);
     const near = await land(0.2);
     expect(near).toBeLessThan(far - 5);
-    // W / S change it too
+    // keys: A (away from the bow) = weaker, W = the barrel up
     const sim = await calm();
     sim.addPlayer('a');
     enter(sim, 'a', 'cannon');
-    run(sim, 0.5, () => ({ a: input({ down: true }) }));
-    expect(sim.state.stations.find((s) => s.kind === 'cannon')!.power).toBeLessThan(0.75);
+    const st = sim.state.stations.find((s) => s.kind === 'cannon')!;
+    const angle = st.value;
+    run(sim, 0.5, () => ({ a: input({ left: true }) }));
+    expect(st.power).toBeLessThan(0.75);
+    run(sim, 0.3, () => ({ a: input({ up: true }) }));
+    expect(st.value).toBeLessThan(angle);
   });
 
   it('fires a ball with F, reloads, and breaks a rock where the ball lands', async () => {

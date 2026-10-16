@@ -353,8 +353,9 @@ Format: **Entscheidung** – Begründung.
 - **Kanone ebenfalls 2D**, Kamera ~1/3 Bildbreite zur Schussseite (Bug), Bedienung links unten.
 - **Stärke als zweite Achse:** `StationState.power` (0..1) und `PlayerInput.target2` (Protokoll v5: je Tick Bits, target,
   target2). Startgeschwindigkeit = `ballSpeed`/`ringSpeed` × (`powerMin` + (1 − `powerMin`) × power); Treffer und Schaden
-  hängen nicht davon ab. Ziehen ist relativ: seitlich `AIM_RAD_PER_PX` rad/px (nach rechts = im Uhrzeigersinn wie D),
-  50 px hoch/runter = volle Stärke.
+  hängen nicht davon ab. Ziehen ist relativ: hoch/runter `AIM_RAD_PER_PX` rad/px (hoch = höher zielen, wie W),
+  seitlich zur Schussseite = stärker (wie A/D), `POWER_PX` px = volle Stärke. (Anfangs waren die Achsen andersherum;
+  nach dem Playtest getauscht, weil „hoch“ als Winkel intuitiver ist.)
 - **Deko-Schalter in Schiffen:** `ShipDesign.decorOff` (Kacheln, rein optisch; die Simulation ignoriert sie). Link-Code
   Version 2 hängt sie hinter den Namen; ohne Schalter bleibt es Version 1, alte Codes ändern sich nicht. Ein Schalter auf der
   Mastspalte über dem Deck nimmt den Mast (samt Krähennest-Gitter) weg, einer auf dem Deck oder direkt darüber die Reling an
