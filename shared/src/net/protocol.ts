@@ -11,7 +11,7 @@ import { decodeDesign, validateShipDesign, type ShipDesign } from '../layout/des
  */
 
 /** Bumped whenever the messages below change incompatibly. */
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 
 export const ROOM_NAME = 'ship';
 export const DEFAULT_SERVER_PORT = 2567;
@@ -88,11 +88,11 @@ export interface SnapshotMessage {
 
 /**
  * Inputs for consecutive ticks, packed as numbers:
- * [firstSeq, bits0, target0, bits1, target1, ...] - target is null when unused.
+ * [firstSeq, bits0, target0, power0, bits1, target1, power1, ...] - the analog axes are null when unused.
  */
 export type InputMessage = (number | null)[];
 
-const BITS: (keyof Omit<PlayerInput, 'target'>)[] = ['left', 'right', 'up', 'down', 'jump', 'interact', 'pick'];
+const BITS: (keyof Omit<PlayerInput, 'target' | 'target2'>)[] = ['left', 'right', 'up', 'down', 'jump', 'interact', 'pick'];
 /** Inputs older than this are not resent / accepted in one message. */
 export const MAX_INPUTS_PER_MESSAGE = 30;
 
@@ -104,34 +104,35 @@ export function inputBits(i: Readonly<PlayerInput>): number {
   return b;
 }
 
-export function inputFromBits(bits: number, target: number | null): PlayerInput {
+export function inputFromBits(bits: number, target: number | null, target2: number | null = null): PlayerInput {
   const i: PlayerInput = { ...EMPTY_INPUT };
   BITS.forEach((k, n) => {
     i[k] = (bits & (1 << n)) !== 0;
   });
   i.target = target;
+  i.target2 = target2;
   return i;
 }
 
 export function encodeInputs(firstSeq: number, inputs: readonly Readonly<PlayerInput>[]): InputMessage {
   const msg: InputMessage = [firstSeq];
-  for (const i of inputs) msg.push(inputBits(i), i.target === null ? null : Math.round(i.target * 1000) / 1000);
+  const q = (v: number | null) => (v === null ? null : Math.round(v * 1000) / 1000);
+  for (const i of inputs) msg.push(inputBits(i), q(i.target), q(i.target2 ?? null));
   return msg;
 }
 
 /** Decodes and validates an input message from the network. Invalid parts are dropped. */
 export function decodeInputs(msg: unknown): { seq: number; input: PlayerInput }[] {
-  if (!Array.isArray(msg) || msg.length < 3) return [];
+  if (!Array.isArray(msg) || msg.length < 4) return [];
   const first = msg[0];
   if (typeof first !== 'number' || !Number.isInteger(first) || first < 0) return [];
   const out: { seq: number; input: PlayerInput }[] = [];
-  const n = Math.min((msg.length - 1) >> 1, MAX_INPUTS_PER_MESSAGE);
+  const n = Math.min(Math.floor((msg.length - 1) / 3), MAX_INPUTS_PER_MESSAGE);
+  const axis = (t: unknown) => (typeof t === 'number' && Number.isFinite(t) && Math.abs(t) < 10 ? t : null);
   for (let k = 0; k < n; k++) {
-    const bits = msg[1 + k * 2];
-    const t = msg[2 + k * 2];
+    const bits = msg[1 + k * 3];
     if (typeof bits !== 'number' || !Number.isInteger(bits) || bits < 0 || bits > 127) break;
-    const target = typeof t === 'number' && Number.isFinite(t) && Math.abs(t) < 10 ? t : null;
-    out.push({ seq: first + k, input: inputFromBits(bits, target) });
+    out.push({ seq: first + k, input: inputFromBits(bits, axis(msg[2 + k * 3]), axis(msg[3 + k * 3])) });
   }
   return out;
 }

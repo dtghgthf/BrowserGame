@@ -544,7 +544,7 @@ export class Simulation implements SimContext {
       const p = tileToLocal(this.layout, m.tx + 0.5, m.ty + 1);
       const value = kind === 'searchlight' ? 0.25 : kind === 'cannon' ? -0.2 : kind === 'ring' ? -2.4 : 0;
       const charge = kind === 'cannon' ? 2 : kind === 'searchlight' ? 1 : 0;
-      stations.push({ id: stations.length, kind, x: p.x, y: p.y, occupant: null, optional: m.type === 'cannon2', helper: null, value, aux: kind === 'searchlight' ? 1 : 0, charge });
+      stations.push({ id: stations.length, kind, x: p.x, y: p.y, occupant: null, optional: m.type === 'cannon2', helper: null, value, aux: kind === 'searchlight' ? 1 : 0, charge, power: 1 });
     }
     return stations;
   }
@@ -1352,6 +1352,12 @@ export class Simulation implements SimContext {
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     const target = input.target;
     const hasTarget = typeof target === 'number' && Number.isFinite(target);
+    // cannon / life ring: the strength of the shot / throw (W/S or dragging up and down)
+    const aimPower = () => {
+      const t2 = input.target2;
+      if (typeof t2 === 'number' && Number.isFinite(t2)) st.power = approach(st.power, clamp(t2, 0, 1), G.powerSpeed * 2 * dt);
+      else st.power = clamp(st.power + ((input.up ? 1 : 0) - (input.down ? 1 : 0)) * G.powerSpeed * dt, 0, 1);
+    };
     switch (st.kind) {
       case 'wheel': {
         st.value = hasTarget
@@ -1400,6 +1406,7 @@ export class Simulation implements SimContext {
         }
         break;
       case 'cannon':
+        aimPower();
         st.value = hasTarget
           ? approach(st.value, clamp(target, -1.3, 0.35), G.cannonSpeed * 1.6 * dt)
           : clamp(st.value + dir * G.cannonSpeed * dt, -1.3, 0.35);
@@ -1449,11 +1456,14 @@ export class Simulation implements SimContext {
           if (hasTarget) st.charge = approach(st.charge, clamp(target, -1, 1), G.pumpHandleSpeed * dt);
           else st.charge = clamp(st.charge + dir * G.pumpHandleSpeed * dt, -1, 1);
           if ((before < 1 && st.charge >= 1) || (before > -1 && st.charge <= -1)) ringPull(this, st);
-        } else if (hasTarget) {
-          const step = G.cannonSpeed * 1.6 * dt;
-          st.value = wrapAngle(st.value + clamp(wrapAngle(target - st.value), -step, step));
         } else {
-          st.value = wrapAngle(st.value + dir * G.cannonSpeed * dt);
+          aimPower();
+          if (hasTarget) {
+            const step = G.cannonSpeed * 1.6 * dt;
+            st.value = wrapAngle(st.value + clamp(wrapAngle(target - st.value), -step, step));
+          } else {
+            st.value = wrapAngle(st.value + dir * G.cannonSpeed * dt);
+          }
         }
         if (fire) ringButton(this, st);
         break;

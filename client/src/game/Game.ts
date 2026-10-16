@@ -408,6 +408,7 @@ export class Game {
         interact: t.interact || both('KeyE'),
         pick: t.pick || both('KeyF'),
         target: this.station.target,
+        target2: this.station.target2,
       };
     }
     return {
@@ -681,9 +682,11 @@ export class Game {
     }
     // at the life ring the camera looks out over the sea behind the stern, the whole length of the line
     const me = s.players.find((p) => p.id === this.locals[0]?.id);
-    const atRing = me && me.station !== null && s.stations[me.station]?.kind === 'ring';
-    if (atRing && this.locals.length === 1) {
-      tx -= r.layout.width * 0.32;
+    // ... and at the cannon over the sea on its side (the kraken, the pirates)
+    const myStation = me && me.station !== null ? s.stations[me.station] : undefined;
+    if (myStation && this.locals.length === 1 && (myStation.kind === 'ring' || myStation.kind === 'cannon')) {
+      const side = myStation.kind === 'ring' ? -1 : myStation.x >= 0 ? 1 : -1;
+      tx += side * r.layout.width * 0.32;
       ty += 30;
     }
     // arrived: the camera turns towards the lighthouse island

@@ -1,6 +1,6 @@
 import { EMPTY_INPUT, type PlayerInput } from '@lw/shared';
 
-type BoolKey = Exclude<keyof PlayerInput, 'target'>;
+type BoolKey = Exclude<keyof PlayerInput, 'target' | 'target2'>;
 // directions too: a quick tap on A/D/W/S steps through choices (chart table) and must not fall between two ticks
 const EDGE_KEYS: BoolKey[] = ['jump', 'interact', 'pick', 'left', 'right', 'up', 'down'];
 const BOOL_KEYS: BoolKey[] = ['left', 'right', 'up', 'down', 'jump', 'interact', 'pick'];
@@ -15,6 +15,7 @@ export class InputSampler {
   private readonly held: PlayerInput = { ...EMPTY_INPUT };
   /** Last analog target since the previous tick: a tap on the screen shorter than a tick still reaches the simulation. */
   private pendingTarget: number | null = null;
+  private pendingTarget2: number | null = null;
 
   /** Updates the held state for this frame (call once per rendered frame). */
   setHeld(input: PlayerInput): void {
@@ -24,7 +25,9 @@ export class InputSampler {
     }
     // analog station target: the latest value wins; it is kept for one tick after the pointer let go
     this.held.target = input.target;
+    this.held.target2 = input.target2;
     if (input.target !== null && input.target !== undefined) this.pendingTarget = input.target;
+    if (input.target2 !== null && input.target2 !== undefined) this.pendingTarget2 = input.target2;
   }
 
   /** Registers a press even if the key was released again within the same frame. */
@@ -36,6 +39,7 @@ export class InputSampler {
   sample(): PlayerInput {
     const out = { ...this.held };
     if (out.target === null || out.target === undefined) out.target = this.pendingTarget;
+    if (out.target2 === null || out.target2 === undefined) out.target2 = this.pendingTarget2;
     for (const k of EDGE_KEYS) if (this.latched[k]) out[k] = true;
     return out;
   }
@@ -48,5 +52,6 @@ export class InputSampler {
       this.latched[k] = false;
     }
     this.pendingTarget = null;
+    this.pendingTarget2 = null;
   }
 }

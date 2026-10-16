@@ -27,6 +27,8 @@ describe('protocol', () => {
   it('packs inputs into bits and back', () => {
     const i = input({ left: true, jump: true, pick: true, target: 0.5 });
     expect(inputFromBits(inputBits(i), 0.5)).toEqual(i);
+    const strong = input({ target: -0.3, target2: 0.75 });
+    expect(decodeInputs(wire(encodeInputs(3, [strong])))[0]!.input).toEqual(strong);
     const msg = encodeInputs(41, [i, input({ right: true })]);
     const back = decodeInputs(wire(msg));
     expect(back.map((f) => f.seq)).toEqual([41, 42]);
@@ -37,10 +39,11 @@ describe('protocol', () => {
 
   it('rejects malformed input messages', () => {
     expect(decodeInputs('nope')).toEqual([]);
-    expect(decodeInputs([-1, 0, null])).toEqual([]);
-    expect(decodeInputs([0, 999, null])).toEqual([]);
-    expect(decodeInputs([0, 1, 'x'])[0]!.input.target).toBeNull();
-    expect(decodeInputs([0, 1, 1e9])[0]!.input.target).toBeNull();
+    expect(decodeInputs([-1, 0, null, null])).toEqual([]);
+    expect(decodeInputs([0, 999, null, null])).toEqual([]);
+    expect(decodeInputs([0, 1, 'x', null])[0]!.input.target).toBeNull();
+    expect(decodeInputs([0, 1, 1e9, 'y'])[0]!.input.target).toBeNull();
+    expect(decodeInputs([0, 1, 0, 1e9])[0]!.input.target2).toBeNull();
   });
 
   it('cleans names and room codes', () => {

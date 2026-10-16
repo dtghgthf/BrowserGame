@@ -204,6 +204,8 @@ export interface StationState {
    * searchlight: oil 0..1, workshop: saw progress of the current plank 0..1, pump: heat 0..1 (wear from pumping nonstop).
    */
   charge: number;
+  /** cannon / life ring: strength of the shot / throw 0..1 (only the flight curve, not the damage). */
+  power: number;
 }
 
 /** A fire on a deck tile (fires burn on floors: an air tile with something solid below). */

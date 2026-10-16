@@ -135,6 +135,9 @@ export interface GameplayTuning {
   ringPullStroke: number;
   rescueWindow: number;
   swimSpeed: number;
+  /** Cannon / life ring strength: change per second (W/S), and the launch speed at strength 0 (fraction of full speed). */
+  powerSpeed: number;
+  powerMin: number;
   /** Overboard: how fast a swimmer falls back behind the stern (m/s) - the ship drags the rescue zone along. */
   swimDrift: number;
   /** Cargo: roll (deg) above which lashings may snap, chance per second at twice that roll, list weight of a loose crate (m^2 of water). */
@@ -279,6 +282,8 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     ringPullStroke: 1.4,
     rescueWindow: 30,
     swimSpeed: 1.1,
+    powerSpeed: 0.8,
+    powerMin: 0.35,
     swimDrift: 0.35,
     cargoBreakRoll: 11,
     cargoBreakRate: 0.25,

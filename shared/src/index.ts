@@ -41,4 +41,5 @@ export { PIRATE_HALF_LENGTH, PIRATE_HEIGHT, hookPoint, pirateShip } from './syst
 export { fireCenter, isFloorTile } from './systems/fire';
 export { RING_ANCHOR } from './systems/rescue';
 export { CANNON_LENGTH } from './systems/constants';
+export { launchFactor } from './systems/cannon';
 export { ENCOUNTER_KINDS, type EncounterKind } from './systems/encounters';

@@ -31,6 +31,8 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 - **Scheinwerfer:** Der Lichtkegel ist in 3D zu sehen. Gedreht wird an der großen Kurbel (Kurbel drehen – sonst bewegt sich nichts). Ein Ring zeigt, wo das Meer voraus liegt („MEER VORAUS – GUT“) und wo schon Felsen gesichtet sind.
 - **Kanone & Rettungsring:** Eine gepunktete Flugbahn zeigt, wohin Kugel bzw. Ring fliegt – grün mit „TREFFER!“, wenn sie trifft. Krake, Piraten, Felsen und Schwimmer sind mit Entfernung markiert. Kanonenkugeln leuchten und ziehen einen Schweif.
 - **Rettungsring:** Die Kamera schwenkt übers Meer hinter dem Heck – die ganze Leinenlänge ist zu sehen. Wer über Bord geht, treibt in diesem Bereich hinter dem Schiff (langsam zurück, kann selbst schwimmen) und bleibt so in Reichweite der Leine. Vorher fiel man so schnell zurück, dass Einfangen kaum möglich war.
+- **Kanone:** wie beim Rettungsring schwenkt die Kamera aufs Meer neben dem Schiff – dort, wo Krake und Piraten auftauchen. Ziele außerhalb des Bildes zeigt ein Pfeil am Rand mit Entfernung.
+- **Schuss- und Wurfstärke:** Kanone und Rettungsring haben eine zweite Achse – seitlich ziehen (A/D) ändert den Winkel, hoch/runter ziehen (W/S) die Stärke (Balken neben der Skala). Die Stärke ändert nur die Flugbahn, nicht den Schaden.
 - **Kartentisch:** ist jetzt im Schiff zu sehen. Die Route wählt man durch Antippen der Etappe auf der Karte oder mit W/S (A/D); kurze Tipper gehen nicht mehr verloren.
 - **Tastatur am Handy/Tablet:** Sobald du auf einer angeschlossenen Tastatur tippst, verschwinden die Touch-Knöpfe; ein Tipp auf den Bildschirm holt sie zurück.
 - **Ziehen geht 1:1:** Säge, Pumpenhebel und Leine bleiben beim Ziehen genau unter dem Finger.

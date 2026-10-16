@@ -3,6 +3,7 @@ import type { Vec2 } from '../math';
 import { seaSurfaceY } from '../sea';
 import { shipToWorld } from '../ship';
 import type { StationState } from '../state';
+import { launchFactor } from './cannon';
 import type { SimContext } from './context';
 
 /** Ship-local point the life ring hangs from / its line runs over (relative to the station). */
@@ -19,11 +20,12 @@ export function ringButton(ctx: SimContext, st: StationState): void {
   if (!s.ring) {
     const a = ringAnchorWorld(ctx, st);
     const angle = st.value + s.ship.roll;
+    const speed = G.ringSpeed * launchFactor(G, st.power);
     s.ring = {
       x: a.x,
       y: a.y,
-      vx: Math.cos(angle) * G.ringSpeed + s.ship.speed,
-      vy: Math.sin(angle) * G.ringSpeed + s.ship.vy,
+      vx: Math.cos(angle) * speed + s.ship.speed,
+      vy: Math.sin(angle) * speed + s.ship.vy,
       phase: 'flying',
       holder: null,
     };

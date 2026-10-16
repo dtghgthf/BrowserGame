@@ -7,6 +7,7 @@ import {
   RING_ANCHOR,
   SEARCHLIGHT_PIVOT,
   WORLD_GRAVITY,
+  launchFactor,
   monsterHead,
   pirateShip,
   seaSurfaceY,
@@ -108,7 +109,8 @@ export class AimAids {
       }
       const pivot = shipToWorld(ship, { x: st.x + CANNON_PIVOT.x, y: st.y + CANNON_PIVOT.y });
       const o = { x: pivot.x + Math.cos(angle) * CANNON_LENGTH, y: pivot.y + Math.sin(angle) * CANNON_LENGTH };
-      path = flight(o, Math.cos(angle) * G.ballSpeed + state.ship.speed, Math.sin(angle) * G.ballSpeed + state.ship.vy, sea);
+      const v = G.ballSpeed * launchFactor(G, st.power);
+      path = flight(o, Math.cos(angle) * v + state.ship.speed, Math.sin(angle) * v + state.ship.vy, sea);
     } else if (st.kind === 'ring') {
       for (const p of state.players) {
         if (p.overboard <= 0) continue;
@@ -116,7 +118,8 @@ export class AimAids {
       }
       if (!state.ring) {
         const a = shipToWorld(ship, { x: st.x + RING_ANCHOR.x, y: st.y + RING_ANCHOR.y });
-        path = flight(a, Math.cos(angle) * G.ringSpeed + state.ship.speed, Math.sin(angle) * G.ringSpeed + state.ship.vy, sea);
+        const v = G.ringSpeed * launchFactor(G, st.power);
+        path = flight(a, Math.cos(angle) * v + state.ship.speed, Math.sin(angle) * v + state.ship.vy, sea);
       }
     } else if (st.kind === 'searchlight') {
       for (const r of state.rocks) {

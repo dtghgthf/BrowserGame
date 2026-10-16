@@ -10,6 +10,9 @@ import { SeaChart } from './SeaChart';
 
 /** Visual wheel turns for full rudder (±270°). */
 const WHEEL_TURNS = Math.PI * 1.5;
+/** Cannon / life ring: sideways drag turns the barrel (rad per px), dragging up and down sets the strength (px for 0..1). */
+const AIM_RAD_PER_PX = 0.022;
+const POWER_PX = 50;
 
 interface Drag {
   pointerId: number;
@@ -17,6 +20,7 @@ interface Drag {
   accum: number;
   /** Station value and pointer position when the control was grabbed (relative controls). */
   grabValue: number;
+  grabPower: number;
   grabX: number;
   grabY: number;
 }
@@ -52,6 +56,9 @@ export class StationWidget {
   readonly root = new Container();
   /** Analog station target for the primary local player (null = not dragging). */
   target: number | null = null;
+  /** Second axis: strength of the shot / throw 0..1 (null = not dragging). */
+  target2: number | null = null;
+  private power = 1;
   private readonly g = new Graphics();
   private readonly wheel: Sprite;
   private readonly dial: Sprite;
@@ -156,7 +163,7 @@ export class StationWidget {
     const g = this.geometry();
     const pv = g && g.mode !== 'linear' ? g.pivot : this.center;
     const a = Math.atan2(p.y - pv.y, p.x - pv.x);
-    this.drag = { pointerId: e.pointerId, lastAngle: a, accum: this.value * WHEEL_TURNS, grabValue: this.dragValue(), grabX: p.x, grabY: p.y };
+    this.drag = { pointerId: e.pointerId, lastAngle: a, accum: this.value * WHEEL_TURNS, grabValue: this.dragValue(), grabPower: this.power, grabX: p.x, grabY: p.y };
     this.applyPointer(p);
   }
 
@@ -203,6 +210,13 @@ export class StationWidget {
     return Math.max(lo, Math.min(hi, d.grabValue + d.accum / g.perUnit));
   }
 
+  /** Aiming: sideways = the angle (clockwise to the right, like D), up = stronger, down = weaker. */
+  private aimDrag(p: { x: number; y: number }, lo: number, hi: number): void {
+    const d = this.drag!;
+    this.target = Math.max(lo, Math.min(hi, d.grabValue + (p.x - d.grabX) * AIM_RAD_PER_PX));
+    this.target2 = Math.max(0, Math.min(1, d.grabPower - (p.y - d.grabY) / POWER_PX));
+  }
+
   private applyPointer(p: { x: number; y: number }): void {
     const d = this.drag!;
     this.lastPointer = p;
@@ -239,7 +253,7 @@ export class StationWidget {
       case 'ring':
         // the ring in the water: pull the line sideways; otherwise aim the throw like the cannon
         if (this.pulling) this.target = this.relative(p, -1, 1) ?? Math.max(-1, Math.min(1, (p.x - this.center.x) / 20));
-        else if (Math.hypot(dx, dy) > 3) this.target = Math.atan2(dy, dx) - this.roll;
+        else this.aimDrag(p, -Infinity, Infinity);
         break;
       case 'searchlight': {
         // 2.5D: the crank turns the lamp (without end); 2D: point the dial
@@ -249,16 +263,28 @@ export class StationWidget {
         break;
       }
       case 'cannon':
-        // the dial shows world directions: compensate the ship's roll
-        if (Math.hypot(dx, dy) > 3) this.target = Math.atan2(dy, dx) - this.roll;
+        this.aimDrag(p, -1.3, 0.35);
         break;
       default:
         break;
     }
   }
 
+  /** Strength of the shot / throw: a vertical gauge next to the dial (full = up). */
+  private powerBar(x: number, cy: number, power: number): void {
+    const h = 50;
+    const top = cy - h / 2;
+    this.g.rect(x - 1, top - 1, 6, h + 2).fill(0x2c3a4c);
+    this.g.rect(x, top, 4, h).fill(0x0b1018);
+    const f = Math.round(h * Math.max(0, Math.min(1, power)));
+    if (f > 0) this.g.rect(x, top + h - f, 4, f).fill(power > 0.8 ? 0xe8584a : power > 0.45 ? 0xe0b860 : 0x6cc070);
+  }
+
   update(state: GameState, view: Snapshot, playerId: string | undefined, tuning: Readonly<Tuning>): void {
-    if (this.releaseTarget && !this.drag) this.target = null;
+    if (this.releaseTarget && !this.drag) {
+      this.target = null;
+      this.target2 = null;
+    }
     this.releaseTarget = false;
     const p = state.players.find((pp) => pp.id === playerId);
     const st = p && p.station !== null ? state.stations[p.station] : undefined;
@@ -267,10 +293,12 @@ export class StationWidget {
       this.kind = kind;
       this.drag = null;
       this.target = null;
+      this.target2 = null;
     }
     this.root.visible = kind !== null && !this.hidden;
     if (!kind || !st) return;
     this.charge = st.charge;
+    this.power = st.power;
     this.roll = view.ship.roll;
     this.time = view.time;
     this.value = view.stations[st.id]?.value ?? st.value;
@@ -289,7 +317,8 @@ export class StationWidget {
     const cy = H - 60;
     // the helm shares the bottom with its sea chart: the wheel moves a bit to the left
     // the helm shares the bottom with its sea chart; the life ring keeps the sea behind the ship free (control on the right)
-    const ox = kind === 'wheel' ? -30 : kind === 'ring' ? Math.round(W / 2) - 58 : 0;
+    // the cannon keeps the sea on the bow side free (its control sits on the left)
+    const ox = kind === 'wheel' ? -30 : kind === 'ring' ? Math.round(W / 2) - 58 : kind === 'cannon' ? -(Math.round(W / 2) - 58) : 0;
     this.center = this.diorama ? { x: Math.round(this.diorama.center.x), y: Math.round(this.diorama.center.y) } : { x: cx + ox, y: cy };
     this.g.clear();
     this.geometry2d = null;
@@ -373,20 +402,22 @@ export class StationWidget {
       }
       case 'searchlight':
       case 'cannon': {
+        const dx0 = cx + ox;
         this.radius = 28;
         this.dial.visible = true;
         this.needle.visible = true;
-        this.dial.position.set(cx, cy);
-        this.needle.position.set(cx, cy);
+        this.dial.position.set(dx0, cy);
+        this.needle.position.set(dx0, cy);
         this.needle.rotation = this.value + this.roll;
         title = kind === 'searchlight' ? 'SCHEINWERFER' : 'KANONE';
         if (kind === 'searchlight') sub = this.drag ? '' : st.charge <= 0 ? 'KEIN ÖL! ÖLKANNE HOLEN' : 'AUFS MEER VORAUS ZEIGEN / A-D';
-        else sub = this.drag ? '' : st.charge < 2 ? `LADEN ${Math.round((st.charge / 2) * 100)}% - SCHNELLER: KUGEL VOM GESTELL STOPFEN` : 'ZIELEN, F = FEUER!';
+        else sub = this.drag ? '' : st.charge < 2 ? `LADEN ${Math.round((st.charge / 2) * 100)}% - SCHNELLER: KUGEL VOM GESTELL STOPFEN` : 'A/D WINKEL · W/S STÄRKE · F = FEUER!';
         // load bar (cannon) / oil gauge (searchlight) under the dial
         const frac = kind === 'cannon' ? Math.min(1, st.charge / 2) : st.charge;
-        this.g.rect(cx - 20, cy + 32, 40, 3).fill(0x2c3a4c);
+        this.g.rect(dx0 - 20, cy + 32, 40, 3).fill(0x2c3a4c);
         const full = kind === 'cannon' ? frac >= 1 : frac > 0.25;
-        this.g.rect(cx - 20, cy + 32, Math.round(40 * frac), 3).fill(full ? 0x6cc070 : kind === 'cannon' ? 0xe0b860 : 0xe8584a);
+        this.g.rect(dx0 - 20, cy + 32, Math.round(40 * frac), 3).fill(full ? 0x6cc070 : kind === 'cannon' ? 0xe0b860 : 0xe8584a);
+        if (kind === 'cannon') this.powerBar(dx0 + 34, cy, st.power);
         break;
       }
       case 'table': {
@@ -419,7 +450,8 @@ export class StationWidget {
           this.dial.position.set(rx, cy);
           this.needle.position.set(rx, cy);
           this.needle.rotation = this.value + this.roll;
-          sub = state.ring ? 'FLIEGT ...' : this.drag ? '' : 'ZIELEN, F = WERFEN!';
+          this.powerBar(rx - 38, cy, st.power);
+          sub = state.ring ? 'FLIEGT ...' : this.drag ? '' : 'A/D WINKEL · W/S STÄRKE · F = WERFEN!';
         }
         break;
       }
@@ -471,7 +503,8 @@ export class StationWidget {
     // the helm's texts go above the wheel and the chart (they would run into the chart otherwise)
     const top = big ? cy - 80 : kind === 'wheel' ? cy - 64 : cy - 44;
     this.sub.text = sub;
-    const tx = kind === 'ring' ? Math.min(W - 2 - Math.max(this.title.textWidth, this.sub.textWidth) / 2, cx + ox) : cx;
+    const half = Math.max(this.title.textWidth, this.sub.textWidth) / 2;
+    const tx = kind === 'ring' ? Math.min(W - 2 - half, cx + ox) : kind === 'cannon' ? Math.max(2 + half, cx + ox) : cx;
     this.title.position.set(Math.round(tx - this.title.textWidth / 2), top);
     this.sub.text = sub;
     this.sub.position.set(Math.round(tx - this.sub.textWidth / 2), big ? cy + 37 : top + 7);

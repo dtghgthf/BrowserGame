@@ -53,6 +53,7 @@ const INPUT = obj<PlayerInput>({
   interact: 'bool',
   pick: 'bool',
   target: nullable('f32'),
+  target2: nullable('f32'),
 });
 
 const BUBBLES = [
@@ -167,6 +168,7 @@ const STATE = obj<GameState>({
       value: 'f32',
       aux: 'f32',
       charge: 'f32',
+      power: 'f32',
     }),
   ),
   // events travel separately (see SnapshotMessage)

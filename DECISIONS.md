@@ -350,3 +350,8 @@ Format: **Entscheidung** – Begründung.
   hinter dem Heck) und fallen mit `swimDrift` zurück – sonst zog das Schiff mit voller Fahrt davon.
 - **Kurze Eingaben:** Richtungstasten werden wie Sprung/E/F bis zum nächsten Tick gehalten, der Ziel-Wert eines Fingertipps
   ebenfalls (Kartentisch: Antippen der Etappe).
+- **Kanone ebenfalls 2D**, Kamera ~1/3 Bildbreite zur Schussseite (Bug), Bedienung links unten.
+- **Stärke als zweite Achse:** `StationState.power` (0..1) und `PlayerInput.target2` (Protokoll v5: je Tick Bits, target,
+  target2). Startgeschwindigkeit = `ballSpeed`/`ringSpeed` × (`powerMin` + (1 − `powerMin`) × power); Treffer und Schaden
+  hängen nicht davon ab. Ziehen ist relativ: seitlich `AIM_RAD_PER_PX` rad/px (nach rechts = im Uhrzeigersinn wie D),
+  50 px hoch/runter = volle Stärke.

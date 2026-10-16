@@ -170,7 +170,8 @@ export class StationView {
     if (me.station !== null) {
       const st = state.stations[me.station];
       // the life ring stays in 2D: catching swimmers needs the wide view of the sea behind the ship
-      if (st && st.kind !== 'rack' && st.kind !== 'ring') return { kind: 'station', id: st.id };
+      // so does the cannon: aiming needs the sea beside the ship where the kraken and the pirates are
+      if (st && st.kind !== 'rack' && st.kind !== 'ring' && st.kind !== 'cannon') return { kind: 'station', id: st.id };
     }
     if (me.action?.kind === 'open' || me.action?.kind === 'tap') return { kind: 'crate', id: me.action.target };
     return null;

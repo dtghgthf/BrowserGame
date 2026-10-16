@@ -9,6 +9,11 @@ import { ignite } from './fire';
 import { hitMonster, monsterHead } from './monster';
 import { PIRATE_HALF_LENGTH, PIRATE_HEIGHT, hitPirate, pirateShip } from './pirates';
 
+/** Launch speed factor of a shot / throw for a strength 0..1. */
+export function launchFactor(G: { powerMin: number }, power: number): number {
+  return G.powerMin + (1 - G.powerMin) * Math.max(0, Math.min(1, power));
+}
+
 export function fireCannon(ctx: SimContext, st: StationState): void {
   const s = ctx.state;
   const G = ctx.tuning.gameplay;
@@ -17,7 +22,9 @@ export function fireCannon(ctx: SimContext, st: StationState): void {
   const pivot = shipToWorld(ship, { x: st.x + CANNON_PIVOT.x, y: st.y + CANNON_PIVOT.y });
   const x = pivot.x + Math.cos(angle) * CANNON_LENGTH;
   const y = pivot.y + Math.sin(angle) * CANNON_LENGTH;
-  s.balls.push({ id: ctx.nextId(), x, y, vx: Math.cos(angle) * G.ballSpeed + ship.speed, vy: Math.sin(angle) * G.ballSpeed + ship.vy, age: 0, pirate: false });
+  // the strength only changes how far it flies, not what it does when it hits
+  const speed = G.ballSpeed * launchFactor(G, st.power);
+  s.balls.push({ id: ctx.nextId(), x, y, vx: Math.cos(angle) * speed + ship.speed, vy: Math.sin(angle) * speed + ship.vy, age: 0, pirate: false });
   st.charge = 0;
   ship.rollVel -= 0.06;
   ctx.emit({ type: 'cannonFire', player: st.occupant, x, y, angle });

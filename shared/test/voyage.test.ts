@@ -89,6 +89,28 @@ describe('voyage', () => {
 });
 
 describe('cannon and kraken', () => {
+  it('the strength (second axis / W-S) only changes how far the ball flies', async () => {
+    const land = async (power: number) => {
+      const sim = await calm();
+      sim.addPlayer('a');
+      enter(sim, 'a', 'cannon');
+      run(sim, 1, () => ({ a: input({ target: -0.35, target2: power }) }));
+      expect(sim.state.stations.find((s) => s.kind === 'cannon')!.power).toBeCloseTo(power, 2);
+      run(sim, 0.05, () => ({ a: input({ target: -0.35, target2: power, pick: true }) }));
+      const events = run(sim, 5, () => ({ a: input({ target: -0.35, target2: power }) }));
+      return (events.find((e) => e.type === 'ballSplash') as { x: number }).x - sim.state.ship.x;
+    };
+    const far = await land(1);
+    const near = await land(0.2);
+    expect(near).toBeLessThan(far - 5);
+    // W / S change it too
+    const sim = await calm();
+    sim.addPlayer('a');
+    enter(sim, 'a', 'cannon');
+    run(sim, 0.5, () => ({ a: input({ down: true }) }));
+    expect(sim.state.stations.find((s) => s.kind === 'cannon')!.power).toBeLessThan(0.75);
+  });
+
   it('fires a ball with F, reloads, and breaks a rock where the ball lands', async () => {
     const measure = await calm();
     measure.addPlayer('a');

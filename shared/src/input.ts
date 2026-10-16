@@ -22,6 +22,8 @@ export interface PlayerInput {
    * null when not used.
    */
   target: number | null;
+  /** Second analog axis: cannon / life ring = strength of the shot / throw 0..1. null when not used. */
+  target2: number | null;
 }
 
 export const EMPTY_INPUT: Readonly<PlayerInput> = Object.freeze({
@@ -33,6 +35,7 @@ export const EMPTY_INPUT: Readonly<PlayerInput> = Object.freeze({
   interact: false,
   pick: false,
   target: null,
+  target2: null,
 });
 
 export function copyInput(src: Readonly<PlayerInput>, dst: PlayerInput = { ...EMPTY_INPUT }): PlayerInput {
@@ -44,6 +47,7 @@ export function copyInput(src: Readonly<PlayerInput>, dst: PlayerInput = { ...EM
   dst.interact = src.interact;
   dst.pick = src.pick;
   dst.target = src.target ?? null;
+  dst.target2 = src.target2 ?? null;
   return dst;
 }
 
