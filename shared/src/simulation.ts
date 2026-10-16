@@ -11,8 +11,12 @@ import {
   legSeaState,
   nextLegs,
   rollShop,
+  stationBuilt,
+  OPTIONAL_BUILDS,
+  tallyVotes,
   type CampaignState,
   type GameMode,
+  type UpgradeKind,
   type Role,
 } from './campaign';
 import { SIM_DT } from './constants';
@@ -69,6 +73,7 @@ import type {
   BubbleKey,
   GameEvent,
   GameState,
+  LootKind,
   ObjectKind,
   ObjectState,
   PingKind,
@@ -163,6 +168,7 @@ const STATION_KINDS: Partial<Record<MarkerDef['type'], StationKind>> = {
   pump: 'pump',
   searchlight: 'searchlight',
   cannon: 'cannon',
+  cannon2: 'cannon',
   workshop: 'workshop',
   rack: 'rack',
   ring: 'ring',
@@ -195,6 +201,12 @@ export type HintIcon =
   | 'buy'
   | 'lash';
 
+/** What fits into an opened crate (an empty bucket too), and how much. */
+const STOWABLE: ReadonlySet<ObjectKind> = new Set(['plank', 'ball', 'bucket']);
+const CRATE_CAPACITY = 4;
+
+/** Seconds until the ship casts off once everybody has voted for the next leg. */
+const VOTE_COUNTDOWN = 10;
 /** Where a helper stands behind the helmsman (m). */
 const WHEEL_HELPER_GAP = 0.7;
 /** How close to a cargo place a crate must be to be lashed (m). */
@@ -309,6 +321,7 @@ export class Simulation implements SimContext {
     c.node = node;
     c.shop = [];
     c.choice = -1;
+    c.votes = [];
     this.rebuild(c, old);
     this.emit({ type: 'depart', node });
   }
@@ -396,8 +409,9 @@ export class Simulation implements SimContext {
     s.voyage.coins += reward;
     // the harbour sells wood cheaply: the stock is topped up to the start amount
     s.voyage.timber = Math.max(s.voyage.timber, this.tuning.gameplay.startTimber);
-    c.shop = rollShop(s, c);
+    c.shop = rollShop(s, c, (u) => this.canBuild(u));
     c.choice = nextLegs(c)[0]?.id ?? -1;
+    c.votes = [];
     s.rocks = [];
     s.whirl = null;
     s.flotsam = [];
@@ -434,12 +448,27 @@ export class Simulation implements SimContext {
     s.voyage.coins -= offer.price;
     offer.sold = true;
     if (offer.kind === 'timber') s.voyage.timber += 4;
-    else if (offer.kind === 'tools') {
+    else if (offer.kind === 'crate') {
+      // the dockworkers put a full crate down on deck next to the stall
+      const o = this.spawnObject('crate', this.shopStallX(index), this.deckFeetY() - OBJECT_SPECS.crate.hy - 0.05, false);
+      o.contents = rollLoot(s);
+    } else if (offer.kind === 'tools') {
       s.voyage.hammer = true;
       s.voyage.crowbar = true;
     } else if (!UPGRADE_INFO[offer.kind].consumable) c.upgrades.push(offer.kind);
     this.refreshTuning();
     this.emit({ type: 'bought', player: p.id, kind: offer.kind });
+  }
+
+  /** An upgrade that builds something needs its place in the ship map. */
+  private canBuild(u: UpgradeKind): boolean {
+    const marker = (Object.keys(OPTIONAL_BUILDS) as (keyof typeof OPTIONAL_BUILDS)[]).find((m) => OPTIONAL_BUILDS[m] === u);
+    return !marker || this.layout.markers.some((m) => m.type === marker);
+  }
+
+  /** A station is there (optional ones only once their upgrade is bought). */
+  built(st: StationState): boolean {
+    return stationBuilt(st, this.state.campaign);
   }
 
   /** Feet height of the top deck (ship-local m): the first floor from the top at the pivot column. */
@@ -501,13 +530,15 @@ export class Simulation implements SimContext {
 
   private createStations(): StationState[] {
     const stations: StationState[] = [];
-    for (const m of this.layout.markers) {
+    // optional stations come last, so `find` by kind gets the ship's own one first
+    const markers = [...this.layout.markers].sort((a, b) => Number(a.type === 'cannon2') - Number(b.type === 'cannon2'));
+    for (const m of markers) {
       const kind = STATION_KINDS[m.type];
       if (!kind) continue;
       const p = tileToLocal(this.layout, m.tx + 0.5, m.ty + 1);
       const value = kind === 'searchlight' ? 0.25 : kind === 'cannon' ? -0.2 : kind === 'ring' ? -2.4 : 0;
       const charge = kind === 'cannon' ? 2 : kind === 'searchlight' ? 1 : 0;
-      stations.push({ id: stations.length, kind, x: p.x, y: p.y, occupant: null, helper: null, value, aux: kind === 'searchlight' ? 1 : 0, charge });
+      stations.push({ id: stations.length, kind, x: p.x, y: p.y, occupant: null, optional: m.type === 'cannon2', helper: null, value, aux: kind === 'searchlight' ? 1 : 0, charge });
     }
     return stations;
   }
@@ -656,6 +687,27 @@ export class Simulation implements SimContext {
     this.world.removeRigidBody(rt.body);
     this.players.delete(id);
     this.state.players = this.state.players.filter((pp) => pp.id !== id);
+  }
+
+  /** A vote at the chart table; the leading leg becomes the choice. Once all have voted the ship casts off soon. */
+  private vote(p: PlayerState, node: number): void {
+    const c = this.state.campaign;
+    const mine = c.votes.find((v) => v.player === p.id);
+    if (mine) mine.node = node;
+    else c.votes.push({ player: p.id, color: p.color, node });
+    const present = this.state.players.filter((pp) => !pp.away).map((pp) => pp.id);
+    c.choice = tallyVotes(c, present);
+    if (c.choice < 0) c.choice = node;
+    this.emit({ type: 'chooseLeg', node: c.choice });
+    this.emit({ type: 'vote', player: p.id, node });
+    if (this.allVoted() && this.state.status === 'harbor' && this.state.statusTimer > VOTE_COUNTDOWN) this.state.statusTimer = VOTE_COUNTDOWN;
+  }
+
+  /** Every player on board (not away) has voted for a next leg. */
+  private allVoted(): boolean {
+    const c = this.state.campaign;
+    const present = this.state.players.filter((p) => !p.away);
+    return present.length > 0 && present.every((p) => c.votes.some((v) => v.player === p.id));
   }
 
   setLashed(o: ObjectState, lashed: boolean): void {
@@ -926,8 +978,8 @@ export class Simulation implements SimContext {
         consumed = true;
         p.jumpBuffer = 0;
       } else {
-        this.operateStation(st, input, dt, !!pressed('pick'), (pressed('right') ? 1 : 0) - (pressed('left') ? 1 : 0));
-        // a helper at the wheel stands behind the helmsman
+        this.operateStation(st, input, dt, !!pressed('pick'), (pressed('right') ? 1 : 0) - (pressed('left') ? 1 : 0), p);
+        // a helper at the wheel / chart table stands beside the one using it
         const sx = st.helper === p.id ? st.x - WHEEL_HELPER_GAP : st.x;
         rt.body.setTranslation({ x: sx, y: st.y - PLAYER_HALF_HEIGHT - 0.01 }, true);
         rt.body.setLinvel({ x: 0, y: 0 }, true);
@@ -945,7 +997,7 @@ export class Simulation implements SimContext {
       } else {
         p.action.progress += dt;
         // prying a crate: every push on the crowbar (left / right) gets it open faster
-        if (p.action.kind === 'open' && (pressed('left') || pressed('right'))) p.action.progress += this.tuning.player.openTime * 0.08;
+        if ((p.action.kind === 'open' || p.action.kind === 'tap') && (pressed('left') || pressed('right'))) p.action.progress += this.actionDuration(p.action.kind, p.role) * 0.08;
         const v = rt.body.linvel();
         rt.body.setLinvel({ x: approach(v.x, 0, this.tuning.player.groundAccel * dt), y: clampFall(this.tuning.player, v.y + g.y * dt) }, true);
         if (p.action.progress >= this.actionDuration(p.action.kind, p.role)) this.finishAction(p);
@@ -1103,7 +1155,7 @@ export class Simulation implements SimContext {
     for (const st of this.state.stations) {
       const dx = Math.abs(st.x - p.x);
       const dy = Math.abs(st.y - feetY);
-      if (dy > 0.6) continue;
+      if (dy > 0.6 || !this.built(st)) continue;
       if (st.kind === 'rack') {
         if (dx < 1.0 && !carried) candidates.push({ d: dx, label: 'Kugel nehmen', icon: 'ball', run: () => this.takeBall(p) });
         continue;
@@ -1128,8 +1180,9 @@ export class Simulation implements SimContext {
       }
       if (OPERABLE.has(st.kind) && st.occupant === null && dx < this.tuning.player.stationRange) {
         candidates.push({ d: dx, label: STATION_LABEL[st.kind], icon: st.kind, run: () => this.enterStation(p, rt, st) });
-      } else if (st.kind === 'wheel' && st.occupant !== null && st.helper === null && dx < this.tuning.player.stationRange + 0.4) {
-        candidates.push({ d: dx, label: 'Mit anpacken', icon: 'wheel', run: () => this.enterStation(p, rt, st, true) });
+      } else if ((st.kind === 'wheel' || st.kind === 'table') && st.occupant !== null && st.helper === null && dx < this.tuning.player.stationRange + 0.4) {
+        const label = st.kind === 'wheel' ? 'Mit anpacken' : 'Mitwählen';
+        candidates.push({ d: dx, label, icon: st.kind, run: () => this.enterStation(p, rt, st, true) });
       }
     }
     // a bucket: scoop water (in the hold or over the railing), douse a fire or pour it out
@@ -1169,13 +1222,21 @@ export class Simulation implements SimContext {
       if (o.carriedBy) continue;
       const d = Math.hypot(o.x - p.x, (o.y - p.y) * 0.8);
       if (d > this.tuning.player.pickRange * 1.2) continue;
+      // an opened crate is a box to carry things in: put planks, balls or an empty bucket in, take them out again
+      if (o.kind === 'crate' && o.opened) {
+        if (carried && STOWABLE.has(carried.kind) && !(carried.kind === 'bucket' && carried.fill > 0) && o.contents.length < CRATE_CAPACITY) {
+          candidates.push({ d: d - 0.45, label: 'In die Kiste legen', icon: 'crate', run: () => this.stow(p, o) });
+        } else if (!carried && o.contents.length > 0) {
+          candidates.push({ d: d - 0.4, label: `Aus der Kiste nehmen (${o.contents.length})`, icon: 'grab', run: () => this.unstow(p, o) });
+        }
+      }
       if (isCargo(o) && !o.lashed && !carried && this.nearCargoSpot(o)) {
         candidates.push({ d: d - 0.35, label: 'Festzurren', icon: 'lash', run: () => (p.action = { kind: 'lash', target: o.id, progress: 0 }) });
       }
       if (o.kind === 'crate' && !o.opened && !carried) {
         candidates.push({ d: d - 0.2, label: 'Kiste öffnen', icon: 'crate', run: () => (p.action = { kind: 'open', target: o.id, progress: 0 }) });
       } else if (o.kind === 'barrel' && carried?.kind === 'oilcan' && carried.fill < 1 && o.fill > 0) {
-        candidates.push({ d: d - 0.6, label: 'Öl abfüllen', icon: 'oil', run: () => this.fillCan(p, carried, o) });
+        candidates.push({ d: d - 0.6, label: 'Öl zapfen', icon: 'oil', run: () => (p.action = { kind: 'tap', target: o.id, progress: 0 }) });
       }
     }
     for (const h of this.layout.hatches) {
@@ -1242,6 +1303,12 @@ export class Simulation implements SimContext {
     if (p.carrying !== null) this.dropObject(p, rt, false);
     if (helper) st.helper = p.id;
     else st.occupant = p.id;
+    // stepping up to the chart table in the harbour is a vote for the leg shown
+    if (st.kind === 'table' && this.state.status === 'harbor' && !this.state.campaign.votes.some((v) => v.player === p.id)) {
+      const c = this.state.campaign;
+      const id = c.choice >= 0 ? c.choice : nextLegs(c)[0]?.id;
+      if (id !== undefined) this.vote(p, id);
+    }
     p.station = st.id;
     p.climbing = null;
     p.facing = st.kind === 'wheel' ? 1 : p.facing;
@@ -1267,7 +1334,7 @@ export class Simulation implements SimContext {
    * it towards the target, at most a bit faster than the keys - so touch and
    * keyboard players are equally strong.
    */
-  private operateStation(st: StationState, input: Readonly<PlayerInput>, dt: number, fire = false, tapDir = 0): void {
+  private operateStation(st: StationState, input: Readonly<PlayerInput>, dt: number, fire = false, tapDir = 0, who: PlayerState | null = null): void {
     const G = this.tuning.gameplay;
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     const target = input.target;
@@ -1385,15 +1452,15 @@ export class Simulation implements SimContext {
         const c = s.campaign;
         const legs = nextLegs(c);
         if (legs.length === 0) break;
-        let idx = Math.max(0, legs.findIndex((n) => n.id === c.choice));
+        // everybody at the table votes: their pick starts from their own vote (or the leading leg)
+        const mine = who ? c.votes.find((v) => v.player === who.id) : undefined;
+        let idx = Math.max(0, legs.findIndex((n) => n.id === (mine?.node ?? c.choice)));
         if (hasTarget) idx = Math.round(((clamp(target, -1, 1) + 1) / 2) * (legs.length - 1));
         else if (tapDir !== 0) idx = (idx + tapDir + legs.length) % legs.length;
         const node = legs[idx]!;
-        if (node.id !== c.choice) {
-          c.choice = node.id;
-          this.emit({ type: 'chooseLeg', node: node.id });
-        }
-        if (fire && s.statusTimer > 3) s.statusTimer = 3;
+        if (who && mine?.node !== node.id) this.vote(who, node.id);
+        // F = cast off now - once everybody has voted (or alone)
+        if (fire && s.statusTimer > 3 && this.allVoted()) s.statusTimer = 3;
         break;
       }
       case 'rack':
@@ -1502,8 +1569,27 @@ export class Simulation implements SimContext {
     this.emit({ type: 'refill', player: p.id, what: 'oil' });
   }
 
-  /** An empty crate becomes wood for the workshop. */
+  /** Puts the carried thing into an opened crate. */
+  private stow(p: PlayerState, crate: ObjectState): void {
+    const o = p.carrying !== null ? this.state.objects.find((oo) => oo.id === p.carrying) : undefined;
+    if (!o || !STOWABLE.has(o.kind)) return;
+    this.consumeCarried(p);
+    crate.contents.push(o.kind as LootKind);
+    this.emit({ type: 'stow', player: p.id, object: crate.id, into: true });
+  }
+
+  /** Takes the top thing out of an opened crate, straight into the hands. */
+  private unstow(p: PlayerState, crate: ObjectState): void {
+    const kind = crate.contents.pop();
+    if (!kind) return;
+    this.giveObject(p, kind as ObjectKind);
+    this.emit({ type: 'stow', player: p.id, object: crate.id, into: false });
+  }
+
+  /** An empty crate becomes wood for the workshop (whatever is still inside falls out first). */
   private breakUpCrate(p: PlayerState): void {
+    const crate = p.carrying !== null ? this.state.objects.find((o) => o.id === p.carrying) : undefined;
+    for (const [i, kind] of (crate?.contents ?? []).entries()) this.spawnObject(kind as ObjectKind, p.x + (i - 1) * 0.35, p.y - 0.6, false);
     this.consumeCarried(p);
     this.state.voyage.timber += 1;
     this.emit({ type: 'breakUp', player: p.id });
@@ -1573,6 +1659,8 @@ export class Simulation implements SimContext {
         return P.cutTime;
       case 'lash':
         return P.lashTime;
+      case 'tap':
+        return P.tapTime;
     }
   }
 
@@ -1605,6 +1693,13 @@ export class Simulation implements SimContext {
         p.action = null;
         cutHook(this);
         return;
+      case 'tap': {
+        p.action = null;
+        const barrel = this.state.objects.find((o) => o.id === action.target);
+        const can = p.carrying !== null ? this.state.objects.find((o) => o.id === p.carrying) : undefined;
+        if (barrel && can?.kind === 'oilcan' && Math.hypot(barrel.x - p.x, barrel.y - p.y) < 2) this.fillCan(p, can, barrel);
+        return;
+      }
       case 'lash': {
         p.action = null;
         const o = this.state.objects.find((oo) => oo.id === action.target);

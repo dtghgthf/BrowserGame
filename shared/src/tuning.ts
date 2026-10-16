@@ -37,6 +37,8 @@ export interface PlayerTuning {
   cutTime: number;
   /** Seconds to lash a loose crate or barrel down at its place in the hold. */
   lashTime: number;
+  /** Seconds to tap a barrel into the oil can. */
+  tapTime: number;
 }
 
 export interface ShipTuning {
@@ -191,6 +193,7 @@ export const CODE_DEFAULTS: Readonly<Tuning> = {
     crowbarFactor: 0.5,
     cutTime: 1.2,
     lashTime: 1.4,
+    tapTime: 1.6,
   },
   ship: {
     initialSeaState: 0.75,

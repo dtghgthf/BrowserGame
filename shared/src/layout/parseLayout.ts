@@ -84,7 +84,10 @@ export type MarkerType =
   | 'oilcan'
   | 'bucket'
   | 'ring'
-  | 'table';
+  | 'table'
+  /** Built only with an upgrade from the harbour. */
+  | 'cannon2'
+  | 'lantern2';
 
 export interface MarkerDef {
   type: MarkerType;
@@ -143,6 +146,8 @@ const MARKERS: Record<string, MarkerType> = {
   e: 'bucket',
   r: 'ring',
   t: 'table',
+  C: 'cannon2',
+  L: 'lantern2',
 };
 
 export interface ParseOptions {

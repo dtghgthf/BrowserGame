@@ -191,6 +191,11 @@ export class Hud {
         [chosen ? `NÄCHSTE ETAPPE: ${BIOME_INFO[chosen.biome].name.toUpperCase()}` : '', C.text],
         [camp.shop.some((o) => !o.sold) ? 'KARTENTISCH = ROUTE  ·  OBERDECK = HÄNDLER' : 'KARTENTISCH = ROUTE WÄHLEN', C.dim],
       ];
+      const crew = state.players.filter((p) => !p.away);
+      if (crew.length > 1) {
+        const voted = crew.filter((p) => camp.votes.some((v) => v.player === p.id)).length;
+        lines.push([voted === crew.length ? 'ALLE HABEN GEWÄHLT!' : `STIMMEN ${voted}/${crew.length}`, voted === crew.length ? C.good : C.dim]);
+      }
       const w = Math.max(...lines.map(([t]) => this.font.measure(t)));
       const x0 = Math.round(width / 2 - w / 2);
       this.g.rect(x0 - 5, 20, w + 10, lines.length * 8 + 6).fill({ color: C.panel, alpha: 0.85 });

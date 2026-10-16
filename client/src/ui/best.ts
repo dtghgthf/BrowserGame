@@ -62,3 +62,45 @@ export function bestLine(now = new Date()): string {
 export function dailyShareText(legs: number, coins: number, won: boolean, now = new Date()): string {
   return `Leuchtturmwärter · Tagesfahrt ${dailyLabel(now)}: ${won ? 'Leuchtturm erreicht!' : `${legs}/${CAMPAIGN_LEGS} Etappen`} · ${coins} Münzen`;
 }
+
+/** The end of a run as a line to share ("Tagesfahrt 16.10.: 4/6 Etappen, 212 Münzen"). */
+export function resultText(mode: GameMode, legs: number, coins: number, won: boolean, now = new Date()): string {
+  const what = mode === 'daily' ? `Tagesfahrt ${now.getUTCDate()}.${now.getUTCMonth() + 1}.` : 'Kampagne';
+  const end = won ? `Leuchtturm erreicht (${legs}/${CAMPAIGN_LEGS} Etappen)` : `${legs}/${CAMPAIGN_LEGS} Etappen`;
+  return `Leuchtturmwärter · ${what}: ${end}, ${coins} Münzen`;
+}
+
+/** A small card at the bottom of the screen: the result and a button to share it. */
+export function showShareCard(text: string, url: string): void {
+  document.querySelector('.share-card')?.remove();
+  const el = document.createElement('div');
+  el.className = 'share-card allow-touch';
+  const line = document.createElement('span');
+  line.textContent = text;
+  const share = document.createElement('button');
+  share.className = 'lobby-btn primary';
+  share.textContent = 'Ergebnis teilen';
+  const close = document.createElement('button');
+  close.className = 'lobby-btn';
+  close.textContent = '×';
+  el.append(line, share, close);
+  document.body.appendChild(el);
+  const timer = setTimeout(() => el.remove(), 30000);
+  close.addEventListener('click', () => {
+    clearTimeout(timer);
+    el.remove();
+  });
+  share.addEventListener('click', async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Leuchtturmwärter', text, url });
+        return;
+      }
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      share.textContent = 'Kopiert!';
+    } catch {
+      share.textContent = 'Kopieren ging nicht';
+    }
+  });
+}
+

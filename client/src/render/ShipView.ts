@@ -5,6 +5,7 @@ import {
   TileKind,
   lerpAngle,
   shipToWorld,
+  stationBuilt,
   type GameState,
   type ObjectState,
   type PlayerState,
@@ -42,6 +43,8 @@ interface Lantern {
   sprite: LitSprite;
   flame: Sprite;
   light: LightDef;
+  /** Only lit once the lantern upgrade is bought. */
+  optional: boolean;
 }
 
 interface PlayerView {
@@ -152,7 +155,7 @@ export class ShipView {
 
     let seed = 1;
     for (const m of L.markers) {
-      if (m.type !== 'lantern') continue;
+      if (m.type !== 'lantern' && m.type !== 'lantern2') continue;
       const pivotX = ox + m.tx * 8 + 4;
       const pivotY = oy + m.ty * 8;
       const sprite = new LitSprite(frameOf(P, 'lantern'), this.layers.stations.a, this.layers.stations.n);
@@ -173,7 +176,7 @@ export class ShipView {
         occluded: true,
         enabled: true,
       });
-      this.lanterns.push({ pivotX, pivotY, angle: 0, vel: 0, seed: seed++, sprite, flame, light });
+      this.lanterns.push({ pivotX, pivotY, angle: 0, vel: 0, seed: seed++, sprite, flame, light, optional: m.type === 'lantern2' });
     }
 
     // stations
@@ -296,7 +299,12 @@ export class ShipView {
     const g = state.ship.gravity;
     const eq = Math.atan2(g.x, g.y);
     const stepDt = Math.min(dt, 1 / 30);
+    const extraLantern = state.campaign.upgrades.includes('lantern');
     for (const l of this.lanterns) {
+      const on = !l.optional || extraLantern;
+      l.sprite.visible = on;
+      l.flame.visible = on;
+      l.light.enabled = on;
       const acc = -(9.81 / 0.55) * Math.sin(l.angle - eq) - 0.7 * l.vel;
       l.vel += acc * stepDt;
       l.angle += l.vel * stepDt;
@@ -316,6 +324,9 @@ export class ShipView {
     state.stations.forEach((st, i) => {
       const sv = this.stations[i]!;
       const v = view.stations[i]?.value ?? st.value;
+      // the second cannon only stands on deck once it is bought
+      const built = stationBuilt(st, state.campaign);
+      for (const part of sv.parts) part.visible = built;
       if (!sv.moving) return;
       const base = sv.moving.albedo.position;
       switch (st.kind) {

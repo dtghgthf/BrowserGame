@@ -209,6 +209,11 @@ export class GameAudio {
         break;
       case 'whirlAppear':
         break;
+      case 'stow': {
+        const p = this.player(state, e.player);
+        if (p) a.play(e.into ? 'drop' : 'pickup', this.at(p, 0.8));
+        break;
+      }
       case 'cargoLoose':
         a.play('rope_snap', this.at({ x: e.x, y: e.y }, 1));
         break;

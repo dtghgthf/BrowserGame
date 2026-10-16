@@ -23,7 +23,8 @@
     "hammerFactor": 0.6,
     "crowbarFactor": 0.5,
     "cutTime": 1.2,
-    "lashTime": 1.4
+    "lashTime": 1.4,
+    "tapTime": 1.6
   },
   "ship": {
     "initialSeaState": 0.75,

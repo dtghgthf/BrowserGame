@@ -329,6 +329,54 @@ function crateParts(): PropSprite[] {
   ];
 }
 
+/** The oil barrel close up: staves, iron hoops, a brass tap; the oil stream. */
+function barrelParts(): PropSprite[] {
+  const W = 36;
+  const H = 44;
+  const b = new Canvas(W, H);
+  for (let y = 0; y < H; y++) {
+    // a barrel bulges in the middle
+    const bulge = Math.round(3 * Math.sin((y / (H - 1)) * Math.PI));
+    const inset = 3 - bulge;
+    for (let x = inset; x < W - inset; x++) {
+      const stave = Math.floor((x - inset) / 5);
+      const across = (x - inset) / (W - 2 * inset - 1);
+      let col = mix(WOOD_M, WOOD_L, Math.sin(across * Math.PI) * 0.85 + hash(stave, 41) * 0.15);
+      if ((x - inset) % 5 === 0 && x > inset) col = shade(col, 0.78);
+      if (hash(x, y >> 2, 7) > 0.93) col = shade(col, 0.9);
+      b.set(x, y, col, 1 + Math.sin(across * Math.PI) * 3);
+    }
+  }
+  for (const hy of [4, 13, 30, 39]) {
+    const bulge = Math.round(3 * Math.sin((hy / (H - 1)) * Math.PI));
+    for (let x = 3 - bulge; x < W - 3 + bulge; x++) {
+      b.set(x, hy, IRON_M, 3.4);
+      b.set(x, hy + 1, IRON, 3.2);
+    }
+  }
+  b.innerOutline(WOOD_DD);
+  // stencil: OEL
+  const ink = hex('#2a1a0e');
+  b.pattern(12, 19, ['xxx x   x  ', 'x x xxx x  ', 'x x x   x  ', 'xxx xxx xxx'].map((r) => r.replace(/ /g, '.')), { x: ink }, { x: 1.2 });
+  const tap = new Canvas(12, 8);
+  tap.rect(0, 2, 8, 3, BRASS, 3);
+  tap.rect(0, 2, 8, 1, BRASS_L, 3.4);
+  tap.rect(6, 4, 3, 4, BRASS_D, 2.6);
+  tap.rect(3, 0, 3, 2, BRASS_L, 3.6);
+  tap.innerOutline(BRASS_D);
+  const stream = new Canvas(3, 20);
+  for (let y = 0; y < 20; y++) {
+    stream.set(0, y, hex('#8a5a18', 200), 2);
+    stream.set(1, y, hex('#e0b860', 230), 2.6);
+    stream.set(2, y, hex('#8a5a18', 200), 2);
+  }
+  return [
+    { name: 'st_barrel', canvas: b, pivot: { x: W / 2, y: H } },
+    { name: 'st_tap', canvas: tap, pivot: { x: 4, y: 3 } },
+    { name: 'st_stream', canvas: stream, pivot: { x: 1, y: 0 } },
+  ];
+}
+
 export function drawStations(): PropSprite[] {
   return [
     planks('st_floor', 96, 64, WOOD_M, 1),
@@ -342,5 +390,6 @@ export function drawStations(): PropSprite[] {
     ...benchParts(),
     ...tableParts(),
     ...crateParts(),
+    ...barrelParts(),
   ];
 }

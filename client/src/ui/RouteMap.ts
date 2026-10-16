@@ -1,6 +1,7 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { BIOME_INFO, currentNode, nextLegs, type CampaignState } from '@lw/shared';
 import { frameOf, type Sheet } from '../render/assets';
+import { PLAYER_COLORS } from '../render/ShipView';
 import { PixelFont, PixelText } from './PixelFont';
 
 const COL = {
@@ -113,6 +114,15 @@ export class RouteMap {
       s.alpha = done || options.has(n.id) || !cur ? 1 : 0.55;
       if (n.id === c.choice && options.has(n.id)) g.circle(p.x, p.y, 7).stroke({ color: COL.choice, width: 1, alpha: blink ? 1 : 0.6, pixelLine: true });
       if (cur && n.id === cur.id) g.rect(p.x - 2, p.y + 6, 5, 2).fill(COL.here).rect(p.x, p.y + 4, 1, 2).fill(COL.here);
+      // the crew's votes: a little pointing finger in each voter's coat colour
+      c.votes
+        .filter((v) => v.node === n.id && options.has(n.id))
+        .forEach((v, k) => {
+          const fx = p.x + 8 + (k % 2) * 5;
+          const fy = p.y - 6 + Math.floor(k / 2) * 6;
+          const col = PLAYER_COLORS[v.color % PLAYER_COLORS.length]!;
+          g.rect(fx, fy + 1, 4, 3).fill(COL.ink).rect(fx + 1, fy + 2, 2, 1).fill(col).rect(fx - 2, fy + 2, 2, 1).fill(COL.ink);
+        });
     });
 
     // what the selected (or current) leg is

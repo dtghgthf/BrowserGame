@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   BIOME_INFO,
+  DESIGN_TEMPLATES,
+  layoutFromDesign,
+  rollShop,
   CAMPAIGN_LEGS,
   DEFAULT_TUNING,
   EMPTY_INPUT,
@@ -123,6 +126,75 @@ describe('campaign run', () => {
     expect(sim.state.voyage.length).toBe(legs[1]!.length);
     // the leg's biome is in effect
     expect(sim.tuning.gameplay.voyageLength).toBe(legs[1]!.length);
+  });
+
+  it('the crew votes at the chart table: majority wins, all votes in = cast off in 10 s', async () => {
+    const sim = await campaign();
+    sim.addPlayer('b');
+    sim.addPlayer('c');
+    run(sim, 0.3);
+    const legs = nextLegs(sim.state.campaign);
+    const table = sim.state.stations.find((s) => s.kind === 'table')!;
+    const at = (id: string, dx: number) => {
+      sim.teleportPlayer(id, table.x + dx, table.y - PLAYER_HALF_HEIGHT - 0.02);
+      run(sim, 0.3);
+    };
+    // a takes the table and votes for the second leg
+    at('a', 0);
+    tap(sim, 'a', 'interact');
+    tap(sim, 'a', 'right');
+    expect(sim.state.campaign.choice).toBe(legs[1]!.id);
+    // b joins (second place at the table) and votes for the first leg: a tie
+    at('b', -0.4);
+    expect(sim.interactionHints('b').interact?.label).toBe('Mitwählen');
+    tap(sim, 'b', 'interact');
+    expect(table.helper).toBe('b');
+    expect(sim.state.campaign.votes.find((v) => v.player === 'b')!.node).toBe(legs[1]!.id);
+    tap(sim, 'b', 'left');
+    expect(sim.state.campaign.votes.find((v) => v.player === 'b')!.node).toBe(legs[0]!.id);
+    // F does not cast off while c has not voted
+    const t0 = sim.state.statusTimer;
+    tap(sim, 'a', 'pick');
+    expect(sim.state.statusTimer).toBeGreaterThan(t0 - 1);
+    // c (after b leaves) breaks the tie for the first leg; all voted: 10 s countdown
+    tap(sim, 'b', 'interact');
+    at('c', -0.4);
+    tap(sim, 'c', 'interact');
+    tap(sim, 'c', 'left');
+    expect(sim.state.campaign.choice).toBe(legs[0]!.id);
+    expect(sim.state.statusTimer).toBeLessThanOrEqual(10);
+    run(sim, 10.5);
+    expect(sim.state.status).toBe('sailing');
+    expect(sim.state.campaign.node).toBe(legs[0]!.id);
+    expect(sim.state.campaign.votes).toHaveLength(0);
+  });
+
+  it('the second cannon is built by an upgrade, a crate can be bought; ships without a place get no offer', async () => {
+    const sim = await campaign();
+    const extra = sim.state.stations.find((s) => s.optional)!;
+    expect(extra.kind).toBe('cannon');
+    expect(sim.built(extra)).toBe(false);
+    sim.state.voyage.coins = 200;
+    sim.state.campaign.shop = [
+      { kind: 'cannon2', price: 70, sold: false },
+      { kind: 'crate', price: 20, sold: false },
+    ];
+    const buy = (i: number) => (sim as unknown as { buy(p: unknown, i: number): void }).buy(sim.state.players[0], i);
+    const crates = sim.state.objects.filter((o) => o.kind === 'crate').length;
+    buy(0);
+    buy(1);
+    expect(sim.built(extra)).toBe(true);
+    expect(sim.state.objects.filter((o) => o.kind === 'crate').length).toBe(crates + 1);
+    expect(sim.state.voyage.coins).toBe(110);
+    // the extra cannon can be manned once built
+    stand(sim, extra.x, extra.y);
+    expect(sim.interactionHints('a').interact?.label).toBe('Kanone');
+    // a ship without markers for them never sees these upgrades
+    const kutter = await Simulation.create({ seed: 5, mode: 'campaign', layout: layoutFromDesign(DESIGN_TEMPLATES.kutter!) });
+    for (let i = 0; i < 40; i++) {
+      const offers = rollShop({ rng: 1000 + i }, kutter.state.campaign, (u) => (kutter as unknown as { canBuild(u: string): boolean }).canBuild(u));
+      expect(offers.some((o) => o.kind === 'cannon2' || o.kind === 'lantern')).toBe(false);
+    }
   });
 
   it('a leg ends in a harbour: reward, shop, repairs; stock and coins carry over', async () => {

@@ -409,4 +409,40 @@ export function buildCrate(ctx: SceneContext, crate: ObjectState, progress: () =
   };
 }
 
+/** Tapping the oil barrel: the tap turns, oil runs into the can under it. */
+export function buildBarrel(ctx: SceneContext, barrel: ObjectState, progress: () => number, total: number): StationScene {
+  const f = ctx.floorY;
+  const x = barrel.x;
+  const PPM = 48;
+  const body = card(ctx, 'st_barrel', { x, y: f, z: 0 }, PPM);
+  ctx.stage.shadow(body, ctx.frame('st_barrel'));
+  const tapY = f - 14 / PPM;
+  const tap = card(ctx, 'st_tap', { x: x + 0.16, y: tapY, z: 0.04 }, PPM);
+  tap.bias = 0.05;
+  const stream = card(ctx, 'st_stream', { x: x + 0.27, y: tapY + 0.05, z: 0.06 }, PPM);
+  stream.bias = 0.06;
+  const can = card(ctx, 'oilcan', { x: x + 0.28, y: f, z: 0.16 }, 14);
+  can.bias = 0.07;
+  ctx.stage.shadow(can, ctx.frame('oilcan'));
+  return {
+    target: { x: x + 0.1, y: f - 0.45, z: 0.15 },
+    yaw: 0.4,
+    pitch: 0.35,
+    distance: 2.5,
+    control: { x: x + 0.16, y: tapY, z: 0.04 },
+    controlRadius: 0.45,
+    operatorZ: -0.7,
+    lamp: { x: x - 0.9, y: f - 2.3, z: 0.7 },
+    update(_state, _view, _dt, time) {
+      const p = Math.min(1, progress() / total);
+      // the tap opens in the first quarter, then the oil runs
+      tap.rotation = -Math.min(1, p * 4) * 1.2;
+      const running = p > 0.2 && p < 1 && barrel.fill > 0;
+      stream.visible = running;
+      stream.scaleY = running ? 0.85 + Math.sin(time * 30) * 0.05 : 0;
+      can.rotation = running ? Math.sin(time * 9) * 0.02 : 0;
+    },
+  };
+}
+
 export { FLOOR_CARD, UP_CARD, frameOf };

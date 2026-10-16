@@ -49,7 +49,7 @@ import type { PixelFont } from '../ui/PixelFont';
 import { NameTags } from '../ui/NameTags';
 import { PingView } from '../ui/PingView';
 import { Popups } from '../ui/Popups';
-import { recordRun } from '../ui/best';
+import { recordRun, resultText, showShareCard } from '../ui/best';
 import {
   applyCorrections,
   clearCorrections,
@@ -617,6 +617,8 @@ export class Game {
         if (p) this.popups.add([UPGRADE_INFO[e.kind].name.toUpperCase()], p.x, p.y - 1, 0x6cc070);
       } else if (e.type === 'runOver' || (e.type === 'sunk' && s.campaign.mode !== 'single')) {
         recordRun(s.campaign.mode, s.campaign.leg, s.voyage.coins);
+        const won = e.type === 'runOver' && e.won;
+        if (typeof document !== 'undefined') showShareCard(resultText(s.campaign.mode, s.campaign.leg, s.voyage.coins, won), `${location.origin}${location.pathname}`);
       } else if (e.type === 'rescued') {
         const p = s.players.find((pp) => pp.id === e.player);
         if (p) this.popups.add(['GERETTET!'], p.x, p.y - 1, 0x6cc070);

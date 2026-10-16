@@ -238,3 +238,14 @@ body.editor-open .menu-btn, body.editor-open .tuning-gear, body.editor-open .tou
   .ed-palette { width: 120px; font-size: 11px; }
   .ed-side { width: 160px; }
 }
+
+/* end of a run: share the result */
+.share-card {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 30;
+  display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px);
+  padding: 10px 12px; border: 1px solid #c8963c; border-radius: 8px; background: rgba(20, 14, 8, 0.92); color: #f0e6cc;
+  font: 14px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.share-card span { flex: 1 1 auto; }
+.share-card .lobby-btn { flex: 0 0 auto; width: auto; margin: 0; padding: 8px 12px; }
+

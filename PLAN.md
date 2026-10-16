@@ -146,4 +146,8 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Ladung reißt bei starker Krängung los, rutscht und verstärkt die Schlagseite; Festzurren an den Ladeplätzen
 - [x] Zweiter Griffplatz am Steuerrad: zu zweit hält das Schiff gegen den Strudel
 - [x] Pumpe verschleißt bei Dauerbetrieb (Hitze, schwache Hübe, Maschinist ausgenommen)
+- [x] Routenwahl als Abstimmung am Kartentisch (zweiter Platz „Mitwählen“, Finger in Mantelfarbe, Mehrheit, 10-s-Countdown)
+- [x] Zweite Kanone und Laderaum-Laterne als Upgrades (Marker `C`/`L`, erst nach dem Kauf da), Proviantkiste im Hafen
+- [x] Ergebnis teilen am Ende einer Kampagne / Tagesfahrt
+- [x] Offene Kiste als Behälter (bis 4 Planken/Kugeln/Eimer), Öl zapfen als Aktion mit eigener 2.5D-Szene
 

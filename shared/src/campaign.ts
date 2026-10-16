@@ -21,8 +21,8 @@ export const BIOMES: readonly Biome[] = ['calm', 'fog', 'reef', 'kraken', 'pirat
 export type ModifierKind = 'night' | 'rusty' | 'hungry' | 'stormSeason' | 'scarce' | 'leaky' | 'rich';
 export const MODIFIERS: readonly ModifierKind[] = ['night', 'rusty', 'hungry', 'stormSeason', 'scarce', 'leaky', 'rich'];
 
-export type UpgradeKind = 'brassPump' | 'bilge' | 'doublePlanks' | 'quickLoader' | 'lens' | 'oilTank' | 'copper' | 'swiftHull' | 'timber' | 'tools';
-export const UPGRADES: readonly UpgradeKind[] = ['brassPump', 'bilge', 'doublePlanks', 'quickLoader', 'lens', 'oilTank', 'copper', 'swiftHull', 'timber', 'tools'];
+export type UpgradeKind = 'brassPump' | 'bilge' | 'doublePlanks' | 'quickLoader' | 'lens' | 'oilTank' | 'copper' | 'swiftHull' | 'timber' | 'tools' | 'cannon2' | 'lantern' | 'crate';
+export const UPGRADES: readonly UpgradeKind[] = ['brassPump', 'bilge', 'doublePlanks', 'quickLoader', 'lens', 'oilTank', 'copper', 'swiftHull', 'timber', 'tools', 'cannon2', 'lantern', 'crate'];
 
 export type Role = 'none' | 'carpenter' | 'engineer' | 'lookout' | 'gunner';
 export const ROLES: readonly Role[] = ['none', 'carpenter', 'engineer', 'lookout', 'gunner'];
@@ -49,6 +49,12 @@ export interface ShopOffer {
   sold: boolean;
 }
 
+export interface RouteVote {
+  player: string;
+  color: number;
+  node: number;
+}
+
 export interface CampaignState {
   mode: GameMode;
   seed: number;
@@ -59,8 +65,10 @@ export interface CampaignState {
   leg: number;
   modifiers: ModifierKind[];
   upgrades: UpgradeKind[];
-  /** Next leg chosen at the chart table (node id), -1 = none. */
+  /** Next leg chosen at the chart table (node id), -1 = none: the leg with the most votes. */
   choice: number;
+  /** Who voted for which next leg at the chart table (colour = the voter's coat, for the route map). */
+  votes: RouteVote[];
   /** What the harbour sells (empty while sailing). */
   shop: ShopOffer[];
   /** Runs started in this room (the seed changes with every new run). */
@@ -204,7 +212,19 @@ export const UPGRADE_INFO: Record<UpgradeKind, UpgradeInfo> = {
   swiftHull: { name: 'Schnelle Segel', desc: 'Das Schiff fährt schneller.', price: 50, consumable: false, apply: (t) => (t.ship.speed *= 1.15) },
   timber: { name: 'Holzbündel', desc: '+4 Holz für die Werkbank.', price: 15, consumable: true },
   tools: { name: 'Werkzeugkiste', desc: 'Hammer und Brecheisen.', price: 30, consumable: true },
+  // these two add something to the ship (only offered if the ship has a place for it: map markers C / L)
+  cannon2: { name: 'Zweite Kanone', desc: 'Eine zweite Kanone an Deck.', price: 70, consumable: false },
+  lantern: { name: 'Laderaum-Laterne', desc: 'Mehr Licht unten im Schiff.', price: 20, consumable: false },
+  crate: { name: 'Proviantkiste', desc: 'Eine volle Kiste für den Laderaum.', price: 20, consumable: true },
 };
+
+/** A station is there: optional ones (second cannon) only once their upgrade is bought. */
+export function stationBuilt(st: { optional: boolean }, c: Pick<CampaignState, 'upgrades'>): boolean {
+  return !st.optional || c.upgrades.includes('cannon2');
+}
+
+/** Optional stations / lanterns of the ship map and the upgrade that builds them. */
+export const OPTIONAL_BUILDS = { cannon2: 'cannon2', lantern2: 'lantern' } as const satisfies Record<string, UpgradeKind>;
 
 export interface RoleInfo {
   name: string;
@@ -300,7 +320,7 @@ export function dailyLabel(date: Date): string {
 /** A new run: the route and the run modifiers come from the seed. */
 export function createCampaign(mode: GameMode, seed: number, run = 0): CampaignState {
   const s = (seed + run * 7919) >>> 0;
-  const c: CampaignState = { mode, seed: s, nodes: [], node: -1, leg: 0, modifiers: [], upgrades: [], choice: -1, shop: [], run };
+  const c: CampaignState = { mode, seed: s, nodes: [], node: -1, leg: 0, modifiers: [], upgrades: [], choice: -1, votes: [], shop: [], run };
   if (mode === 'single') return c;
   c.nodes = generateRoute(s);
   const rng = { rng: (s ^ 0x5bd1e995) >>> 0 };
@@ -360,8 +380,8 @@ export function effectiveTuning(base: Readonly<Tuning>, c: Readonly<CampaignStat
 }
 
 /** Three things to buy in the harbour (no upgrade twice; consumables always possible). */
-export function rollShop(state: { rng: number }, c: Pick<CampaignState, 'upgrades'>): ShopOffer[] {
-  const pool = UPGRADES.filter((u) => UPGRADE_INFO[u].consumable || !c.upgrades.includes(u));
+export function rollShop(state: { rng: number }, c: Pick<CampaignState, 'upgrades'>, available: (u: UpgradeKind) => boolean = () => true): ShopOffer[] {
+  const pool = UPGRADES.filter((u) => (UPGRADE_INFO[u].consumable || !c.upgrades.includes(u)) && available(u));
   const out: ShopOffer[] = [];
   while (out.length < 3 && pool.length > 0) {
     const k = pool.splice(Math.floor(nextRandom(state) * pool.length) % pool.length, 1)[0]!;
@@ -372,3 +392,16 @@ export function rollShop(state: { rng: number }, c: Pick<CampaignState, 'upgrade
 
 /** Ship-local x of the three harbour stalls on the top deck (m from the pivot). */
 export const SHOP_STALLS: readonly number[] = [3, 6.5, 10];
+
+/**
+ * The next leg by majority of the votes of the players present; a tie is
+ * broken by the run's seed (the same on every machine). -1 = nobody voted.
+ */
+export function tallyVotes(c: CampaignState, present: readonly string[]): number {
+  const count = new Map<number, number>();
+  for (const v of c.votes) if (present.includes(v.player)) count.set(v.node, (count.get(v.node) ?? 0) + 1);
+  if (count.size === 0) return -1;
+  const best = Math.max(...count.values());
+  const tied = [...count].filter(([, n]) => n === best).map(([id]) => id).sort((a, b) => a - b);
+  return tied[(c.seed + c.leg) % tied.length]!;
+}

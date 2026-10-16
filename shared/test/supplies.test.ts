@@ -160,9 +160,43 @@ describe('searchlight oil', () => {
     stand(sim, can.x, can.y + 0.25);
     tap(sim, 'a', 'pick');
     stand(sim, barrel.x - 0.7, barrel.y + 0.375);
+    expect(sim.interactionHints('a').interact?.label).toBe('Öl zapfen');
     tap(sim, 'a', 'interact');
+    expect(sim.state.players[0]!.action?.kind).toBe('tap');
+    expect(can.fill).toBe(0);
+    run(sim, sim.actionDuration('tap') + 0.1);
     expect(can.fill).toBeCloseTo(1, 5);
     expect(barrel.fill).toBeCloseTo(0, 5);
+  });
+});
+
+describe('crate as a box', () => {
+  it('an opened crate holds planks; carried along they come out where they are needed', async () => {
+    const sim = await calm();
+    const crate = sim.state.objects.find((o) => o.kind === 'crate')!;
+    crate.opened = true;
+    crate.contents = [];
+    sim.setLashed(crate, false);
+    const plank = sim.state.objects.find((o) => o.kind === 'plank')!;
+    stand(sim, plank.x, plank.y + 0.1);
+    tap(sim, 'a', 'pick');
+    expect(plank.carriedBy).toBe('a');
+    stand(sim, crate.x - 0.7, crate.y + 0.375);
+    expect(sim.interactionHints('a').interact?.label).toBe('In die Kiste legen');
+    const events = tap(sim, 'a', 'interact');
+    expect(events.some((e) => e.type === 'stow' && e.into)).toBe(true);
+    expect(crate.contents).toEqual(['plank']);
+    expect(sim.state.objects.some((o) => o.id === plank.id)).toBe(false);
+    // carry the crate somewhere else, put it down, take the plank out
+    tap(sim, 'a', 'pick');
+    expect(crate.carriedBy).toBe('a');
+    tap(sim, 'a', 'pick');
+    run(sim, 0.5);
+    expect(sim.interactionHints('a').interact?.label).toBe('Aus der Kiste nehmen (1)');
+    tap(sim, 'a', 'interact');
+    const held = sim.state.objects.find((o) => o.id === sim.state.players[0]!.carrying)!;
+    expect(held.kind).toBe('plank');
+    expect(crate.contents).toEqual([]);
   });
 });
 

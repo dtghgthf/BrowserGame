@@ -105,6 +105,9 @@ function upgradeIcons(): PropSprite[] {
     icon('up_swiftHull', ['     d      ', '     dsss   ', '     dssss  ', '     dsssss ', '     dssss  ', '     dsss   ', '     d      ', ' wwwwwwwwww ', '  wwwwwwww  ', ' uuuuuuuuuuu', '            ', '            ']),
     icon('up_timber', ['            ', '            ', ' llllllllll ', ' wllllllllw ', ' llllllllll ', ' wllllllllw ', ' llllllllll ', '    rr      ', '    rr      ', '            ', '            ', '            ']),
     icon('up_tools', ['            ', '  gggg      ', '  gggg   g  ', '   ll   g   ', '   ll  g    ', '   ll g     ', '   llg      ', '   gl       ', '  g ll      ', ' g  ll      ', '            ', '            ']),
+    icon('up_cannon2', ['            ', '        gg  ', '      gggg  ', '    gggggg  ', '  ggggggg   ', ' gggggg   y ', '  dgg d  yyy', ' ddddddd  y ', '  w   w     ', '            ', '            ', '            ']),
+    icon('up_lantern', ['     dd     ', '    d  d    ', '   dddddd   ', '   doyyod   ', '   dyyyyd   ', '   doyyod   ', '   dddddd   ', '    dddd    ', '  y      y  ', ' y   yy   y ', '            ', '            ']),
+    icon('up_crate', ['            ', '  wwwwwwww  ', '  wlwwwwlw  ', '  wwlwwlww  ', '  wwwllwww  ', '  wwwllwww  ', '  wwlwwlww  ', '  wlwwwwlw  ', '  wwwwwwww  ', '    yyyy    ', '            ', '            ']),
     icon('ui_i_buy', ['            ', '    yyyy    ', '   yybbyy   ', '  yybyybby  ', '  yybyyyyy  ', '  yyybbyyy  ', '  yyyyybyy  ', '  yybbyyyy  ', '   yyyyyy   ', '    yyyy    ', '            ', '            ']),
     icon('ui_i_table', ['            ', ' ssssssssss ', ' s u  u   s ', ' s  uu  r s ', ' s u  u rrs ', ' s  u    rs ', ' s u  y   s ', ' ssssssssss ', '  w      w  ', '  w      w  ', '  w      w  ', '            ']),
   ];

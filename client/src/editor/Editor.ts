@@ -32,14 +32,16 @@ const PALETTE: { ch: string; name: string; color: string; label?: string; group:
   { ch: 'k', name: 'Werkbank', color: '#2b221b', label: 'K', group: 'station' },
   { ch: 't', name: 'Kartentisch', color: '#2b221b', label: 'T', group: 'station' },
   { ch: 'r', name: 'Rettungsring', color: '#2b221b', label: 'R', group: 'station' },
+  { ch: 'C', name: 'Platz für 2. Kanone', color: '#2b221b', label: 'C+', group: 'station' },
   { ch: 'l', name: 'Laterne', color: '#2b221b', label: 'L', group: 'ding' },
+  { ch: 'L', name: 'Platz für Laterne (Hafen)', color: '#2b221b', label: 'L+', group: 'ding' },
   { ch: 'b', name: 'Kiste', color: '#2b221b', label: 'b', group: 'ding' },
   { ch: 'f', name: 'Ölfass', color: '#2b221b', label: 'f', group: 'ding' },
   { ch: 'n', name: 'Planke', color: '#2b221b', label: 'n', group: 'ding' },
   { ch: 'o', name: 'Ölkanne', color: '#2b221b', label: 'o', group: 'ding' },
   { ch: 'e', name: 'Eimer', color: '#2b221b', label: 'e', group: 'ding' },
 ];
-const MARKER_COLOR: Record<string, string> = { '@': '#f0e6cc', w: '#e0b860', p: '#5aa8e6', s: '#f0f0a0', c: '#9aa2ae', u: '#7d8590', k: '#c08a52', t: '#e8dcc0', r: '#e05a48', l: '#ffcc66', b: '#a07040', f: '#8a5a32', n: '#c08a52', o: '#d07040', e: '#80b0d0' };
+const MARKER_COLOR: Record<string, string> = { '@': '#f0e6cc', w: '#e0b860', p: '#5aa8e6', s: '#f0f0a0', c: '#9aa2ae', u: '#7d8590', k: '#c08a52', t: '#e8dcc0', r: '#e05a48', l: '#ffcc66', b: '#a07040', f: '#8a5a32', n: '#c08a52', o: '#d07040', e: '#80b0d0', C: '#6a7078', L: '#b08a40' };
 const COMPARTMENT_TINTS = ['#24323e', '#2e2a3c', '#203a30', '#3a2a24', '#2a3a3a'];
 
 type Tool = 'brush' | 'rect' | 'fill';

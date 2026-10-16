@@ -10,6 +10,8 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 - **Werkzeug für alle:** Hammer = schneller flicken, Brecheisen = schneller Kisten öffnen.
 - **Ladung festzurren:** Kisten und Fässer sind im Laderaum festgezurrt. Wenn das Schiff stark krängt, reißen sie los, rutschen zur Seite und machen noch mehr Schlagseite. Zurück an einen Ladeplatz bringen und mit E festzurren.
 - **Die Pumpe wird heiß:** Wer ununterbrochen pumpt, bringt die Pumpe zum Glühen – dann schafft jeder Hub viel weniger. Kurz durchatmen, dann geht's weiter. (Der Maschinist kennt den Trick.)
+- **Kisten als Behälter:** In eine offene Kiste passen bis zu vier Planken, Kugeln oder leere Eimer – praktisch, um gleich mehrere Planken zum Leck zu tragen.
+- **Öl zapfen** am Fass zeigt die Nahansicht: Zapfhahn auf, das Öl läuft in die Kanne.
 
 ## Neue Gefahren
 - **Feuer:** Blitze und Piratenkugeln setzen Decks in Brand. Feuer breitet sich aus und frisst Lecks in den Rumpf. Löschen mit dem Eimer: im gefluteten Raum oder über die Reling schöpfen, dann mit E ins Feuer kippen. Ein Eimer hilft auch beim Lenzen.
@@ -27,10 +29,10 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 - Im Menü abschaltbar („Stationen in 3D“).
 
 ## Kampagne: sechs Etappen bis zum Leuchtturm
-- **Route wählen:** Am Kartentisch im Mitteldeck seht ihr die Seekarte der Fahrt. Jede Etappe ist eine andere Meeresart: Ruhige See, Nebelbank, Riff, Krakengrund, Piratenküste, Eismeer – und zum Schluss immer die Sturmfront.
-- **Häfen zwischen den Etappen:** Belohnung kassieren, die Hafenarbeiter flicken das Schiff. Auf dem Oberdeck stehen drei Händler: Messingpumpe, Bilgenpumpe, Kupferbeschlag, Schnelllader, Linse für den Scheinwerfer und mehr.
+- **Route wählen:** Am Kartentisch im Mitteldeck seht ihr die Seekarte der Fahrt. Alle stimmen ab (zwei passen gleichzeitig an den Tisch), die Mehrheit gewinnt – haben alle gewählt, wird in 10 Sekunden abgelegt. Jede Etappe ist eine andere Meeresart: Ruhige See, Nebelbank, Riff, Krakengrund, Piratenküste, Eismeer – und zum Schluss immer die Sturmfront.
+- **Häfen zwischen den Etappen:** Belohnung kassieren, die Hafenarbeiter flicken das Schiff. Auf dem Oberdeck stehen drei Händler: Messingpumpe, Bilgenpumpe, Kupferbeschlag, Schnelllader, Linse für den Scheinwerfer, eine **zweite Kanone**, eine **Laterne für den Laderaum**, Proviantkisten und mehr.
 - **Jede Fahrt ist anders:** neue Route, Modifikatoren wie „Neumond“, „Rostige Pumpe“ oder „Hungriger Krake“. Gesunken? Dann beginnt eine neue Fahrt.
-- **Tagesfahrt:** Jeden Tag eine Route für alle. Wer kommt am weitesten?
+- **Tagesfahrt:** Jeden Tag eine Route für alle. Wer kommt am weitesten? Am Ende lässt sich das Ergebnis teilen.
 - **Einzelfahrt:** die lange Fahrt wie früher.
 - **Rollen:** Zimmermann (flickt und sägt schneller), Maschinist (pumpt mehr), Ausguck (sieht weiter), Kanonier (lädt schneller) – oder einfach Matrose.
 - Eure Bestleistung steht in der Lobby.

@@ -46,7 +46,7 @@ export type AnimState = 'idle' | 'run' | 'jump' | 'fall' | 'climb' | 'station' |
  * Timed actions: repair a leak (target = leak id), open a crate (object id),
  * ram the cannon ball home (station id), cut a pirate grappling hook (0).
  */
-export type PlayerActionKind = 'repair' | 'open' | 'ram' | 'cut' | 'lash';
+export type PlayerActionKind = 'repair' | 'open' | 'ram' | 'cut' | 'lash' | 'tap';
 
 export interface PlayerAction {
   kind: PlayerActionKind;
@@ -142,7 +142,7 @@ export interface ObjectState {
   carriedBy: string | null;
   /** Where the object respawns after falling overboard (null = it is removed instead). */
   spawn: Vec2 | null;
-  /** Crate: what is inside (decided by the seeded RNG when it is created). */
+  /** Crate: what is inside (decided by the seeded RNG when it is created; an opened crate holds what the crew puts in). */
   contents: LootKind[];
   /** Crate / barrel: lid pried open. */
   opened: boolean;
@@ -188,6 +188,8 @@ export interface StationState {
   x: number;
   y: number;
   occupant: string | null;
+  /** Only there once its upgrade is bought (second cannon). */
+  optional: boolean;
   /** wheel: a second pair of hands holding it against a whirlpool. */
   helper: string | null;
   /**
@@ -431,6 +433,8 @@ export type GameEvent =
   | { type: 'cargoLoose'; object: number; x: number; y: number }
   | { type: 'lashed'; player: string; object: number }
   | { type: 'pumpHot'; station: number }
+  | { type: 'vote'; player: string; node: number }
+  | { type: 'stow'; player: string; object: number; into: boolean }
   | { type: 'whirlAppear' }
   | { type: 'whirlHit' }
   | { type: 'iceHit'; rock: number; x: number }

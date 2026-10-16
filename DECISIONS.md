@@ -305,4 +305,20 @@ Format: **Entscheidung** – Begründung.
 - **Pumpen-Verschleiß:** Hitze (in `charge` der Pumpe) steigt pro Hub und kühlt ständig ab. Über 80 % schaffen die Hübe nur
   noch 45 % – eine weiche Grenze statt einer Sperre, damit es nicht nervt. Etwa 30 s Dauerpumpen im schnellen Takt bis
   „heiß“, wenige Sekunden Pause zum Abkühlen. Der Maschinist erzeugt keine Hitze.
+- **Routenwahl als Abstimmung:** Jede Person stimmt am Kartentisch ab (wer an den Tisch tritt, stimmt für die angezeigte
+  Etappe; ein zweiter Platz „Mitwählen“ erlaubt zwei gleichzeitig). Die Etappe mit den meisten Stimmen der anwesenden
+  Spieler gilt; Gleichstand entscheidet der Seed des Laufs (auf allen Rechnern gleich, ohne Zufallszahl zu verbrauchen).
+  Haben alle gewählt, legt das Schiff nach 10 s ab; F („Ablegen“) wirkt erst, wenn alle gewählt haben (allein sofort).
+- **Upgrades, die man sieht:** statt der gestrichenen `+`-Slots optionale Marker in der Karte: `C` (zweite Kanone) und
+  `L` (Laterne). Die Station existiert immer im State (`optional`), ist aber erst nach dem Kauf sichtbar und bedienbar –
+  so bleibt die Stationsliste über den ganzen Lauf gleich (Client-Ansichten und Codec hängen an den Indizes). Angeboten
+  werden die Upgrades nur, wenn das Schiff einen Platz dafür hat (Editor-Schiffe ohne `C`/`L` sehen sie nie).
+- **Proviantkiste:** ein Verbrauchs-Angebot im Hafen; die Hafenarbeiter stellen eine volle Kiste an den Stand.
+- **Ergebnis teilen:** Am Ende einer Kampagne/Tagesfahrt erscheint eine Karte mit Text und „Ergebnis teilen“ (Web Share
+  API, sonst Zwischenablage). Weiterhin keine Online-Rangliste.
+- **Kiste als Behälter:** Eine geöffnete Kiste nimmt bis zu 4 Planken, Kugeln oder leere Eimer auf (`contents` wird
+  wiederverwendet); getragen reisen sie mit. Wird die Kiste an der Werkbank zerlegt, fällt der Inhalt heraus.
+- **Öl zapfen** ist jetzt eine kurze Aktion (1,6 s, A/D beschleunigt) statt sofort – damit es eine Nahansicht wie das
+  Kistenöffnen bekommt: Fass mit Zapfhahn, Öl läuft in die Kanne. Gegenstände direkt neben Kiste/Fass werden in dieser
+  Nahansicht ausgeblendet, damit nichts vor der Kamera steht.
 

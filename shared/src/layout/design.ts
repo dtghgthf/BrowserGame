@@ -15,7 +15,7 @@ export interface ShipDesign {
 export const DESIGN_LIMITS = { minWidth: 24, maxWidth: 96, minHeight: 12, maxHeight: 32, maxName: 24 } as const;
 
 /** Every character the editor may place. */
-export const DESIGN_CHARS = ' .#|=Hx@wpsckulbfnoert';
+export const DESIGN_CHARS = ' .#|=Hx@wpsckulbfnoertCL';
 
 export interface DesignIssue {
   level: 'error' | 'warning';

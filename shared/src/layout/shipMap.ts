@@ -13,6 +13,7 @@
  *   'w'  steering wheel   'p'  pump   's'  searchlight   'c'  cannon   'k'  workshop
  *   'l'  lantern (hangs from the ceiling above)  'b'  crate   'f'  barrel (oil)   'n'  plank
  *   'u'  rack of cannon balls   'o'  oil can   'e'  bucket   'r'  life ring (station)   't'  chart table
+ *   'C'  second cannon, 'L' extra lantern: only there once the harbour upgrade is bought
  */
 export const SHIP_MAP: readonly string[] = [
   '                                                                        ',
@@ -27,7 +28,7 @@ export const SHIP_MAP: readonly string[] = [
   '                                  H                                     ',
   '   #                              H                                 #   ',
   '   #                              H                                 #   ',
-  '   # r  w        @  @  @  @       H                         u  c    ##  ',
+  '   # r  w        @  @  @  @       H               C         u  c    ##  ',
   '   ###########=#########################################=#############  ',
   '   #.....l....H.........#..........l..........#.........H...l.......#   ',
   '   #..........H.........#.....................#.........H...........#   ',
@@ -35,7 +36,7 @@ export const SHIP_MAP: readonly string[] = [
   '   #..........H.........................................H..........x    ',
   '   ##..e......H....t........b....o......k..n............H.........##    ',
   '    ##########################=###################==###############     ',
-  '    ##..............l.........H.....#...........l................##     ',
+  '    ##...L..........l.........H.....#...........l................##     ',
   '     #........................H.................................##      ',
   '     #x.......................H................................x#       ',
   '      ##......................H..............................x##        ',

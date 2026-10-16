@@ -27,6 +27,7 @@ import { facing, type Card } from './Card';
 import { Stage } from './Stage';
 import {
   buildCannon,
+  buildBarrel,
   buildCrate,
   buildGeneric,
   buildPump,
@@ -91,7 +92,7 @@ export class StationView {
   /** Off = always the 2D view (menu option / low quality). */
   enabled = true;
   /** Region of the set (ship-local m). */
-  private region = { x0: 0, x1: 0, floor: 0, ceil: 0 as number | null, interior: true };
+  private region = { cx: 0, x0: 0, x1: 0, floor: 0, ceil: 0 as number | null, interior: true };
   /** Seconds the crate set stays after the crate was opened (to see the loot). */
   private hold = 0;
   private readonly chart: SeaChart;
@@ -143,7 +144,7 @@ export class StationView {
       const st = state.stations[me.station];
       if (st && st.kind !== 'rack') return { kind: 'station', id: st.id };
     }
-    if (me.action?.kind === 'open') return { kind: 'crate', id: me.action.target };
+    if (me.action?.kind === 'open' || me.action?.kind === 'tap') return { kind: 'crate', id: me.action.target };
     return null;
   }
 
@@ -247,7 +248,7 @@ export class StationView {
     this.region = this.measure(L, x, feetY);
     this.focus = focus;
     this.owner = localId ?? '';
-    this.buildRoom(L);
+    this.buildRoom(L, state.campaign.upgrades.includes('lantern'));
     const ctx: SceneContext = {
       stage: this.stage,
       props: this.assets.props,
@@ -280,6 +281,9 @@ export class StationView {
         default:
           this.scene = buildGeneric(ctx, st, st.kind === 'ring' ? 'ring_post' : 'helm');
       }
+    } else if (crate?.kind === 'barrel') {
+      const id = localId;
+      this.scene = buildBarrel(ctx, crate, () => state.players.find((p) => p.id === id)?.action?.progress ?? 0, this.sim.actionDuration('tap'));
     } else if (crate) {
       const id = localId;
       this.scene = buildCrate(
@@ -323,6 +327,8 @@ export class StationView {
     x0 = Math.max(0, x0 - 1);
     x1 = Math.min(L.width, x1 + 1);
     return {
+      /** The point the set is built around. */
+      cx: x,
       x0: tileToLocal(L, x0, 0).x,
       x1: tileToLocal(L, x1, 0).x,
       floor: tileToLocal(L, 0, floorTy).y,
@@ -345,7 +351,7 @@ export class StationView {
   }
 
   /** The room: back wall, floor, ceiling, the cut front edge and the lantern. */
-  private buildRoom(L: ShipLayout): void {
+  private buildRoom(L: ShipLayout, extraLantern: boolean): void {
     const rg = this.region;
     const tx0 = Math.round(rg.x0 / L.tileSize + L.origin.x);
     const tx1 = Math.round(rg.x1 / L.tileSize + L.origin.x);
@@ -377,7 +383,7 @@ export class StationView {
     // the nearest lantern of the room
     let best: { tx: number; ty: number } | null = null;
     for (const m of L.markers) {
-      if (m.type !== 'lantern' || m.tx < tx0 || m.tx > tx1) continue;
+      if ((m.type !== 'lantern' && !(m.type === 'lantern2' && extraLantern)) || m.tx < tx0 || m.tx > tx1) continue;
       if (rg.ceil !== null && Math.abs(tileToLocal(L, 0, m.ty).y - rg.ceil) > 1.2) continue;
       if (!best || Math.abs(m.tx - (tx0 + tx1) / 2) < Math.abs(best.tx - (tx0 + tx1) / 2)) best = m;
     }
@@ -475,6 +481,8 @@ export class StationView {
     const seenO = new Set<number>();
     for (const o of state.objects) {
       if (this.focus?.kind === 'crate' && o.id === this.focus.id) continue;
+      // close-ups of a crate / barrel keep the space right next to it clear
+      if (this.focus?.kind === 'crate' && !o.carriedBy && Math.abs(o.x - this.region.cx) < 1.3) continue;
       const v = view.objects.get(o.id) ?? o;
       if (v.x < rg.x0 || v.x > rg.x1 || Math.abs(v.y - rg.floor) > 2.2) continue;
       seenO.add(o.id);
