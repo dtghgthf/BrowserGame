@@ -159,3 +159,5 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Leuchtturm-Licht hinter dem Schiff, Leck-Grafiken nach Rundenende, Ziehen 1:1, Spieler vor Rumpfgrafik
 - [ ] Eimer und Ölkanne besser auffindbar (Markierung, wenn sie gebraucht werden)
 - [ ] Kugelgestell: nur Hinweistext an der Kanone – ggf. Gestell beschriften oder Mechanik vereinfachen
+- [x] Startbildschirm mit Menü-Szene (Bots, harmlose Besucher), Mehrspieler Hosten/Beitreten, Warten im Hafen ohne
+      Countdown (Host legt ab), Pausenmenü (solo pausiert)

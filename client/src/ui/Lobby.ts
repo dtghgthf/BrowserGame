@@ -26,9 +26,19 @@ export interface LobbyActions {
   chooseShip(code: string | null): void;
   /** Leaves the current online room. */
   leave(): Promise<void>;
+  /** Ends a solo voyage (back to the main menu). */
+  quitSolo(): void;
+  /** Online, waiting in the start harbour: this player may cast off. */
+  canCastOff(): boolean;
+  castOff(): void;
+  /** The menu opened / closed while playing (solo pauses). */
+  paused(on: boolean): void;
 }
 
+/** start = the main menu (launch screen), ingame = the pause menu. */
 export type LobbyMode = 'start' | 'ingame';
+
+type Screen = 'main' | 'solo' | 'multi' | 'host' | 'join' | 'settings' | 'pause';
 
 const PROFILE_KEY = 'lw.profile.v1';
 const COLOR_NAMES = ['Rot', 'Blau', 'Grün', 'Lila'];
@@ -81,26 +91,30 @@ export function explainError(e: unknown, code?: string): string {
 const hex = (c: number) => `#${c.toString(16).padStart(6, '0')}`;
 
 /**
- * Start menu and in-game menu (DOM, so text inputs and the iPad keyboard work):
- * name, coat colour, open a new ship (room code) or come aboard with a code.
+ * The menus (DOM, so text inputs and the iPad keyboard work): the launch
+ * screen over the menu scene (single player, multiplayer with host / join,
+ * shipyard, settings) and the pause menu while playing.
  */
 export class Lobby {
   readonly el: HTMLDivElement;
   private mode: LobbyMode = 'start';
+  private screen: Screen = 'main';
+  /** Where "back" in the settings goes. */
+  private settingsFrom: Screen = 'main';
   private profile = loadProfile();
-  private readonly nameInput: HTMLInputElement;
   private readonly codeInput: HTMLInputElement;
   private readonly status: HTMLDivElement;
-  private readonly startPane: HTMLDivElement;
-  private readonly gamePane: HTMLDivElement;
+  private readonly screens: Record<Screen, HTMLDivElement>;
   private readonly roomLabel: HTMLDivElement;
   private readonly swatches: HTMLButtonElement[] = [];
   private readonly roleButtons: HTMLButtonElement[] = [];
   private readonly modeButtons: HTMLButtonElement[] = [];
   private busy = false;
   private syncSound: () => void = () => {};
-  /** Current room code while online (for the in-game menu). */
+  /** Current room code while online (for the pause menu). */
   roomCode = '';
+  /** The pause menu is for an online room (else a solo voyage). */
+  private online = false;
 
   constructor(
     parent: HTMLElement,
@@ -111,55 +125,126 @@ export class Lobby {
   ) {
     this.el = document.createElement('div');
     this.el.className = 'lobby allow-touch hidden';
+    const shipRow = `<div class="lobby-ship"><label class="lobby-ship-name">Schiff <select class="lobby-ship-select"></select></label></div>`;
+    const modeRow = `<div class="lobby-row">Fahrt <div class="lobby-modes lobby-seg"></div></div><div class="lobby-mode-desc"></div>`;
+    const roleRow = `<div class="lobby-row">Rolle <div class="lobby-roles lobby-seg"></div></div><div class="lobby-role-desc"></div>`;
     this.el.innerHTML = `
       <div class="lobby-card">
         <h1>LEUCHTTURMWÄRTER</h1>
-        <div class="lobby-start">
+        <div class="lobby-screen" data-screen="main">
+          <button class="lobby-btn primary big" data-go="solo">Einzelspieler</button>
+          <button class="lobby-btn primary big" data-go="multi">Mehrspieler</button>
+          <button class="lobby-btn big lobby-yard">Werft</button>
+          <button class="lobby-btn big" data-go="settings">Einstellungen</button>
+          <div class="lobby-best"></div>
+        </div>
+        <div class="lobby-screen" data-screen="solo">
+          <h2>Einzelspieler</h2>
+          <div class="lobby-slot-mode"></div>
+          <div class="lobby-slot-role"></div>
+          <div class="lobby-slot-ship"></div>
+          <button class="lobby-btn primary lobby-solo">Ablegen</button>
+          <button class="lobby-btn subtle" data-go="main">Zurück</button>
+        </div>
+        <div class="lobby-screen" data-screen="multi">
+          <h2>Mehrspieler</h2>
           <label class="lobby-row">Dein Name
             <input class="lobby-name" maxlength="${MAX_NAME_LENGTH}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="NAME" />
           </label>
           <div class="lobby-row">Mantelfarbe <div class="lobby-colors"></div></div>
-          <div class="lobby-row">Rolle <div class="lobby-roles lobby-seg"></div></div>
-          <div class="lobby-role-desc"></div>
-          <div class="lobby-row">Fahrt <div class="lobby-modes lobby-seg"></div></div>
-          <div class="lobby-mode-desc"></div>
-          <div class="lobby-best"></div>
+          <div class="lobby-slot-role2"></div>
           <div class="lobby-online">
-            <button class="lobby-btn primary lobby-create">Neues Schiff</button>
-            <div class="lobby-join">
-              <input class="lobby-code" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" />
-              <button class="lobby-btn lobby-join-btn">An Bord</button>
-            </div>
+            <button class="lobby-btn primary" data-go="host">Hosten</button>
+            <button class="lobby-btn primary" data-go="join">Beitreten</button>
           </div>
           <div class="lobby-offline">Online-Modus: kein Server eingerichtet.</div>
-          <button class="lobby-btn subtle lobby-solo">Allein üben</button>
-          <div class="lobby-ship"><label class="lobby-ship-name">Schiff <select class="lobby-ship-select"></select></label><button class="lobby-btn subtle lobby-yard">Werft: Schiff bauen</button></div>
+          <button class="lobby-btn subtle" data-go="main">Zurück</button>
         </div>
-        <div class="lobby-game">
+        <div class="lobby-screen" data-screen="host">
+          <h2>Schiff hosten</h2>
+          <div class="lobby-slot-mode2"></div>
+          <div class="lobby-slot-ship2"></div>
+          <div class="lobby-hint">Ihr wartet im Hafen, bis alle an Bord sind – du legst ab, wenn es losgehen soll.</div>
+          <button class="lobby-btn primary lobby-create">Schiff öffnen</button>
+          <button class="lobby-btn subtle" data-go="multi">Zurück</button>
+        </div>
+        <div class="lobby-screen" data-screen="join">
+          <h2>Beitreten</h2>
+          <div class="lobby-join">
+            <input class="lobby-code" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" />
+            <button class="lobby-btn primary lobby-join-btn">An Bord</button>
+          </div>
+          <button class="lobby-btn subtle" data-go="multi">Zurück</button>
+        </div>
+        <div class="lobby-screen" data-screen="settings">
+          <h2>Einstellungen</h2>
+          <div class="lobby-sound">
+            <span>Ton</span>
+            <input class="lobby-volume" type="range" min="0" max="100" step="1" />
+            <button class="lobby-mute" title="Ton an/aus (M)">🔊</button>
+          </div>
+          <button class="lobby-btn lobby-3d"></button>
+          <button class="lobby-btn subtle lobby-settings-back">Zurück</button>
+        </div>
+        <div class="lobby-screen" data-screen="pause">
+          <h2 class="lobby-pause-title">Pause</h2>
           <div class="lobby-room"></div>
-          <button class="lobby-btn primary lobby-share">Einladungslink teilen</button>
-          <button class="lobby-btn lobby-back">Weiterspielen</button>
-          <button class="lobby-btn subtle lobby-leave">Schiff verlassen</button>
+          <button class="lobby-btn primary lobby-castoff">Ablegen – alle da!</button>
+          <button class="lobby-btn primary lobby-back">Weiterspielen</button>
+          <button class="lobby-btn lobby-share">Einladungslink teilen</button>
+          <button class="lobby-btn" data-go="settings">Einstellungen</button>
+          <button class="lobby-btn subtle lobby-leave">Zum Hauptmenü</button>
         </div>
-        <div class="lobby-sound">
-          <span>Ton</span>
-          <input class="lobby-volume" type="range" min="0" max="100" step="1" />
-          <button class="lobby-mute" title="Ton an/aus (M)">🔊</button>
-        </div>
-        <button class="lobby-btn subtle lobby-3d"></button>
         <div class="lobby-status"></div>
       </div>`;
     parent.appendChild(this.el);
     const q = <T extends Element>(sel: string) => this.el.querySelector(sel) as T;
-    this.nameInput = q<HTMLInputElement>('.lobby-name');
+    this.screens = Object.fromEntries([...this.el.querySelectorAll<HTMLDivElement>('.lobby-screen')].map((e) => [e.dataset.screen, e])) as Record<Screen, HTMLDivElement>;
+    // the same rows appear on several screens: built once, moved where needed
+    const mk = (html: string) => {
+      const d = document.createElement('div');
+      d.className = 'lobby-group';
+      d.innerHTML = html;
+      return d;
+    };
+    const modeGroup = mk(modeRow);
+    const roleGroup = mk(roleRow);
+    const shipGroup = mk(shipRow);
+    q('.lobby-slot-mode').replaceWith(modeGroup);
+    q('.lobby-slot-role').replaceWith(roleGroup);
+    q('.lobby-slot-ship').replaceWith(shipGroup);
+    this.moveGroups = (s: Screen) => {
+      if (s === 'solo') {
+        const sc = this.screens.solo;
+        sc.insertBefore(shipGroup, sc.querySelector('.lobby-solo'));
+        sc.insertBefore(roleGroup, shipGroup);
+        sc.insertBefore(modeGroup, roleGroup);
+      } else if (s === 'multi') this.screens.multi.insertBefore(roleGroup, this.screens.multi.querySelector('.lobby-online'));
+      else if (s === 'host') {
+        const sc = this.screens.host;
+        sc.insertBefore(modeGroup, sc.querySelector('.lobby-hint'));
+        sc.insertBefore(shipGroup, sc.querySelector('.lobby-hint'));
+      }
+    };
+    q('.lobby-slot-role2').remove();
+    q('.lobby-slot-mode2').remove();
+    q('.lobby-slot-ship2').remove();
+
     this.codeInput = q<HTMLInputElement>('.lobby-code');
     this.status = q<HTMLDivElement>('.lobby-status');
-    this.startPane = q<HTMLDivElement>('.lobby-start');
-    this.gamePane = q<HTMLDivElement>('.lobby-game');
     this.roomLabel = q<HTMLDivElement>('.lobby-room');
     const online = actions.serverUrl !== null;
     q<HTMLDivElement>('.lobby-online').style.display = online ? '' : 'none';
     q<HTMLDivElement>('.lobby-offline').style.display = online ? 'none' : '';
+
+    this.el.querySelectorAll<HTMLButtonElement>('[data-go]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const to = b.dataset.go as Screen;
+        if (to === 'settings') this.settingsFrom = this.screen;
+        this.go(to);
+      }),
+    );
+    q<HTMLButtonElement>('.lobby-settings-back').addEventListener('click', () => this.go(this.settingsFrom));
 
     const colors = q<HTMLDivElement>('.lobby-colors');
     PLAYER_COLORS.forEach((c, i) => {
@@ -173,7 +258,7 @@ export class Lobby {
       this.swatches.push(b);
     });
     this.setColor(this.profile.color);
-    const roles = q<HTMLDivElement>('.lobby-roles');
+    const roles = roleGroup.querySelector('.lobby-roles') as HTMLDivElement;
     for (const r of ROLES) {
       const b = document.createElement('button');
       b.className = 'lobby-seg-btn';
@@ -182,7 +267,7 @@ export class Lobby {
       roles.appendChild(b);
       this.roleButtons.push(b);
     }
-    const modes = q<HTMLDivElement>('.lobby-modes');
+    const modes = modeGroup.querySelector('.lobby-modes') as HTMLDivElement;
     for (const [m, label] of MODE_LABELS) {
       const b = document.createElement('button');
       b.className = 'lobby-seg-btn';
@@ -193,10 +278,11 @@ export class Lobby {
     }
     this.setRole(this.profile.role);
     this.setMode(this.profile.mode);
-    this.nameInput.value = this.profile.name;
-    this.nameInput.addEventListener('input', () => {
-      const clean = sanitizeName(this.nameInput.value);
-      if (clean !== this.nameInput.value.toUpperCase().trim()) this.nameInput.value = clean;
+    const nameInput = q<HTMLInputElement>('.lobby-name');
+    nameInput.value = this.profile.name;
+    nameInput.addEventListener('input', () => {
+      const clean = sanitizeName(nameInput.value);
+      if (clean !== nameInput.value.toUpperCase().trim()) nameInput.value = clean;
       this.profile.name = clean;
       saveProfile(this.profile);
     });
@@ -217,8 +303,16 @@ export class Lobby {
       actions.shipyard();
     });
     q<HTMLButtonElement>('.lobby-share').addEventListener('click', () => void this.share());
+    q<HTMLButtonElement>('.lobby-castoff').addEventListener('click', () => {
+      actions.castOff();
+      this.hide();
+    });
     q<HTMLButtonElement>('.lobby-leave').addEventListener('click', () => {
-      void actions.leave().then(() => this.show('start', 'Du hast das Schiff verlassen.'));
+      if (this.online) void actions.leave().then(() => this.show('start', 'Du hast das Schiff verlassen.'));
+      else {
+        actions.quitSolo();
+        this.show('start');
+      }
     });
     const vol = q<HTMLInputElement>('.lobby-volume');
     const mute = q<HTMLButtonElement>('.lobby-mute');
@@ -252,50 +346,107 @@ export class Lobby {
     // keys typed into the menu must not steer the ship
     this.el.addEventListener('keydown', (e) => {
       e.stopPropagation();
-      if (e.key === 'Escape' && this.mode === 'ingame') this.hide();
+      if (e.key === 'Escape') this.escape();
     });
 
     if (invitedCode && isRoomCode(invitedCode)) {
       this.codeInput.value = invitedCode;
+      this.invited = true;
       this.setStatus(`Einladung zu Raum ${invitedCode} – Name eingeben und „An Bord“.`);
     }
   }
+
+  private readonly moveGroups: (s: Screen) => void;
+  /** Opened through an invitation link: the menu starts at "join". */
+  private invited = false;
 
   get visible(): boolean {
     return !this.el.classList.contains('hidden');
   }
 
-  show(mode: LobbyMode, message = '', error = false): void {
+  private go(s: Screen): void {
+    this.screen = s;
+    this.moveGroups(s);
+    for (const [k, e] of Object.entries(this.screens)) e.style.display = k === s ? '' : 'none';
+    this.el.classList.toggle('lobby-main', s === 'main');
+    if (s !== 'join' && s !== 'multi') this.setStatus('');
+    if (s === 'pause') this.refreshPause();
+    if (s === 'solo' || s === 'host') this.refreshShips();
+    if (s === 'join') this.codeInput.focus();
+  }
+
+  /** Escape: one screen back; from the main menu nothing, from the pause menu back into the game. */
+  private escape(): void {
+    if (this.mode === 'ingame' && (this.screen === 'pause' || this.screen === 'settings')) {
+      if (this.screen === 'settings') this.go('pause');
+      else this.hide();
+      return;
+    }
+    const back: Partial<Record<Screen, Screen>> = { solo: 'main', multi: 'main', host: 'multi', join: 'multi', settings: this.settingsFrom };
+    const to = back[this.screen];
+    if (to) this.go(to);
+  }
+
+  /**
+   * @param mode start = the launch screen (main menu), ingame = the pause menu
+   */
+  show(mode: LobbyMode, message = '', error = false, online = this.online): void {
     this.mode = mode;
-    this.startPane.style.display = mode === 'start' ? '' : 'none';
-    this.gamePane.style.display = mode === 'ingame' ? '' : 'none';
-    this.roomLabel.innerHTML = `Raum <b>${this.roomCode}</b>Code an die anderen weitergeben`;
-    if (message || mode === 'ingame') this.setStatus(message, error);
+    this.online = online;
     this.el.classList.remove('hidden');
+    this.el.classList.toggle('lobby-pause', mode === 'ingame');
     document.body.classList.add('lobby-open');
     this.syncSound();
     (this.el.querySelector('.lobby-best') as HTMLDivElement).textContent = bestLine();
-    // the ship for new voyages: the standard one or one from the shipyard
+    if (mode === 'ingame') {
+      this.go('pause');
+      this.actions.paused(true);
+    } else if (this.invited) {
+      this.invited = false;
+      this.go('multi');
+      this.go('join');
+    } else this.go('main');
+    if (message) this.setStatus(message, error);
+  }
+
+  hide(): void {
+    const wasPause = this.mode === 'ingame' && this.visible;
+    this.el.classList.add('hidden');
+    document.body.classList.remove('lobby-open');
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    if (wasPause) this.actions.paused(false);
+  }
+
+  /** Escape / menu button while playing: the pause menu opens and closes; on the launch screen it stays. */
+  toggle(online: boolean, playing = true): void {
+    if (!playing) {
+      if (!this.visible) this.show('start');
+      else this.escape();
+      return;
+    }
+    if (this.visible && this.mode === 'ingame') this.escape();
+    else this.show('ingame', '', false, online);
+  }
+
+  private refreshPause(): void {
+    const q = <T extends Element>(sel: string) => this.el.querySelector(sel) as T;
+    q<HTMLElement>('.lobby-pause-title').textContent = this.online ? 'Menü' : 'Pause';
+    this.roomLabel.style.display = this.online ? '' : 'none';
+    this.roomLabel.innerHTML = `Raum <b>${this.roomCode}</b>Code an die anderen weitergeben`;
+    q<HTMLElement>('.lobby-share').style.display = this.online ? '' : 'none';
+    q<HTMLElement>('.lobby-castoff').style.display = this.online && this.actions.canCastOff() ? '' : 'none';
+    q<HTMLElement>('.lobby-leave').textContent = this.online ? 'Schiff verlassen' : 'Zum Hauptmenü';
+  }
+
+  /** The ship for new voyages: the standard one or one from the shipyard. */
+  private refreshShips(): void {
     const select = this.el.querySelector('.lobby-ship-select') as HTMLSelectElement;
     const ships = this.actions.ships();
     select.innerHTML = ships.map((s, i) => `<option value="${i}"${s.current ? ' selected' : ''}>${s.name.replace(/[<&]/g, '')}</option>`).join('');
-    select.disabled = mode === 'ingame';
     select.onchange = () => {
       const s = ships[Number(select.value)];
       if (s && !s.current) this.actions.chooseShip(s.code);
     };
-  }
-
-  hide(): void {
-    this.el.classList.add('hidden');
-    document.body.classList.remove('lobby-open');
-    (document.activeElement as HTMLElement | null)?.blur?.();
-  }
-
-  /** Escape / menu button: opens the menu matching the current situation. */
-  toggle(online: boolean): void {
-    if (this.visible) this.hide();
-    else this.show(online ? 'ingame' : 'start');
   }
 
   private setColor(i: number): void {
@@ -324,14 +475,15 @@ export class Lobby {
   }
 
   private name(): string {
-    return sanitizeName(this.nameInput.value);
+    return this.profile.name;
   }
 
   private async run(label: string, fn: () => Promise<void>): Promise<void> {
     if (this.busy) return;
     if (!this.name()) {
       this.setStatus('Bitte zuerst einen Namen eingeben.', true);
-      this.nameInput.focus();
+      this.go('multi');
+      (this.el.querySelector('.lobby-name') as HTMLInputElement).focus();
       return;
     }
     this.busy = true;

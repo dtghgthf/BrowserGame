@@ -66,6 +66,8 @@ export class ShipRoom extends Room {
     this.designCode = design ? encodeDesign(design) : null;
     const sim = await Simulation.create({
       mode,
+      // the crew gathers in the harbour: no countdown until the host (or the chart table) casts off
+      holdStart: true,
       layout: design ? layoutFromDesign(design) : undefined,
       // the daily voyage is the same for every crew on the same day
       seed: mode === 'daily' ? dailySeed(new Date()) : Math.floor(Math.random() * 2 ** 31),

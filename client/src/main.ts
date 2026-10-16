@@ -142,7 +142,12 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
         game.goOffline();
         setRoomInUrl(null);
         await link?.leave();
+        game.startShowcase();
       },
+      quitSolo: () => game.startShowcase(),
+      canCastOff: () => game.isHost && game.sim.state.status === 'harbor' && game.sim.state.hold,
+      castOff: () => game.command({ type: 'castOff' }),
+      paused: (on) => (game.paused = on && !game.net),
     },
     normalizeRoomCode(params.get('room') ?? '') || null,
     sound,
@@ -181,7 +186,8 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
         close: () => {
           editor?.destroy();
           editor = null;
-          lobby.show(game.net ? 'ingame' : 'start');
+          if (game.playing) lobby.show('ingame', '', false, game.net !== null);
+          else lobby.show('start');
         },
       },
       start,
@@ -202,6 +208,7 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
   };
   game.onNetClosed = (reason) => {
     setRoomInUrl(null);
+    game.startShowcase();
     lobby.show('start', `Verbindung zum Schiff verloren${reason ? ` (${reason})` : ''}.`, true);
   };
 
@@ -210,10 +217,10 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
   menu.className = 'menu-btn allow-touch';
   menu.textContent = '☰';
   menu.title = 'Menü (Esc)';
-  menu.addEventListener('click', () => lobby.toggle(game.net !== null));
+  menu.addEventListener('click', () => lobby.toggle(game.net !== null, game.playing));
   document.body.appendChild(menu);
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !e.repeat) lobby.toggle(game.net !== null);
+    if (e.key === 'Escape' && !e.repeat) lobby.toggle(game.net !== null, game.playing);
   });
   (window as { __lobby?: Lobby }).__lobby = lobby;
 
@@ -226,6 +233,8 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
       return;
     }
   }
+  // the launch screen over the menu scene
+  game.startShowcase();
   lobby.show('start');
 }
 

@@ -103,6 +103,8 @@ export interface SimulationOptions {
   tuning?: TuningPatch;
   /** single = one voyage (default), campaign = a run of legs with harbours, daily = the campaign of the day. */
   mode?: GameMode;
+  /** Every new run waits in the start harbour until somebody casts off (online groups gathering their crew). */
+  holdStart?: boolean;
 }
 
 /** Physics handles of a player. Everything else about the player lives in PlayerState. */
@@ -207,6 +209,8 @@ const CRATE_CAPACITY = 4;
 
 /** Seconds until the ship casts off once everybody has voted for the next leg. */
 const VOTE_COUNTDOWN = 10;
+/** Seconds from "cast off" (the end of the wait for the crew) to sailing. */
+const CAST_OFF_TIME = 3;
 /** Where a helper stands behind the helmsman (m). */
 const WHEEL_HELPER_GAP = 0.7;
 /** How close to a cargo place a crate must be to be lashed (m). */
@@ -254,6 +258,7 @@ export class Simulation implements SimContext {
   private readonly objects = new Map<number, ObjectRuntime>();
   private seed: number;
   private readonly initialSeaState: number;
+  private readonly holdStart: boolean;
 
   /** Initialises Rapier (once) and creates a simulation. */
   static async create(options: SimulationOptions = {}): Promise<Simulation> {
@@ -275,6 +280,7 @@ export class Simulation implements SimContext {
     this.mode = options.mode ?? 'single';
     this.seed = options.seed ?? 1337;
     this.initialSeaState = options.seaState ?? this.baseTuning.ship.initialSeaState;
+    this.holdStart = options.holdStart ?? false;
     this.reset();
   }
 
@@ -308,10 +314,21 @@ export class Simulation implements SimContext {
     const prev = this.state?.campaign;
     const run = !prev || prev.run < 0 ? 0 : this.mode === 'campaign' && prev.mode === 'campaign' ? prev.run + 1 : 0;
     this.rebuild(createCampaign(this.mode, this.seed, run), null);
-    if (this.mode !== 'single') {
+    // a gathering crew waits in the harbour (a single voyage too: it simply has no route to choose)
+    if (this.mode !== 'single' || this.holdStart) {
       this.state.status = 'harbor';
       this.state.statusTimer = START_HARBOR_TIME;
     }
+    this.state.hold = this.holdStart;
+  }
+
+  /** Ends the wait in the start harbour: the ship casts off in a few seconds. */
+  private castOff(): void {
+    const s = this.state;
+    if (s.status !== 'harbor' || !s.hold) return;
+    s.hold = false;
+    s.statusTimer = Math.min(s.statusTimer, CAST_OFF_TIME);
+    this.emit({ type: 'chooseLeg', node: s.campaign.choice });
   }
 
   /** Sails out of the harbour on the chosen leg: a fresh voyage, the stock and the run carry over. */
@@ -347,6 +364,7 @@ export class Simulation implements SimContext {
       rng: carry ? carry.rng : (campaign.mode === 'single' ? this.seed : campaign.seed) >>> 0,
       status: 'sailing',
       statusTimer: 0,
+      hold: false,
       ship: createShipState(this.tuning.ship, this.tuning.gameplay.gravity, seaState),
       players: [],
       objects: [],
@@ -793,12 +811,20 @@ export class Simulation implements SimContext {
       }
     }
     if (s.status === 'harbor') {
-      s.statusTimer -= dt;
+      if (!s.hold) s.statusTimer -= dt;
       if (s.statusTimer <= 0) {
-        this.startLeg(s.campaign.choice >= 0 ? s.campaign.choice : (nextLegs(s.campaign)[0]?.id ?? 0));
-        return;
+        if (s.campaign.nodes.length === 0) {
+          // a single voyage waited for its crew: off it goes
+          s.status = 'sailing';
+          s.statusTimer = 0;
+          this.emit({ type: 'depart', node: -1 });
+        } else {
+          this.startLeg(s.campaign.choice >= 0 ? s.campaign.choice : (nextLegs(s.campaign)[0]?.id ?? 0));
+          return;
+        }
+      } else {
+        this.updateHarbor(dt);
       }
-      this.updateHarbor(dt);
     }
 
     // the storm grows on the way to the lighthouse
@@ -916,6 +942,9 @@ export class Simulation implements SimContext {
         break;
       case 'reset':
         this.reset();
+        break;
+      case 'castOff':
+        this.castOff();
         break;
     }
   }
@@ -1483,7 +1512,8 @@ export class Simulation implements SimContext {
         const node = legs[idx]!;
         if (who && mine?.node !== node.id) this.vote(who, node.id);
         // F = cast off now - once everybody has voted (or alone)
-        if (fire && s.statusTimer > 3 && this.allVoted()) s.statusTimer = 3;
+        if (fire && s.hold && this.allVoted()) this.castOff();
+        else if (fire && s.statusTimer > 3 && this.allVoted()) s.statusTimer = 3;
         break;
       }
       case 'rack':

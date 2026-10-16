@@ -398,19 +398,33 @@ async function playOnline(browser, name, result) {
     return { ctx, page };
   };
   const a = await open('A');
+  // the launch screen over the menu scene, then Mehrspieler -> Hosten
+  await sleep(1500);
+  const menuShot = join(outDir, `${name}-10-hauptmenue.png`);
+  await a.page.screenshot({ path: menuShot });
+  result.screenshots.push(menuShot);
+  await a.page.click('[data-go="multi"]');
   await a.page.fill('.lobby-name', 'Anna');
   await sleep(600);
   const lobbyShot = join(outDir, `${name}-11-lobby.png`);
   await a.page.screenshot({ path: lobbyShot });
   result.screenshots.push(lobbyShot);
+  await a.page.click('[data-go="host"]');
   await a.page.click('.lobby-create');
   await a.page.waitForFunction(() => window.__game.net?.predictor.synced, null, { timeout: 15000 });
   const code = await a.page.evaluate(() => window.__game.net.link.code);
   const b = await open('B');
+  await b.page.click('[data-go="multi"]');
   await b.page.fill('.lobby-name', 'Ben');
+  await b.page.click('[data-go="join"]');
   await b.page.fill('.lobby-code', code);
   await b.page.click('.lobby-join-btn');
   await b.page.waitForFunction(() => window.__game.net?.predictor.synced, null, { timeout: 15000 });
+  // everybody is aboard: the host casts off from the menu (the start harbour waits without a countdown)
+  const holding = await a.page.evaluate(() => window.__game.sim.state.hold);
+  await a.page.keyboard.press('Escape');
+  await a.page.click('.lobby-castoff');
+  await a.page.waitForFunction(() => !window.__game.sim.state.hold, null, { timeout: 5000 });
   await sleep(1500);
   await a.page.keyboard.down('KeyD');
   await sleep(500);
@@ -430,7 +444,7 @@ async function playOnline(browser, name, result) {
   });
   await a.ctx.close();
   await b.ctx.close();
-  return { code, pingSeen, ...seen };
+  return { code, pingSeen, heldInHarbour: holding, ...seen };
 }
 
 const gameServer = startGameServer();

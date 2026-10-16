@@ -459,6 +459,8 @@ export interface GameState {
   rng: number;
   status: GameStatus;
   statusTimer: number;
+  /** Waiting in the start harbour for the crew: no countdown until somebody casts off (online groups). */
+  hold: boolean;
   ship: ShipState;
   players: PlayerState[];
   objects: ObjectState[];

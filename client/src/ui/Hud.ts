@@ -57,7 +57,7 @@ export class Hud {
     width: number,
     height: number,
     time: number,
-    net: { code: string; status: NetStatus; synced: boolean } | null = null,
+    net: { code: string; status: NetStatus; synced: boolean; host: boolean } | null = null,
   ): void {
     this.g.clear();
     for (const t of this.texts.values()) t.visible = false;
@@ -185,14 +185,24 @@ export class Hud {
     if (state.status === 'harbor') {
       const legs = nextLegs(camp);
       const chosen = camp.choice >= 0 ? camp.nodes[camp.choice] : legs[0];
-      const lines: [string, number][] = [
-        [camp.node < 0 ? 'IM HAFEN - GLEICH GEHT ES LOS' : 'IM HAFEN', C.gold],
-        [`ABLEGEN IN ${Math.ceil(state.statusTimer)}`, C.text],
-        [chosen ? `NÄCHSTE ETAPPE: ${BIOME_INFO[chosen.biome].name.toUpperCase()}` : '', C.text],
-        [camp.shop.some((o) => !o.sold) ? 'KARTENTISCH = ROUTE  ·  OBERDECK = HÄNDLER' : 'KARTENTISCH = ROUTE WÄHLEN', C.dim],
-      ];
+      const route = camp.nodes.length > 0;
+      const aboard = state.players.filter((p) => !p.away).length;
+      const lines: [string, number][] = state.hold
+        ? [
+            ['IM HAFEN - DIE CREW SAMMELT SICH', C.gold],
+            [`${aboard} AN BORD · RAUM ${net?.code ?? ''}`, C.text],
+            [net?.host ? 'ALLE DA? MENÜ (ESC) = ABLEGEN' : 'DER KAPITÄN LEGT AB, WENN ALLE DA SIND', C.text],
+          ]
+        : [
+            [camp.node < 0 ? 'IM HAFEN - GLEICH GEHT ES LOS' : 'IM HAFEN', C.gold],
+            [`ABLEGEN IN ${Math.ceil(state.statusTimer)}`, C.text],
+          ];
+      if (route) {
+        lines.push([chosen ? `NÄCHSTE ETAPPE: ${BIOME_INFO[chosen.biome].name.toUpperCase()}` : '', C.text]);
+        lines.push([camp.shop.some((o) => !o.sold) ? 'KARTENTISCH = ROUTE  ·  OBERDECK = HÄNDLER' : 'KARTENTISCH = ROUTE WÄHLEN', C.dim]);
+      }
       const crew = state.players.filter((p) => !p.away);
-      if (crew.length > 1) {
+      if (crew.length > 1 && route) {
         const voted = crew.filter((p) => camp.votes.some((v) => v.player === p.id)).length;
         lines.push([voted === crew.length ? 'ALLE HABEN GEWÄHLT!' : `STIMMEN ${voted}/${crew.length}`, voted === crew.length ? C.good : C.dim]);
       }

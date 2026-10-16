@@ -48,6 +48,7 @@ import type { TuningPanel } from '../ui/TuningPanel';
 import type { PixelFont } from '../ui/PixelFont';
 import { NameTags } from '../ui/NameTags';
 import { PingView } from '../ui/PingView';
+import { Showcase } from './Showcase';
 import { Popups } from '../ui/Popups';
 import { recordRun, resultText, showShareCard } from '../ui/best';
 import {
@@ -120,6 +121,10 @@ export class Game {
   private readonly before = emptySnapshot();
   private readonly netRate = { t: 0, bytes: 0, kbps: 0 };
   private readonly locals: LocalPlayer[] = [];
+  /** The scene behind the main menu (no own player, deckhands, harmless visitors). */
+  readonly showcase = new Showcase();
+  /** Solo play stops while the pause menu is open. */
+  paused = false;
   private readonly commands: SimCommand[] = [];
   private prev: Snapshot = emptySnapshot();
   private cur: Snapshot = emptySnapshot();
@@ -241,6 +246,8 @@ export class Game {
    * here for prediction, but the server's snapshots are the truth.
    */
   goOnline(link: NetLink): void {
+    this.showcase.stop(this.sim);
+    this.paused = false;
     for (const l of this.locals.splice(0)) this.sim.removePlayer(l.id);
     this.commands.length = 0;
     const net: NetState = { link, predictor: new Predictor(this.sim, link.sessionId), status: 'connected', correction: 0 };
@@ -266,9 +273,32 @@ export class Game {
     link.start();
   }
 
+  /** The main menu: the ship sails on without us, deckhands and visitors only for the look. */
+  startShowcase(): void {
+    if (this.net) return;
+    this.locals.length = 0;
+    this.paused = false;
+    this.showcase.start(this.sim);
+    clearCorrections(this.corrections);
+    takeSnapshot(this.sim.state, this.prev);
+    takeSnapshot(this.sim.state, this.cur);
+  }
+
+  /** Somebody of ours is on board (playing solo or online, not the menu scene). */
+  get playing(): boolean {
+    return this.net !== null || (!this.showcase.active && this.locals.length > 0);
+  }
+
+  /** This client opened the online room (may cast off, use debug commands). */
+  get isHost(): boolean {
+    return !!this.net && this.net.predictor.host === this.net.link.sessionId;
+  }
+
   /** Local play from the lobby: a fresh run of the chosen kind with the chosen role. */
   startSolo(role: Role, mode: GameMode): void {
     if (this.net) return;
+    this.showcase.stop(this.sim);
+    this.paused = false;
     for (const p of [...this.sim.state.players]) this.sim.removePlayer(p.id);
     this.locals.length = 0;
     this.sim.startRun(mode, mode === 'daily' ? dailySeed(new Date()) : Math.floor(Math.random() * 2 ** 31));
@@ -445,7 +475,8 @@ export class Game {
     if (net) this.reconcile(net);
 
     const droppedBefore = this.stepper.droppedSteps;
-    const steps = this.stepper.advance(dt, (stepDt) => {
+    // solo play holds still while the pause menu is open (online the ship sails on)
+    const steps = this.stepper.advance(this.paused && !net ? 0 : dt, (stepDt) => {
       // online: nothing to predict until the first snapshot has arrived
       if (net && !net.predictor.synced) return;
       takeSnapshot(this.sim.state, this.prev);
@@ -456,6 +487,10 @@ export class Game {
         this.handleEvents(events);
       } else {
         const inputs: Record<string, PlayerInput> = {};
+        if (this.showcase.active) {
+          this.showcase.tick(this.sim, stepDt);
+          Object.assign(inputs, this.showcase.inputs(this.sim, stepDt));
+        }
         for (const l of this.locals) inputs[l.id] = l.sampler.sample();
         this.sim.step(inputs, stepDt, this.commands.splice(0));
         for (const l of this.locals) l.sampler.consumed();
@@ -690,6 +725,12 @@ export class Game {
       tx += side * r.layout.width * (myStation.kind === 'ring' ? 0.32 : 0.2);
       ty += myStation.kind === 'ring' ? 30 : 0;
     }
+    // the menu scene: the ship a little to the right of the menu, the sea ahead in view
+    // (the bow just right of the menu, the sea ahead where the visitors show up)
+    if (this.showcase.active) {
+      tx = shipToWorld(v.ship, { x: this.sim.bowOffset, y: 0 }).x * PPM - r.layout.width * 0.06;
+      ty = shipPx.y - 30;
+    }
     // arrived: the camera turns towards the lighthouse island
     if (s.status === 'arrived') {
       const islandX = (s.voyage.length + LIGHTHOUSE_ISLAND) * PPM;
@@ -790,7 +831,10 @@ export class Game {
     this.pingView.update(s, v, left, top, width, height, this.time);
     this.popups.update(dt, v, left, top);
     this.audio?.update(dt, s, ids[0]);
-    this.hud.update(this.sim, s, ids, width, height, this.time, this.net ? { code: this.net.link.code, status: this.net.status, synced: this.net.predictor.synced } : null);
+    // the menu scene shows only the ship and the sea
+    this.hud.root.visible = !this.showcase.active;
+    this.pingView.root.visible = !this.showcase.active;
+    this.hud.update(this.sim, s, ids, width, height, this.time, this.net ? { code: this.net.link.code, status: this.net.status, synced: this.net.predictor.synced, host: this.isHost } : null);
     if (this.touch.isEnabled && ids[0]) {
       const h = this.sim.interactionHints(ids[0]);
       this.touch.setContext(h.interact?.icon ?? null, h.pick?.icon ?? null);

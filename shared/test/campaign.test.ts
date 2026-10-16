@@ -103,6 +103,24 @@ describe('route', () => {
 });
 
 describe('campaign run', () => {
+  it('an online crew waits in the start harbour until somebody casts off', async () => {
+    for (const mode of ['campaign', 'single'] as const) {
+      const sim = await Simulation.create({ seed: 4, seaState: 0, mode, holdStart: true });
+      sim.addPlayer('a');
+      expect(sim.state.status).toBe('harbor');
+      expect(sim.state.hold).toBe(true);
+      const t0 = sim.state.statusTimer;
+      run(sim, 60);
+      expect(sim.state.status).toBe('harbor');
+      expect(sim.state.statusTimer).toBe(t0);
+      sim.step({}, SIM_DT, [{ type: 'castOff' }]);
+      expect(sim.state.hold).toBe(false);
+      const events = run(sim, 4);
+      expect(events.some((e) => e.type === 'depart')).toBe(true);
+      expect(sim.state.status).toBe('sailing');
+    }
+  });
+
   it('starts in the harbour; the chart table chooses the leg; the timer casts off', async () => {
     const sim = await campaign();
     expect(sim.state.status).toBe('harbor');

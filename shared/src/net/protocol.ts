@@ -192,6 +192,8 @@ export function parseCommand(raw: unknown): SimCommand | null {
     }
     case 'reset':
       return { type: 'reset' };
+    case 'castOff':
+      return { type: 'castOff' };
     case 'debugHazard':
       return typeof c.what === 'string' && (DEBUG_HAZARDS as readonly string[]).includes(c.what) ? { type: 'debugHazard', what: c.what as DebugHazard } : null;
     case 'debugAdvance':

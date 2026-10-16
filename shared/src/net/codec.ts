@@ -150,6 +150,7 @@ const STATE = obj<GameState>({
   rng: 'u32',
   status: oneOf(['sailing', 'sunk', 'arrived', 'harbor']),
   statusTimer: 'f32',
+  hold: 'bool',
   ship: SHIP,
   players: array(PLAYER),
   objects: array(OBJECT),

@@ -2,6 +2,11 @@
 
 Noch nicht online – das hier kommt mit dem nächsten Update.
 
+## Neues Hauptmenü
+- **Startbildschirm:** Einzelspieler, Mehrspieler, Werft, Einstellungen – dahinter segelt das Schiff durch die Nacht, ein paar Matrosen laufen über Deck, der Leuchtturm blinkt, und ab und zu schauen Krake, Piraten oder Treibgut vorbei (sie tun nichts).
+- **Mehrspieler:** erst Name, Farbe und Rolle, dann **Hosten** oder **Beitreten**. Wer hostet, wartet mit der Crew im Hafen – ohne Countdown, bis du im Menü „Ablegen – alle da!“ drückst (oder alle am Kartentisch gewählt haben und jemand F drückt).
+- **Pausenmenü:** Weiterspielen, Einstellungen, Einladungslink (online), Zum Hauptmenü bzw. Schiff verlassen. Allein hält das Spiel in der Pause an.
+
 ## Mehr zu tun an Bord
 - **Kisten haben Inhalt:** Mit E aufhebeln (dauert kurz) – drin sind Planken, Holz, Kanonenkugeln, Ölkannen, Eimer, Münzen oder Werkzeug. Manchmal springt auch eine Ratte raus und frisst Holz.
 - **Planken muss man sägen:** Die Werkbank ist jetzt eine Station. Hin und her sägen (A/D oder ziehen), jede Planke kostet ein Holz. Leere Kisten an der Werkbank zerlegen gibt neues Holz.

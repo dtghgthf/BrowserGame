@@ -360,3 +360,11 @@ Format: **Entscheidung** – Begründung.
   Mastspalte über dem Deck nimmt den Mast (samt Krähennest-Gitter) weg, einer auf dem Deck oder direkt darüber die Reling an
   dieser Spalte. Krähennest = Luke über dem Deck mit freier Luft darunter; Masten werden nicht durch Innenräume gezeichnet.
   Beim unveränderten Standard-Grundriss gilt weiter die handgemalte Grafik.
+- **Menü-Szene (`game/Showcase.ts`):** läuft auf der normalen lokalen Simulation (Einzelfahrt) mit drei Bot-Matrosen
+  (zufälliges Laufen/Klettern). Vor jedem Schritt werden Felsen, Begegnungen, Brecher, Blitze, Lecks, Feuer und Wasser
+  weggeräumt; Krake/Piraten/Treibgut setzt die Szene selbst ein, hält sie ein paar Meter vor dem Bug und schickt sie nach
+  ein paar Sekunden weg (`flee`), bevor sie angreifen könnten. Kamera auf den Bug, rechts vom Menü.
+- **Warten im Hafen (`GameState.hold`):** Server-Räume starten mit `holdStart` – jede neue Fahrt (auch Einzelfahrt, dann
+  ohne Route) beginnt im Hafen ohne Countdown. `castOff` (nur Host, Pausenmenü) oder F am Kartentisch, wenn alle gewählt
+  haben, startet 3 s „Leinen los“. Solo bleibt der bisherige Countdown.
+- **Pause:** nur solo (`Game.paused`, der Stepper läuft mit dt = 0); online segelt das Schiff weiter.

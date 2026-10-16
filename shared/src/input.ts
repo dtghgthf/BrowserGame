@@ -69,4 +69,6 @@ export type SimCommand =
   | { type: 'debugAdvance'; meters: number }
   /** A player marks a spot (ship-local meters). Allowed for everybody online. */
   | { type: 'ping'; player: string; x: number; y: number }
+  /** Ends the wait in the start harbour: cast off in a few seconds (online: the host). */
+  | { type: 'castOff' }
   | { type: 'reset' };

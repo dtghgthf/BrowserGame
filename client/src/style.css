@@ -252,3 +252,23 @@ body.editor-open .menu-btn, body.editor-open .tuning-gear, body.editor-open .tou
 .share-card span { flex: 1 1 auto; }
 .share-card .lobby-btn { flex: 0 0 auto; width: auto; margin: 0; padding: 8px 12px; }
 
+
+/* ---------------- launch screen (over the menu scene) and pause menu */
+.lobby:not(.lobby-pause) {
+  justify-content: flex-start;
+  padding-left: max(16px, 6vw);
+  background: linear-gradient(90deg, rgba(5, 7, 13, 0.78), rgba(5, 7, 13, 0.25) 45%, rgba(5, 7, 13, 0) 70%);
+}
+.lobby:not(.lobby-pause) .lobby-card { width: min(360px, 92vw); background: rgba(8, 11, 18, 0.86); }
+.lobby.lobby-main .lobby-card { background: rgba(8, 11, 18, 0.55); border-color: rgba(44, 58, 76, 0.6); }
+.lobby-screen { display: flex; flex-direction: column; gap: 12px; }
+.lobby-group { display: flex; flex-direction: column; gap: 12px; }
+.lobby h2 { margin: 0; font-size: 14px; letter-spacing: 0.16em; text-transform: uppercase; color: #d8dde6; text-align: center; }
+.lobby-btn.big { font-size: 18px; padding: 14px; letter-spacing: 0.08em; }
+.lobby-hint { font-size: 12px; color: #9aa6b4; text-align: center; }
+.lobby-online { flex-direction: row; }
+.lobby-online .lobby-btn { flex: 1; }
+@media (max-height: 500px) {
+  .lobby-btn.big { font-size: 15px; padding: 9px; }
+  .lobby h1 { font-size: 18px; }
+}

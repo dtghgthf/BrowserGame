@@ -25,24 +25,25 @@
       "/home/user/BrowserGame/screenshots/chromium-21-kartentisch.png",
       "/home/user/BrowserGame/screenshots/chromium-22-werft.png",
       "/home/user/BrowserGame/screenshots/chromium-08-touch-ipad.png",
+      "/home/user/BrowserGame/screenshots/chromium-10-hauptmenue.png",
       "/home/user/BrowserGame/screenshots/chromium-11-lobby.png",
       "/home/user/BrowserGame/screenshots/chromium-12-mehrspieler.png"
     ],
     "fps": {
       "high": {
-        "avg": 12.1,
-        "min": 10.3,
-        "samples": 14
+        "avg": 9.3,
+        "min": 6.9,
+        "samples": 3
       },
       "medium": {
-        "avg": 31.9,
-        "min": 16.9,
-        "samples": 15
+        "avg": 20.7,
+        "min": 11.6,
+        "samples": 3
       },
       "low": {
-        "avg": 32.4,
-        "min": 29,
-        "samples": 14
+        "avg": 24.4,
+        "min": 21.3,
+        "samples": 3
       }
     },
     "info": {
@@ -65,16 +66,16 @@
     "crateOpened": 1,
     "campaign": {
       "status": "campaign",
-      "legs": 15
+      "legs": 12
     },
     "state": {
-      "tick": 1451,
+      "tick": 359,
       "water": [
         0,
         0
       ],
       "leaks": 0,
-      "roll": -4.3
+      "roll": -1.5
     },
     "editor": {
       "check": "Alles seetüchtig!",
@@ -94,32 +95,22 @@
       }
     },
     "online": {
-      "code": "ZKHP",
+      "code": "AXJV",
       "pingSeen": [
         "here"
       ],
+      "heldInHarbour": true,
       "players": [
         "ANNA",
         "BEN"
       ],
       "rtt": 1,
       "stats": {
-        "pending": 8,
-        "replayed": 3,
-        "snapshots": 43,
-        "serverTick": 690
+        "pending": 7,
+        "replayed": 1,
+        "snapshots": 36,
+        "serverTick": 79
       }
     }
-  },
-  {
-    "browser": "webkit",
-    "ok": false,
-    "errors": [
-      "could not launch webkit: browserType.launch: Executable doesn't exist at /opt/pw-browsers/webkit-2215/pw_run.sh"
-    ],
-    "warnings": [],
-    "screenshots": [],
-    "fps": null,
-    "skipped": true
   }
 ]
