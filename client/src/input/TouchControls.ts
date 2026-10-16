@@ -140,7 +140,15 @@ export class TouchControls {
 
     const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
     if (coarse || navigator.maxTouchPoints > 0) this.setEnabled(true);
-    window.addEventListener('touchstart', () => this.setEnabled(true), { once: true, passive: true });
+    // whatever was used last wins: a touch brings the controls back, typing on a (bluetooth) keyboard hides them
+    window.addEventListener('touchstart', () => this.setEnabled(true), { passive: true });
+    window.addEventListener('keydown', (e) => {
+      if (!this.enabled || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab', 'Escape'].includes(e.key)) return;
+      this.setEnabled(false);
+    });
     preventBrowserZoom();
     this.relayout();
   }
@@ -232,7 +240,10 @@ export class TouchControls {
   }
 
   setEnabled(v: boolean): void {
+    if (v === this.enabled) return;
     this.enabled = v;
+    // nothing stays held when the controls disappear
+    if (!v) this.release();
     this.root.style.display = v ? 'block' : 'none';
     document.body.classList.toggle('is-touch', v);
   }
@@ -287,6 +298,19 @@ export class TouchControls {
     this.base.classList.remove('active');
     this.knob.classList.remove('active');
     this.relayout();
+  }
+
+  /** Lets go of the stick and every button (the controls were hidden). */
+  private release(): void {
+    this.stickId = null;
+    this.stick = { x: 0, y: 0 };
+    this.base.classList.remove('active');
+    this.knob.classList.remove('active');
+    for (const b of [...Object.values(this.buttons), this.ping]) {
+      b.down = false;
+      b.pressed = false;
+    }
+    this.pingMode = false;
   }
 
   /** Current input; button presses since the last read count as held for this frame. */

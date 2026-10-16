@@ -30,6 +30,7 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 - **Das ganze Schiff in 3D:** In der Nahansicht steht jetzt das komplette Schiff mit Decks, Wänden, Rumpf, Laternen, Wasser im Laderaum und den anderen Stationen – nicht mehr nur ein Block um die Station. Mitspieler in anderen Räumen verschwinden hinter Böden und Wänden. Der Boden flackert nicht mehr weg.
 - **Scheinwerfer:** Der Lichtkegel ist in 3D zu sehen. Gedreht wird an der großen Kurbel (Kurbel drehen – sonst bewegt sich nichts). Ein Ring zeigt, wo das Meer voraus liegt („MEER VORAUS – GUT“) und wo schon Felsen gesichtet sind.
 - **Kanone & Rettungsring:** Eine gepunktete Flugbahn zeigt, wohin Kugel bzw. Ring fliegt – grün mit „TREFFER!“, wenn sie trifft. Krake, Piraten, Felsen und Schwimmer sind mit Entfernung markiert. Kanonenkugeln leuchten und ziehen einen Schweif.
+- **Tastatur am Handy/Tablet:** Sobald du auf einer angeschlossenen Tastatur tippst, verschwinden die Touch-Knöpfe; ein Tipp auf den Bildschirm holt sie zurück.
 - **Ziehen geht 1:1:** Säge, Pumpenhebel und Leine bleiben beim Ziehen genau unter dem Finger.
 
 ## Behoben
