@@ -75,12 +75,19 @@ async function boot(): Promise<void> {
     // follow every change of the window: resize events alone miss some (Safari full screen transitions, moving to a
     // screen with another pixel density, rotating a phone), so the size is also compared once per frame
     let seen = '';
+    let checked = 0;
     const fit = () => {
       const r = host.getBoundingClientRect();
       const key = `${Math.round(r.width)}x${Math.round(r.height)}@${window.devicePixelRatio}`;
-      if (key === seen) return;
+      // a few times a second: the canvas itself still matches (else apply everything again)
+      const now = performance.now();
+      const verify = now - checked > 250;
+      if (key === seen && !verify) return;
+      if (verify) checked = now;
+      const stale = verify && renderer.outOfShape();
+      if (key === seen && !stale) return;
       seen = key;
-      renderer.resize(host);
+      renderer.resize(host, stale);
       touch.relayout();
     };
     for (const ev of ['resize', 'orientationchange', 'fullscreenchange'] as const) window.addEventListener(ev, fit);

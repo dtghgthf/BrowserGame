@@ -135,17 +135,36 @@ export class GameRenderer {
     return computePixelLayout(rect.width || window.innerWidth, rect.height || window.innerHeight, window.devicePixelRatio || 1, target);
   }
 
-  /** Re-measures the host and resizes all buffers if the pixel layout changed. Returns true if changed. */
-  resize(host: HTMLElement): boolean {
+  /** Re-measures the host and resizes all buffers if the pixel layout changed (or always with `force`). Returns true if applied. */
+  resize(host: HTMLElement, force = false): boolean {
     const next = GameRenderer.measure(host);
     const l = this.layout;
-    if (next.width === l.width && next.height === l.height && next.scale === l.scale && next.cssWidth === l.cssWidth) return false;
+    const same =
+      next.width === l.width && next.height === l.height && next.scale === l.scale && next.cssWidth === l.cssWidth && next.cssHeight === l.cssHeight;
+    if (same && !force) return false;
     this.layout = next;
     for (const rt of Object.values(this.rt)) rt.resize(next.width, next.height);
     this.rt.light.resize(this.lightWidth, this.lightHeight);
     setQuad(this.composite.geometry, 0, 0, next.width, next.height, 0, 0, 1, 1);
     this.applyLayout();
     return true;
+  }
+
+  /**
+   * The canvas really is what the layout says (drawing buffer and size on the page). Some browsers (Safari's full
+   * screen, moving between screens) end up with a stale canvas without a resize event: then everything is applied again.
+   */
+  outOfShape(): boolean {
+    const l = this.layout;
+    const c = this.renderer.canvas;
+    const buf = this.cssUpscale ? [l.width, l.height] : [l.deviceWidth, l.deviceHeight];
+    if (c.width !== buf[0] || c.height !== buf[1]) return true;
+    // (a picture that cannot fit at all - a tiny window - is shrunk by CSS on purpose)
+    const fits = l.cssWidth <= window.innerWidth + 1 && l.cssHeight <= window.innerHeight + 1;
+    const r = c.getBoundingClientRect();
+    if (fits && (Math.abs(r.width - l.cssWidth) > 1 || Math.abs(r.height - l.cssHeight) > 1)) return true;
+    const rt = this.rt.final;
+    return rt.width !== l.width || rt.height !== l.height;
   }
 
   get lightWidth(): number {

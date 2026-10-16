@@ -372,3 +372,7 @@ Format: **Entscheidung** – Begründung.
   maximale Breite ist 760 (keine Seitenbalken bei 19,5:9). Touch-Knöpfe skalieren mindestens so, dass der Sprung-Knopf
   76 CSS-px misst, und rücken um `env(safe-area-inset-*)` ein. Hochkant (`orientation: portrait` + grober Zeiger) deckt eine
   Drehen-Karte das Spiel ab; Android: Vollbild + `screen.orientation.lock('landscape')` beim ersten Tippen (iOS kann beides nicht).
+- **Fenstergröße:** Resize-Ereignisse kommen nicht immer an (Safari-Vollbild, Bildschirmwechsel). Darum wird die
+  Host-Größe jedes Bild verglichen und alle 250 ms geprüft, ob Zeichenpuffer, CSS-Größe und Render-Texturen noch zum Layout
+  passen (`GameRenderer.outOfShape`); sonst wird alles neu angewendet (`resize(host, true)`). Die Leinwand ist per CSS auf
+  100 % begrenzt, ein zu schmales Fenster bekommt eine kleinere Skalierung statt eines überstehenden Bilds.

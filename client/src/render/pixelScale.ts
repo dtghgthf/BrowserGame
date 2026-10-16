@@ -43,6 +43,8 @@ export function computePixelLayout(cssW: number, cssH: number, dpr: number, targ
       scale = s;
     }
   }
+  // a narrow window: a smaller scale rather than a picture wider than the window
+  while (scale > 1 && devW / scale < MIN_WIDTH) scale--;
   const height = Math.max(1, Math.floor(devH / scale));
   const width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Math.floor(devW / scale)));
   const deviceWidth = width * scale;
