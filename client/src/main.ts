@@ -72,10 +72,26 @@ async function boot(): Promise<void> {
       import.meta.env.DEV || params.has('tune') || params.has('debug'),
     );
     if (params.has('tune')) game.tuningPanel.toggle(true);
-    window.addEventListener('resize', () => {
+    // follow every change of the window: resize events alone miss some (Safari full screen transitions, moving to a
+    // screen with another pixel density, rotating a phone), so the size is also compared once per frame
+    let seen = '';
+    const fit = () => {
+      const r = host.getBoundingClientRect();
+      const key = `${Math.round(r.width)}x${Math.round(r.height)}@${window.devicePixelRatio}`;
+      if (key === seen) return;
+      seen = key;
       renderer.resize(host);
       touch.relayout();
-    });
+    };
+    for (const ev of ['resize', 'orientationchange', 'fullscreenchange'] as const) window.addEventListener(ev, fit);
+    document.addEventListener('fullscreenchange', fit);
+    window.visualViewport?.addEventListener('resize', fit);
+    new ResizeObserver(fit).observe(host);
+    const watch = () => {
+      fit();
+      requestAnimationFrame(watch);
+    };
+    requestAnimationFrame(watch);
     status.remove();
     setupHelp();
     setupPhone(game);

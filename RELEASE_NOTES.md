@@ -54,6 +54,7 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 - **Ziehen geht 1:1:** Säge, Pumpenhebel und Leine bleiben beim Ziehen genau unter dem Finger.
 
 ## Behoben
+- Nach dem Ändern der Fenstergröße (Vollbild, anderer Bildschirm, Drehen) blieb das Bild in der alten Größe und wurde abgeschnitten.
 - Stations-Anzeige blitzte beim Wechsel in die 3D-Ansicht kurz auf.
 - Kompass am Steuerrad zeigte in die falsche Richtung.
 - Steuerrad (2D): Text und Seekarte überlappten sich.
