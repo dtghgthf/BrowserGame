@@ -212,10 +212,16 @@ async function runBrowser(name, launcher) {
     s.rocks.length = 0;
     s.rocks.push({ id: 9001, x: s.ship.x + 30, lateral: s.ship.lateral, radius: 3, spotted: false, hit: false, kind: 'rock', hp: 1 });
     s.stations.find((x) => x.kind === 'searchlight').value = 0.32;
+    // a calm moment: level ship, rudder amidships (the wheel test before turned it; heeled, the beam missed the rock)
+    s.ship.rudder = 0;
+    s.ship.heading = 0;
+    s.stations.find((x) => x.kind === 'wheel').value = 0;
+    g.command({ type: 'debugRoll', value: 0 });
     g.sim.teleportPlayer('p1', 13, -0.7);
   });
   await sleep(2500);
   result.rockSpotted = await page.evaluate(() => window.__game.sim.state.rocks.some((r) => r.spotted));
+  await page.evaluate(() => window.__game.command({ type: 'debugRoll', value: null }));
   await shot('13-felsen-scheinwerfer');
 
   // the kraken attacks the bow, the cannon fires at it
@@ -331,7 +337,24 @@ async function runBrowser(name, launcher) {
       roll: Math.round((s.ship.roll * 1800) / Math.PI) / 10,
     };
   });
-  // 9) iPad-like touch device: on-screen controls must appear
+  // 9) the shipyard: the standard ship loads, passes the check, the Kutter template too
+  const ep = await context.newPage();
+  ep.on('pageerror', (err) => result.errors.push(`editor pageerror: ${err.message}`));
+  await ep.goto(`${url}?editor`, { waitUntil: 'load' });
+  await ep.waitForSelector('.ed-canvas', { timeout: 30000 });
+  await sleep(1500);
+  const epath = join(outDir, `${name}-22-werft.png`);
+  await ep.screenshot({ path: epath });
+  result.screenshots.push(epath);
+  await ep.selectOption('.ed-template', 'kutter');
+  await sleep(800);
+  result.editor = await ep.evaluate(() => ({
+    check: document.querySelector('.ed-issues')?.textContent ?? '',
+    name: document.querySelector('.ed-name')?.value ?? '',
+  }));
+  await ep.close();
+
+  // 10) iPad-like touch device: on-screen controls must appear
   const touchCtx = await browser.newContext({ viewport: { width: 1080, height: 810 }, deviceScaleFactor: 2, hasTouch: true, isMobile: name === 'chromium' });
   const tp = await touchCtx.newPage();
   tp.on('pageerror', (err) => result.errors.push(`touch pageerror: ${err.message}`));
