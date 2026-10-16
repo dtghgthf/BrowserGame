@@ -230,6 +230,8 @@ async function runBrowser(name, launcher) {
     g.sim.state.rocks.length = 0;
     g.sim.state.monster = { offset: 19, depth: 0, hp: 3, phase: 'attack', timer: 0, attackIn: 5, spotted: true, hurt: 0 };
     const st = g.sim.state.stations.find((x) => x.kind === 'cannon');
+    // loaded (loading has its own tests; here we check that F fires)
+    st.charge = 2;
     g.sim.teleportPlayer('p1', st.x, st.y - 0.66);
   });
   await sleep(400);
@@ -237,7 +239,11 @@ async function runBrowser(name, launcher) {
   await sleep(300);
   await key('KeyF');
   await sleep(300);
-  result.cannonBalls = await page.evaluate(() => window.__game.sim.state.balls.length);
+  // the ball may already have hit the kraken (it is close): fired = a ball in the air or the cannon reloading
+  result.cannonFired = await page.evaluate(() => {
+    const s = window.__game.sim.state;
+    return s.balls.length > 0 || s.stations.find((x) => x.kind === 'cannon').charge < 2;
+  });
   await shot('14-krake-kanone');
   await key('KeyE');
 
