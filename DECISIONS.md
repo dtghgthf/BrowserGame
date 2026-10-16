@@ -321,4 +321,13 @@ Format: **Entscheidung** – Begründung.
 - **Öl zapfen** ist jetzt eine kurze Aktion (1,6 s, A/D beschleunigt) statt sofort – damit es eine Nahansicht wie das
   Kistenöffnen bekommt: Fass mit Zapfhahn, Öl läuft in die Kanne. Gegenstände direkt neben Kiste/Fass werden in dieser
   Nahansicht ausgeblendet, damit nichts vor der Kamera steht.
+- **Stationsposen von vorne:** In der 2.5D-Ansicht steht die Station zwischen Kamera und Figur – die Figur blickt also zur
+  Kamera. Statt „von hinten“-Sprites gibt es deshalb Front-Sprites (gleiche Farben, Mantel-Ebene zum Einfärben) mit Armen
+  vom Schultergelenk zu frei gesetzten Händen. Die Pumpen-Pose folgt dem Hebel, die anderen laufen nur, während die Station
+  sich bewegt. Das Manometer der Pumpe hängt jetzt an der Wand dahinter (es verdeckte das Gesicht).
+- **Werft-Zoom:** Mausrad, Knöpfe oder zwei Finger zoomen um den Punkt unter dem Zeiger; ein zweiter Finger bricht den
+  gerade begonnenen Strich ab (Rückgängig), damit Pinch-Zoom nichts übermalt. Der Rahmen scrollt (`margin: auto` statt
+  Flex-Zentrierung, sonst wären linke/obere Ränder unerreichbar).
+- **Schiffswahl in der Lobby:** Auswahl aus Standard + gespeicherten Schiffen; ein anderes Schiff lädt die Seite neu, weil
+  die Rumpfgrafik beim Start gezeichnet wird.
 

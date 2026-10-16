@@ -24,7 +24,7 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 
 ## Stationen in 3D
 - **Wer eine Station übernimmt, ist mittendrin:** Die Kamera fährt heran, das Schiff wird zum kleinen Puppenhaus-Diorama – Steuerrad mit Kompass und Seekarte an der Pinnwand, Pumpe mit Manometer und Wasserstand im Glasrohr, Scheinwerfer mit Kurbel und Ölglas, Kanone mit Ladestock und glimmender Lunte, Werkbank mit Säge, Kartentisch mit Kerze.
-- Bedient wird direkt am Gerät: Rad drehen, Hebel ziehen, Säge schieben. Die anderen laufen vor und hinter euch vorbei, die Laterne wirft Schatten.
+- Bedient wird direkt am Gerät: Rad drehen, Hebel ziehen, Säge schieben – eure Figur packt dabei sichtbar mit an. Die anderen laufen vor und hinter euch vorbei, die Laterne wirft Schatten.
 - **Kisten öffnen** passiert auch in der Nahansicht: Brecheisen ansetzen (A/D drücken hilft), der Deckel klappt auf, die Beute steigt heraus.
 - Im Menü abschaltbar („Stationen in 3D“).
 
@@ -43,6 +43,7 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 - Die Werft prüft live, ob das Schiff seetüchtig ist (dicht? Steuerrad, Pumpe und Werkbank da? alles erreichbar?) und markiert die Problemstellen.
 - **Probefahrt** sofort allein, **„Als mein Schiff“** für die nächste Fahrt – auch online: Wer den Raum erstellt, bestimmt das Schiff, alle anderen bekommen es automatisch.
 - **Link teilen:** Das ganze Schiff steckt im Link.
+- Linien-Werkzeug, Zoomen (Mausrad oder zwei Finger) und Verschieben; das Schiff für die nächste Fahrt wählt ihr direkt in der Lobby.
 
 ---
 

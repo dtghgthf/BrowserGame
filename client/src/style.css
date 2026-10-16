@@ -219,8 +219,9 @@ body.editor-open .menu-btn, body.editor-open .tuning-gear, body.editor-open .tou
 .ed-tile { display: flex; align-items: center; gap: 7px; font: inherit; text-align: left; background: #0b1018; color: #c8d0da; border: 2px solid #1a2230; padding: 4px 5px; cursor: pointer; touch-action: manipulation; }
 .ed-tile.selected { border-color: #c8963c; color: #f0cc72; }
 .ed-sw { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 1px solid #05070d; color: #05070d; font-weight: bold; font-size: 11px; flex: none; }
-.ed-stage { flex: 1; display: flex; align-items: center; justify-content: center; min-width: 0; overflow: auto; }
-.ed-canvas { image-rendering: pixelated; cursor: crosshair; box-shadow: 0 0 0 2px #2c3a4c; }
+.ed-stage { flex: 1; display: flex; min-width: 0; overflow: auto; }
+/* margin: auto centres a small map and still lets a zoomed-in one scroll to every edge */
+.ed-canvas { margin: auto; flex: 0 0 auto; image-rendering: pixelated; cursor: crosshair; box-shadow: 0 0 0 2px #2c3a4c; touch-action: none; }
 .ed-side { width: 230px; padding: 8px; border-left: 2px solid #1a2230; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
 .ed-tools, .ed-actions { display: flex; flex-wrap: wrap; gap: 5px; }
 .ed-btn { font: inherit; background: #141c28; color: #d8dde6; border: 2px solid #3a4a60; padding: 6px 8px; cursor: pointer; touch-action: manipulation; }
@@ -233,7 +234,9 @@ body.editor-open .menu-btn, body.editor-open .tuning-gear, body.editor-open .tou
 .ed-check li.ok { color: #6cc070; }
 .ed-status { min-height: 2.4em; color: #9ccaf2; overflow-wrap: anywhere; }
 .ed-status.error { color: #ff7a6a; }
-.lobby-ship { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #9aa6b4; }
+.lobby-ship { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #9aa6b4; flex-wrap: wrap; }
+.lobby-ship-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.lobby-ship-select { max-width: 240px; padding: 5px 6px; border: 2px solid #2c3a4c; background: #0b1018; color: #d8dde6; font: inherit; }
 @media (max-width: 820px) {
   .ed-palette { width: 120px; font-size: 11px; }
   .ed-side { width: 160px; }

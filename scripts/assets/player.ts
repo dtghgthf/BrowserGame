@@ -198,6 +198,94 @@ function makeFrame(pose: Pose): PlayerFrameImages {
   return { base, coat, full };
 }
 
+/** Facing the camera (2.5D station view): where the two hands are (frame px) and a bit of body bob. */
+interface FrontPose {
+  bob: number;
+  left: { x: number; y: number };
+  right: { x: number; y: number };
+  /** Something held in both hands: a crowbar / rammer drawn between them. */
+  tool?: 'bar';
+}
+
+/**
+ * The same sailor seen from the front: sou'wester, two eyes, coat with
+ * buttons, both arms going from the shoulders to the hands. Used when a
+ * player works a station in the 2.5D view (the station is between them and
+ * the camera).
+ */
+function makeFront(pose: FrontPose): PlayerFrameImages {
+  const base = new Canvas(PLAYER_FRAME.w, PLAYER_FRAME.h);
+  const coat = new Canvas(PLAYER_FRAME.w, PLAYER_FRAME.h);
+  const full = new Canvas(PLAYER_FRAME.w, PLAYER_FRAME.h);
+  const px = (x: number, y: number, r: Role) => {
+    x = Math.round(x);
+    y = Math.round(y);
+    if (r === 'C' || r === 'c' || r === 'k') {
+      coat.set(x, y, COAT[r], HEIGHT[r]);
+      base.set(x, y, [0, 0, 0, 0]);
+      full.set(x, y, COAT_PREVIEW[r], HEIGHT[r]);
+    } else {
+      base.set(x, y, BASE[r], HEIGHT[r]);
+      coat.set(x, y, [0, 0, 0, 0]);
+      full.set(x, y, BASE[r], HEIGHT[r]);
+    }
+  };
+  const hline = (x0: number, x1: number, y: number, r: Role) => {
+    for (let x = x0; x <= x1; x++) px(x, y, r);
+  };
+  const b = pose.bob;
+  // legs + boots, a little apart
+  for (const [x, r, boot] of [[5, 'p', 'b'], [9, 'P', 'B']] as const) {
+    for (let y = 18; y <= 20; y++) hline(x, x + 1, y, r);
+    hline(x - (x < 8 ? 1 : 0), x + 1 + (x < 8 ? 0 : 1), 21, boot);
+    hline(x - (x < 8 ? 1 : 0), x + 1 + (x < 8 ? 0 : 1), 22, boot);
+  }
+  // coat: torso, skirt, the dark edge in the middle and brass buttons
+  for (let y = 10; y <= 15; y++) hline(4, 11, y + b, 'C');
+  hline(3, 12, 16 + b, 'C');
+  hline(3, 12, 17 + b, 'c');
+  for (let y = 10; y <= 17; y++) px(8, y + b, 'c');
+  px(7, 12 + b, 'H');
+  px(7, 14 + b, 'H');
+  px(4, 10 + b, 'c');
+  px(11, 10 + b, 'c');
+  // arms: shoulder -> hand, coat sleeves with a darker underside
+  const arm = (sx: number, hand: { x: number; y: number }, back: boolean) => {
+    const sy = 10 + b;
+    const n = Math.max(Math.abs(hand.x - sx), Math.abs(hand.y - sy), 1);
+    for (let i = 0; i < n; i++) {
+      const x = sx + ((hand.x - sx) * i) / n;
+      const y = sy + ((hand.y - sy) * i) / n;
+      px(x, y, back ? 'c' : 'C');
+      px(x, y + 1, back ? 'k' : 'c');
+    }
+    px(hand.x, hand.y, back ? 's' : 'S');
+    px(hand.x + (hand.x < 8 ? -1 : 1), hand.y, back ? 's' : 'S');
+  };
+  if (pose.tool === 'bar') {
+    // the tool between the hands
+    const n = Math.max(1, Math.abs(pose.right.x - pose.left.x));
+    for (let i = -1; i <= n + 1; i++) px(pose.left.x + ((pose.right.x - pose.left.x) * i) / n, pose.left.y + ((pose.right.y - pose.left.y) * i) / n - 1, 'M');
+  }
+  arm(3, pose.left, true);
+  arm(12, pose.right, false);
+  // head: face with two eyes under the hat brim
+  hline(6, 9, 7 + b, 'S');
+  hline(5, 10, 8 + b, 'S');
+  hline(6, 9, 9 + b, 's');
+  px(6, 7 + b, 'E');
+  px(9, 7 + b, 'E');
+  px(5, 7 + b, 's');
+  px(10, 7 + b, 's');
+  hline(6, 9, 3 + b, 'H');
+  hline(5, 10, 4 + b, 'H');
+  hline(5, 10, 5 + b, 'H');
+  hline(3, 12, 6 + b, 'h');
+  px(5, 5 + b, 'h');
+  px(10, 5 + b, 'h');
+  return { base, coat, full };
+}
+
 export interface PlayerSheet {
   frames: PlayerFrameImages[];
   tags: { name: string; from: number; to: number }[];
@@ -256,5 +344,54 @@ export function drawPlayerSheet(): PlayerSheet {
     { bob: 1, front: L(1), back: L(-1), arm: { kind: 'up' }, backArm: { kind: 'up' } },
   ], 500);
   add('carry_run', runLegs.map(([f, bk, bob]) => ({ bob, front: f, back: bk, arm: { kind: 'up' }, backArm: { kind: 'up' } })), 110);
+
+  // facing the camera at a station (2.5D view)
+  const front = (name: string, poses: FrontPose[], ms: number) => {
+    const from = frames.length;
+    for (const p of poses) {
+      frames.push(makeFront(p));
+      durations.push(ms);
+    }
+    tags.push({ name, from, to: frames.length - 1 });
+  };
+  const H = (x: number, y: number) => ({ x, y });
+  // the wheel: hands on the spokes, turning hand over hand
+  front('front_wheel', [
+    { bob: 0, left: H(2, 9), right: H(13, 12) },
+    { bob: 0, left: H(3, 11), right: H(13, 10) },
+    { bob: 0, left: H(2, 12), right: H(12, 9) },
+    { bob: 0, left: H(3, 10), right: H(13, 11) },
+  ], 180);
+  // the pump: both hands on the handle, up and down
+  front('front_pump', [
+    { bob: 0, left: H(6, 8), right: H(10, 8) },
+    { bob: 1, left: H(6, 11), right: H(10, 11) },
+    { bob: 1, left: H(6, 14), right: H(10, 14) },
+    { bob: 1, left: H(6, 11), right: H(10, 11) },
+  ], 120);
+  // a crank (searchlight, tapping a barrel): one hand goes round
+  front('front_crank', [
+    { bob: 0, left: H(4, 15), right: H(13, 11) },
+    { bob: 0, left: H(4, 15), right: H(14, 13) },
+    { bob: 0, left: H(4, 15), right: H(13, 15) },
+    { bob: 0, left: H(4, 15), right: H(12, 13) },
+  ], 140);
+  // pushing and pulling (rammer, saw): both hands forward, the body leans in
+  front('front_push', [
+    { bob: 0, left: H(5, 13), right: H(11, 13) },
+    { bob: 1, left: H(6, 14), right: H(12, 14) },
+    { bob: 1, left: H(5, 15), right: H(11, 15) },
+    { bob: 0, left: H(4, 14), right: H(10, 14) },
+  ], 130);
+  // leaning on the chart table, pointing
+  front('front_lean', [
+    { bob: 1, left: H(4, 15), right: H(12, 13) },
+    { bob: 1, left: H(4, 15), right: H(13, 12) },
+  ], 600);
+  // prying a crate open with the crowbar
+  front('front_pry', [
+    { bob: 1, left: H(5, 15), right: H(11, 14), tool: 'bar' },
+    { bob: 1, left: H(5, 14), right: H(11, 16), tool: 'bar' },
+  ], 160);
   return { frames, tags, durations };
 }

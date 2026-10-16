@@ -20,6 +20,10 @@ export interface LobbyActions {
   shipyard(): void;
   /** Name of the ship new voyages use. */
   shipName(): string;
+  /** Ships to choose from (standard + saved), the one in use marked. */
+  ships(): { name: string; code: string | null; current: boolean }[];
+  /** Use this ship for new voyages (null = the standard ship). */
+  chooseShip(code: string | null): void;
   /** Leaves the current online room. */
   leave(): Promise<void>;
 }
@@ -129,7 +133,7 @@ export class Lobby {
           </div>
           <div class="lobby-offline">Online-Modus: kein Server eingerichtet.</div>
           <button class="lobby-btn subtle lobby-solo">Allein üben</button>
-          <div class="lobby-ship"><span class="lobby-ship-name"></span><button class="lobby-btn subtle lobby-yard">Werft: Schiff bauen</button></div>
+          <div class="lobby-ship"><label class="lobby-ship-name">Schiff <select class="lobby-ship-select"></select></label><button class="lobby-btn subtle lobby-yard">Werft: Schiff bauen</button></div>
         </div>
         <div class="lobby-game">
           <div class="lobby-room"></div>
@@ -271,7 +275,15 @@ export class Lobby {
     document.body.classList.add('lobby-open');
     this.syncSound();
     (this.el.querySelector('.lobby-best') as HTMLDivElement).textContent = bestLine();
-    (this.el.querySelector('.lobby-ship-name') as HTMLSpanElement).textContent = `Schiff: ${this.actions.shipName()}`;
+    // the ship for new voyages: the standard one or one from the shipyard
+    const select = this.el.querySelector('.lobby-ship-select') as HTMLSelectElement;
+    const ships = this.actions.ships();
+    select.innerHTML = ships.map((s, i) => `<option value="${i}"${s.current ? ' selected' : ''}>${s.name.replace(/[<&]/g, '')}</option>`).join('');
+    select.disabled = mode === 'ingame';
+    select.onchange = () => {
+      const s = ships[Number(select.value)];
+      if (s && !s.current) this.actions.chooseShip(s.code);
+    };
   }
 
   hide(): void {

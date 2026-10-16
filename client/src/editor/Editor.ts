@@ -44,7 +44,7 @@ const PALETTE: { ch: string; name: string; color: string; label?: string; group:
 const MARKER_COLOR: Record<string, string> = { '@': '#f0e6cc', w: '#e0b860', p: '#5aa8e6', s: '#f0f0a0', c: '#9aa2ae', u: '#7d8590', k: '#c08a52', t: '#e8dcc0', r: '#e05a48', l: '#ffcc66', b: '#a07040', f: '#8a5a32', n: '#c08a52', o: '#d07040', e: '#80b0d0', C: '#6a7078', L: '#b08a40' };
 const COMPARTMENT_TINTS = ['#24323e', '#2e2a3c', '#203a30', '#3a2a24', '#2a3a3a'];
 
-type Tool = 'brush' | 'rect' | 'fill';
+type Tool = 'brush' | 'line' | 'rect' | 'fill';
 
 export interface EditorActions {
   /** Sail this ship alone right now. */
@@ -75,6 +75,11 @@ export class Editor {
   private hullDirty = true;
   private hullTimer = 0;
   private cell = 12;
+  /** Zoom on top of the size that fits the map into the stage (1 = fit). */
+  private zoom = 1;
+  /** Pointers on the canvas (two = pinch zoom and pan; the middle mouse button pans too). */
+  private readonly pointers = new Map<number, { x: number; y: number }>();
+  private pan: { x: number; y: number; dist: number } | null = null;
   private drag: { x0: number; y0: number; x1: number; y1: number; pointer: number } | null = null;
   private issues: DesignIssue[] = [];
   private readonly issueList: HTMLUListElement;
@@ -114,10 +119,13 @@ export class Editor {
         <div class="ed-side">
           <div class="ed-tools">
             <button class="ed-btn ed-tool" data-tool="brush">Pinsel</button>
+            <button class="ed-btn ed-tool" data-tool="line">Linie</button>
             <button class="ed-btn ed-tool" data-tool="rect">Rechteck</button>
             <button class="ed-btn ed-tool" data-tool="fill">Füllen</button>
             <button class="ed-btn ed-mirror">Spiegeln</button>
             <button class="ed-btn ed-hull">Rumpf-Ansicht</button>
+            <button class="ed-btn ed-zoom-in" title="Mausrad / zwei Finger">Zoom +</button>
+            <button class="ed-btn ed-zoom-out">Zoom −</button>
             <button class="ed-btn ed-undo">Rückgängig</button>
             <button class="ed-btn ed-redo">Wiederholen</button>
           </div>
@@ -216,6 +224,16 @@ export class Editor {
     this.wInput.addEventListener('change', resize);
     this.hInput.addEventListener('change', resize);
 
+    q<HTMLButtonElement>('.ed-zoom-in').addEventListener('click', () => this.setZoom(this.zoom * 1.4));
+    q<HTMLButtonElement>('.ed-zoom-out').addEventListener('click', () => this.setZoom(this.zoom / 1.4));
+    q<HTMLDivElement>('.ed-stage').addEventListener(
+      'wheel',
+      (e) => {
+        e.preventDefault();
+        this.setZoom(this.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e);
+      },
+      { passive: false },
+    );
     this.canvas.addEventListener('pointerdown', (e) => this.onDown(e));
     this.canvas.addEventListener('pointermove', (e) => this.onMove(e));
     window.addEventListener('pointerup', (e) => this.onUp(e));
@@ -371,6 +389,16 @@ export class Editor {
   private onDown(e: PointerEvent): void {
     e.preventDefault();
     this.canvas.setPointerCapture(e.pointerId);
+    this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    // a second finger (or the middle mouse button): stop painting, zoom and pan instead
+    if (this.pointers.size >= 2 || e.button === 1) {
+      if (this.drag) {
+        this.drag = null;
+        this.doUndo();
+      }
+      this.startPan();
+      return;
+    }
     const t = this.tileAt(e);
     this.pushUndo();
     if (this.tool === 'fill') {
@@ -386,6 +414,11 @@ export class Editor {
   }
 
   private onMove(e: PointerEvent): void {
+    if (this.pointers.has(e.pointerId)) this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this.pan) {
+      this.movePan();
+      return;
+    }
     if (!this.drag || e.pointerId !== this.drag.pointer) return;
     const t = this.tileAt(e);
     if (this.tool === 'brush') {
@@ -399,13 +432,63 @@ export class Editor {
   }
 
   private onUp(e: PointerEvent): void {
+    this.pointers.delete(e.pointerId);
+    if (this.pan) {
+      if (this.pointers.size === 0) this.pan = null;
+      else this.startPan();
+      return;
+    }
     if (!this.drag || e.pointerId !== this.drag.pointer) return;
+    const d = this.drag;
     if (this.tool === 'rect') {
-      const d = this.drag;
       for (let y = Math.min(d.y0, d.y1); y <= Math.max(d.y0, d.y1); y++) for (let x = Math.min(d.x0, d.x1); x <= Math.max(d.x0, d.x1); x++) this.set(x, y, this.brush);
+    } else if (this.tool === 'line') {
+      for (const t of lineTiles(d.x0, d.y0, d.x1, d.y1)) this.set(t.x, t.y, this.brush);
     }
     this.drag = null;
     this.changed();
+  }
+
+  private startPan(): void {
+    const pts = [...this.pointers.values()];
+    const mid = pts.reduce((m, p) => ({ x: m.x + p.x / pts.length, y: m.y + p.y / pts.length }), { x: 0, y: 0 });
+    const dist = pts.length >= 2 ? Math.hypot(pts[0]!.x - pts[1]!.x, pts[0]!.y - pts[1]!.y) : 0;
+    this.pan = { x: mid.x, y: mid.y, dist };
+  }
+
+  private movePan(): void {
+    const pan = this.pan!;
+    const stage = this.el.querySelector('.ed-stage') as HTMLDivElement;
+    const pts = [...this.pointers.values()];
+    if (pts.length === 0) return;
+    const mid = pts.reduce((m, p) => ({ x: m.x + p.x / pts.length, y: m.y + p.y / pts.length }), { x: 0, y: 0 });
+    stage.scrollLeft -= mid.x - pan.x;
+    stage.scrollTop -= mid.y - pan.y;
+    pan.x = mid.x;
+    pan.y = mid.y;
+    if (pts.length >= 2 && pan.dist > 0) {
+      const dist = Math.hypot(pts[0]!.x - pts[1]!.x, pts[0]!.y - pts[1]!.y);
+      if (Math.abs(dist / pan.dist - 1) > 0.08) {
+        this.setZoom(this.zoom * (dist / pan.dist), { clientX: mid.x, clientY: mid.y });
+        pan.dist = dist;
+      }
+    }
+  }
+
+  /** Zooms, keeping the point under the cursor / fingers in place. */
+  private setZoom(z: number, at?: { clientX: number; clientY: number }): void {
+    const stage = this.el.querySelector('.ed-stage') as HTMLDivElement;
+    const r = this.canvas.getBoundingClientRect();
+    const sr = stage.getBoundingClientRect();
+    const ax = at ? at.clientX : sr.left + sr.width / 2;
+    const ay = at ? at.clientY : sr.top + sr.height / 2;
+    const tx = (ax - r.left) / this.cell;
+    const ty = (ay - r.top) / this.cell;
+    this.zoom = Math.max(0.6, Math.min(5, z));
+    this.layout();
+    const r2 = this.canvas.getBoundingClientRect();
+    stage.scrollLeft += r2.left + tx * this.cell - ax;
+    stage.scrollTop += r2.top + ty * this.cell - ay;
   }
 
   private setBrush(ch: string): void {
@@ -454,7 +537,8 @@ export class Editor {
     const w = this.map[0]?.length ?? 1;
     const h = this.map.length || 1;
     const r = stage.getBoundingClientRect();
-    this.cell = Math.max(5, Math.min(22, Math.floor(Math.min((r.width - 8) / w, (r.height - 8) / h))));
+    const fit = Math.max(5, Math.min(22, Math.floor(Math.min((r.width - 8) / w, (r.height - 8) / h))));
+    this.cell = Math.max(4, Math.min(48, Math.round(fit * this.zoom)));
     this.canvas.width = w * this.cell;
     this.canvas.height = h * this.cell;
     this.draw();
@@ -554,6 +638,11 @@ export class Editor {
     c.lineWidth = 2;
     for (const i of this.issues) for (const t of i.tiles ?? []) c.strokeRect(t.tx * cs + 1, t.ty * cs + 1, cs - 2, cs - 2);
     c.lineWidth = 1;
+    // line being dragged
+    if (this.drag && this.tool === 'line') {
+      c.fillStyle = 'rgba(240, 204, 114, 0.45)';
+      for (const t of lineTiles(this.drag.x0, this.drag.y0, this.drag.x1, this.drag.y1)) c.fillRect(t.x * cs, t.y * cs, cs, cs);
+    }
     // rectangle being dragged
     if (this.drag && this.tool === 'rect') {
       const d = this.drag;
@@ -562,3 +651,12 @@ export class Editor {
     }
   }
 }
+
+/** Tiles of a straight line between two tiles (no gaps). */
+function lineTiles(x0: number, y0: number, x1: number, y1: number): { x: number; y: number }[] {
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+  const out: { x: number; y: number }[] = [];
+  for (let i = 0; i <= n; i++) out.push({ x: Math.round(x0 + ((x1 - x0) * i) / n), y: Math.round(y0 + ((y1 - y0) * i) / n) });
+  return out;
+}
+

@@ -150,4 +150,6 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Zweite Kanone und Laderaum-Laterne als Upgrades (Marker `C`/`L`, erst nach dem Kauf da), Proviantkiste im Hafen
 - [x] Ergebnis teilen am Ende einer Kampagne / Tagesfahrt
 - [x] Offene Kiste als Behälter (bis 4 Planken/Kugeln/Eimer), Öl zapfen als Aktion mit eigener 2.5D-Szene
+- [x] Stationsposen: die Figur schaut in der 2.5D-Ansicht zur Kamera (Rad, Pumpe nach dem Hebel, Kurbel, Säge/Stopfer, Tisch, Brecheisen)
+- [x] Werft: Linien-Werkzeug, Zoom (Mausrad, Knöpfe, zwei Finger) und Verschieben; Schiffswahl direkt in der Lobby
 

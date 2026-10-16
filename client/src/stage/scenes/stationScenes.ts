@@ -110,8 +110,9 @@ export function buildPump(ctx: SceneContext, st: StationState): StationScene {
   const pipe = card(ctx, 'st_pipe', { x: x + 0.95, y: f, z: -0.3 });
   const water = card(ctx, 'st_water', { x: x + 0.95, y: f - 0.09, z: -0.29 });
   water.bias = 0.01;
-  const gauge = card(ctx, 'st_gauge', { x: x - 0.75, y: f - 1.05, z: -0.2 });
-  const needle = card(ctx, 'st_gauge_needle', { x: x - 0.75, y: f - 1.05, z: -0.19 });
+  // the gauge hangs on the wall behind the pump (not in front of the face of whoever pumps)
+  const gauge = card(ctx, 'st_gauge', { x: x - 0.55, y: f - 1.4, z: -1.05 });
+  const needle = card(ctx, 'st_gauge_needle', { x: x - 0.55, y: f - 1.4, z: -1.04 });
   needle.bias = 0.01;
   let pressure = 0;
   let last = 0;

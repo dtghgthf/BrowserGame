@@ -12,7 +12,7 @@ import { Lobby } from './ui/Lobby';
 import { PixelFont } from './ui/PixelFont';
 import { TuningPanel } from './ui/TuningPanel';
 import { shipLayers } from './render/procedural/shipTextures';
-import { resolveShip, setCurrentShip } from './ships';
+import { playable, resolveShip, savedShips, setCurrentShip } from './ships';
 import { Editor } from './editor/Editor';
 import { decodeDesign, DEFAULT_DESIGN } from '@lw/shared';
 
@@ -120,6 +120,22 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
         game.startSolo(role, mode);
       },
       shipName: () => game.designName || 'Leuchtturmwärter',
+      ships: () => {
+        const list = savedShips().filter((s) => playable(s.code));
+        const cur = game.designCode;
+        const out = [{ name: 'Leuchtturmwärter (Standard)', code: null as string | null, current: !cur }];
+        for (const s of list) out.push({ name: s.name, code: s.code, current: s.code === cur });
+        // a ship from a link that is not saved here still shows up
+        if (cur && !list.some((s) => s.code === cur)) out.push({ name: game.designName || 'Geteiltes Schiff', code: cur, current: true });
+        return out;
+      },
+      chooseShip: (code) => {
+        // the hull art is drawn at start: a different ship means a reload
+        setCurrentShip(code);
+        const url = new URL(location.href);
+        url.search = '';
+        location.assign(url.toString());
+      },
       shipyard: () => openShipyard(),
       leave: async () => {
         const link = game.net?.link;

@@ -13,6 +13,7 @@ import {
   type PlayerState,
   type ShipLayout,
   type Simulation,
+  type StationKind,
 } from '@lw/shared';
 import { animFrame, frameOf, type ImageLayer, type Sheet, type SheetFrame } from '../render/assets';
 import type { GameRenderer } from '../render/GameRenderer';
@@ -54,10 +55,24 @@ const ROUTE_H = 104;
 
 type Focus = { kind: 'station'; id: number } | { kind: 'crate'; id: number };
 
+/** Front-facing pose per station (sprite tags of the player sheet). */
+const STATION_POSE: Partial<Record<StationKind, string>> = {
+  wheel: 'front_wheel',
+  pump: 'front_pump',
+  searchlight: 'front_crank',
+  cannon: 'front_push',
+  workshop: 'front_push',
+  table: 'front_lean',
+  ring: 'front_pump',
+};
+
 interface PlayerCards {
   body: Card;
   coat: Card;
   z: number;
+  /** Work clock of the station pose: runs while the station moves. */
+  work: number;
+  last: number;
 }
 
 export interface DioramaControl {
@@ -426,6 +441,26 @@ export class StationView {
     }
   }
 
+  /** The front-facing pose of someone working the station / crate in view (null = the normal side view). */
+  private poseFor(state: GameState, p: PlayerState): string | null {
+    if (this.focus?.kind === 'crate') {
+      if (p.action?.kind === 'open') return 'front_pry';
+      if (p.action?.kind === 'tap') return 'front_crank';
+      return null;
+    }
+    const st = this.focus ? state.stations[this.focus.id] : undefined;
+    if (!st || p.anim !== 'station') return null;
+    return STATION_POSE[st.kind] ?? null;
+  }
+
+  /** The pump pose follows the handle: hands high, middle, low. */
+  private pumpFrame(v: number): SheetFrame {
+    const t = this.assets.player.tags.get('front_pump');
+    if (!t) return animFrame(this.assets.player, 'station', 0);
+    const i = v > 0.35 ? 0 : v < -0.35 ? 2 : 1;
+    return this.assets.player.frames[Math.min(t.to, t.from + i)]!;
+  }
+
   /** Players and loose objects of the room as cards on their depth lanes. */
   private updateActors(state: GameState, view: Snapshot, dt: number, yaw: number): void {
     const rg = this.region;
@@ -447,7 +482,7 @@ export class StationView {
         coat.tint = PLAYER_COLORS[p.color % PLAYER_COLORS.length]!;
         coat.bias = 0.002;
         this.stage.shadow(body, f0);
-        pc = { body, coat, z: 0 };
+        pc = { body, coat, z: 0, work: 0, last: 0 };
         this.players.set(p.id, pc);
       }
       // the operator stands at the station, everybody else walks in front of or behind it
@@ -456,14 +491,24 @@ export class StationView {
       const helping = this.focus?.kind === 'station' && state.stations[this.focus.id]?.helper === p.id;
       const lane = helping ? sc.operatorZ - 0.55 : operating ? sc.operatorZ : p.facing < 0 ? 0.85 : -0.85;
       pc.z += (lane - pc.z) * Math.min(1, dt * 4);
-      const frame = animFrame(this.assets.player, p.anim === 'station' ? 'station' : p.anim, p.animTime);
+      const pose = operating || helping ? this.poseFor(state, p) : null;
+      let frame = animFrame(this.assets.player, p.anim === 'station' ? 'station' : p.anim, p.animTime);
+      if (pose) {
+        // the pose animates while the station is worked (the wheel turns, the saw moves)
+        const st = this.focus?.kind === 'station' ? state.stations[this.focus.id] : undefined;
+        const v = st ? (view.stations[st.id]?.value ?? st.value) : 0;
+        const moving = Math.abs(v - pc.last) > 0.002 || pose === 'front_lean' || this.focus?.kind === 'crate';
+        pc.last = v;
+        if (moving) pc.work += dt;
+        frame = pose === 'front_pump' ? this.pumpFrame(v) : animFrame(this.assets.player, pose, pc.work);
+      }
       pc.body.setFrame(frame);
       pc.coat.setTexture(frame.layers.coat ?? frame.texture, frame.width, frame.height, frame.pivot.x, frame.pivot.y);
       for (const c of [pc.body, pc.coat]) {
         c.pos = { x: v.x, y: feet + 1 / 16, z: pc.z };
         c.u = face.u;
         c.v = face.v;
-        c.scaleX = p.facing;
+        c.scaleX = pose ? 1 : p.facing;
         c.alpha = p.away ? 0.45 : 1;
       }
     }
