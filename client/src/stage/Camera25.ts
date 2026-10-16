@@ -72,6 +72,13 @@ export class Camera25 {
     };
   }
 
+  /** The camera position in scene coordinates (before the roll), after update(). */
+  eyeScene(): Vec3 {
+    const dx = this.eye.x - this.rollPivot.x;
+    const dy = this.eye.y - this.rollPivot.y;
+    return { x: this.rollPivot.x + dx * this.cr + dy * this.sr, y: this.rollPivot.y - dx * this.sr + dy * this.cr, z: this.eye.z };
+  }
+
   /** Applies the roll (rotation about the z axis through the pivot) to a scene point. */
   rolled(p: Vec3): Vec3 {
     const dx = p.x - this.rollPivot.x;

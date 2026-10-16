@@ -1,9 +1,17 @@
-import { PerspectiveMesh, type Container, type Texture } from 'pixi.js';
+import { PerspectiveMesh, Rectangle, Texture, type Container } from 'pixi.js';
 import type { SheetFrame } from '../render/assets';
 import type { Camera25, Projected, Vec3 } from './Camera25';
 
 /** Sub-division of the perspective meshes (more = more exact perspective of the texture). */
 const VERTS = 5;
+/** Vertices of the cells of a split card (a cell is small: little perspective inside). */
+const CELL_VERTS = 3;
+/**
+ * Draw order band of the cards in the station's room: they sort by depth among
+ * themselves, after the ship's floors and walls (negative orders) and before
+ * the cut front of the hull.
+ */
+export const ROOM_BAND = 5e5;
 
 export interface CardLayers {
   albedo: Container;
@@ -14,6 +22,25 @@ export interface CardLayers {
 
 export type CardKind = 'lit' | 'unlit';
 
+export interface CardSplit {
+  /** Cell edge in texture px (`cellY` for the height, default the same). */
+  cell: number;
+  cellY?: number;
+  /** Keeps only cells that hold something (texture px rectangle); default: all. */
+  keep?: (x0: number, y0: number, x1: number, y1: number) => boolean;
+}
+
+/** One drawn piece of a card: the whole frame, or one cell of a split card. */
+interface Part {
+  albedo: PerspectiveMesh;
+  normal: PerspectiveMesh | null;
+  /** Rectangle of the part in frame px. */
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
 /**
  * A flat sprite card standing (or lying) somewhere in the 2.5D scene. The
  * frame's pivot is at `pos`; `u` is the card's right axis, `v` its down axis
@@ -21,6 +48,10 @@ export type CardKind = 'lit' | 'unlit';
  * a regular sprite (wheel spokes, levers). The card is drawn as a perspective
  * mesh into the albedo and normal passes (so lights, normal maps, fog and
  * dither apply) or into the unlit pass.
+ *
+ * Big cards (the hull, long floors) are split into cells: a cell that reaches
+ * behind the camera is dropped on its own instead of the whole card, and every
+ * cell is depth-sorted by itself.
  */
 export class Card {
   pos: Vec3 = { x: 0, y: 0, z: 0 };
@@ -36,44 +67,71 @@ export class Card {
   depth = 0;
   /** Sort bias: positive = drawn in front of cards at the same depth. */
   bias = 0;
-  /** Projected screen corners of the last update (tl, tr, br, bl). */
-  readonly screen: { x: number; y: number }[] = [
-    { x: 0, y: 0 },
-    { x: 0, y: 0 },
-    { x: 0, y: 0 },
-    { x: 0, y: 0 },
-  ];
+  /** Fixed draw order (zIndex) instead of the depth sort; null = by depth. */
+  order: number | null = null;
   private frame: SheetFrame;
-  private readonly albedo: PerspectiveMesh;
-  private readonly normal: PerspectiveMesh | null;
+  private readonly parts: Part[] = [];
+  /** Cell textures this card made (destroyed with it; the sources are shared). */
+  private readonly owned: Texture[] = [];
 
   constructor(
     frame: SheetFrame,
-    layers: CardLayers,
+    private readonly layers: CardLayers,
     /** Texture pixels per meter (16 = the normal 2D art, 32 = detailed station art). */
     private readonly ppm = 16,
-    kind: CardKind = 'lit',
+    private readonly kind: CardKind = 'lit',
+    split: CardSplit | null = null,
   ) {
     this.frame = frame;
-    this.albedo = new PerspectiveMesh({ texture: frame.texture, verticesX: VERTS, verticesY: VERTS });
-    (kind === 'lit' ? layers.albedo : layers.unlit).addChild(this.albedo);
-    if (kind === 'lit' && layers.normal && frame.normal) {
-      this.normal = new PerspectiveMesh({ texture: frame.normal, verticesX: VERTS, verticesY: VERTS });
-      layers.normal.addChild(this.normal);
-    } else this.normal = null;
+    const cy = split?.cellY ?? split?.cell ?? 0;
+    if (!split || (frame.width <= split.cell && frame.height <= cy)) {
+      this.parts.push(this.makePart(frame.texture, frame.normal, 0, 0, frame.width, frame.height, VERTS));
+      return;
+    }
+    const base = frame.texture.frame;
+    const nbase = frame.normal?.frame ?? null;
+    for (let y = 0; y < frame.height; y += cy) {
+      for (let x = 0; x < frame.width; x += split.cell) {
+        const x1 = Math.min(frame.width, x + split.cell);
+        const y1 = Math.min(frame.height, y + cy);
+        if (split.keep && !split.keep(x, y, x1, y1)) continue;
+        const tex = new Texture({ source: frame.texture.source, frame: new Rectangle(base.x + x, base.y + y, x1 - x, y1 - y) });
+        const ntex = frame.normal && nbase ? new Texture({ source: frame.normal.source, frame: new Rectangle(nbase.x + x, nbase.y + y, x1 - x, y1 - y) }) : null;
+        this.owned.push(tex);
+        if (ntex) this.owned.push(ntex);
+        this.parts.push(this.makePart(tex, ntex, x, y, x1, y1, CELL_VERTS));
+      }
+    }
+  }
+
+  private makePart(tex: Texture, normal: Texture | null, x0: number, y0: number, x1: number, y1: number, verts: number): Part {
+    const albedo = new PerspectiveMesh({ texture: tex, verticesX: verts, verticesY: verts });
+    (this.kind === 'lit' ? this.layers.albedo : this.layers.unlit).addChild(albedo);
+    let n: PerspectiveMesh | null = null;
+    if (this.kind === 'lit' && this.layers.normal && normal) {
+      n = new PerspectiveMesh({ texture: normal, verticesX: verts, verticesY: verts });
+      this.layers.normal.addChild(n);
+    }
+    return { albedo, normal: n, x0, y0, x1, y1 };
   }
 
   setFrame(frame: SheetFrame): void {
     if (frame === this.frame) return;
     this.frame = frame;
-    this.albedo.texture = frame.texture;
-    if (this.normal && frame.normal) this.normal.texture = frame.normal;
+    const p = this.parts[0]!;
+    p.x1 = frame.width;
+    p.y1 = frame.height;
+    p.albedo.texture = frame.texture;
+    if (p.normal && frame.normal) p.normal.texture = frame.normal;
   }
 
   /** Replaces the texture (e.g. a render texture drawn every frame). */
   setTexture(tex: Texture, width: number, height: number, pivotX = 0, pivotY = 0): void {
     this.frame = { ...this.frame, texture: tex, width, height, pivot: { x: pivotX, y: pivotY } };
-    this.albedo.texture = tex;
+    const p = this.parts[0]!;
+    p.x1 = width;
+    p.y1 = height;
+    p.albedo.texture = tex;
   }
 
   get widthM(): number {
@@ -109,38 +167,46 @@ export class Card {
 
   update(cam: Camera25): void {
     const show = this.visible && this.alpha > 0.01;
-    if (!show) {
-      this.albedo.visible = false;
-      if (this.normal) this.normal.visible = false;
-      return;
+    let sum = 0;
+    let n = 0;
+    for (const part of this.parts) {
+      const meshes = part.normal ? [part.albedo, part.normal] : [part.albedo];
+      if (!show) {
+        for (const m of meshes) m.visible = false;
+        continue;
+      }
+      const p: (Projected | null)[] = [
+        cam.project(this.pointAt(part.x0, part.y0)),
+        cam.project(this.pointAt(part.x1, part.y0)),
+        cam.project(this.pointAt(part.x1, part.y1)),
+        cam.project(this.pointAt(part.x0, part.y1)),
+      ];
+      if (p.some((q) => q === null)) {
+        for (const m of meshes) m.visible = false;
+        continue;
+      }
+      const q = p as Projected[];
+      const depth = (q[0]!.depth + q[1]!.depth + q[2]!.depth + q[3]!.depth) / 4 - this.bias;
+      sum += depth;
+      n++;
+      for (const m of meshes) {
+        m.visible = true;
+        m.setCorners(q[0]!.x, q[0]!.y, q[1]!.x, q[1]!.y, q[2]!.x, q[2]!.y, q[3]!.x, q[3]!.y);
+        m.zIndex = this.order ?? ROOM_BAND - depth;
+      }
+      part.albedo.alpha = this.alpha;
+      part.albedo.tint = this.tint;
+      if (part.normal) part.normal.alpha = this.alpha;
     }
-    const cs = this.corners();
-    const p: (Projected | null)[] = cs.map((c) => cam.project(c));
-    if (p.some((q) => q === null)) {
-      this.albedo.visible = false;
-      if (this.normal) this.normal.visible = false;
-      return;
-    }
-    const q = p as Projected[];
-    this.depth = (q[0]!.depth + q[1]!.depth + q[2]!.depth + q[3]!.depth) / 4 - this.bias;
-    for (let i = 0; i < 4; i++) {
-      this.screen[i]!.x = q[i]!.x;
-      this.screen[i]!.y = q[i]!.y;
-    }
-    for (const m of [this.albedo, this.normal]) {
-      if (!m) continue;
-      m.visible = true;
-      m.setCorners(q[0]!.x, q[0]!.y, q[1]!.x, q[1]!.y, q[2]!.x, q[2]!.y, q[3]!.x, q[3]!.y);
-      m.zIndex = -this.depth;
-    }
-    this.albedo.alpha = this.alpha;
-    this.albedo.tint = this.tint;
-    if (this.normal) this.normal.alpha = this.alpha;
+    if (n > 0) this.depth = sum / n;
   }
 
   destroy(): void {
-    this.albedo.destroy();
-    this.normal?.destroy();
+    for (const p of this.parts) {
+      p.albedo.destroy();
+      p.normal?.destroy();
+    }
+    for (const t of this.owned) t.destroy(false);
   }
 }
 

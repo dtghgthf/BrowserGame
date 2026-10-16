@@ -23,8 +23,10 @@ import type { Snapshot } from '../game/snapshot';
 import type { PixelFont } from '../ui/PixelFont';
 import { RouteMap } from '../ui/RouteMap';
 import { SeaChart } from '../ui/SeaChart';
+import type { DioramaInput, DragGeometry } from '../ui/StationWidget';
 import { easeInOut, type Vec3 } from './Camera25';
 import { facing, type Card } from './Card';
+import { BACK_Z, ShipSet } from './ShipSet';
 import { Stage } from './Stage';
 import {
   buildCannon,
@@ -32,6 +34,7 @@ import {
   buildCrate,
   buildGeneric,
   buildPump,
+  buildRing,
   buildSearchlight,
   buildTable,
   buildWheel,
@@ -44,9 +47,6 @@ import {
 const PPM = PIXELS_PER_METER;
 /** Seconds of the camera move into / out of the scene. */
 const MOVE = 0.65;
-/** Depth of the back wall and of the open (cut) front of the set. */
-const BACK_Z = -1.6;
-const FRONT_Z = 1.3;
 /** Half width of the set around the station (m). */
 const HALF = 7;
 const CHART_SIZE = 64;
@@ -75,12 +75,6 @@ interface PlayerCards {
   last: number;
 }
 
-export interface DioramaControl {
-  /** Screen px of the drag centre and its radius / scale (px per meter at the control). */
-  center: { x: number; y: number };
-  radius: number;
-  scale: number;
-}
 
 /**
  * The 2.5D station view: when the own player takes a station (or opens a
@@ -100,8 +94,10 @@ export class StationView {
   private time = 0;
   private readonly players = new Map<string, PlayerCards>();
   private readonly objects = new Map<number, Card>();
-  private lantern: Card | null = null;
-  private lanternFlame: Card | null = null;
+  /** The whole ship around the station. */
+  private set: ShipSet | null = null;
+  /** Lantern of the station's room (lights the scene), index into the set's lanterns. */
+  private lantern = -1;
   private readonly chartRT = RenderTexture.create({ width: CHART_SIZE, height: CHART_SIZE, resolution: 1, scaleMode: 'nearest' });
   private readonly routeRT = RenderTexture.create({ width: ROUTE_W, height: ROUTE_H, resolution: 1, scaleMode: 'nearest' });
   /** Off = always the 2D view (menu option / low quality). */
@@ -127,14 +123,30 @@ export class StationView {
   }
 
   /** Where dragging controls the station in the scene (null = use the 2D widget). */
-  control(): DioramaControl | null {
+  control(): DioramaInput | null {
     const sc = this.scene;
     if (!sc || !sc.control || this.t < MOVE * 0.6) return null;
     const c = this.stage.toScreen(sc.control);
     const e = this.stage.toScreen({ x: sc.control.x + sc.controlRadius, y: sc.control.y, z: sc.control.z });
     if (!c || !e) return null;
     const radius = Math.max(8, Math.hypot(e.x - c.x, e.y - c.y));
-    return { center: c, radius, scale: radius / sc.controlRadius };
+    let geometry: DragGeometry | null = null;
+    const d = sc.drag;
+    if (d?.mode === 'linear') {
+      // the prop's movement per unit of value, on screen
+      const b = this.stage.toScreen({ x: sc.control.x + d.axis.x, y: sc.control.y + d.axis.y, z: sc.control.z + d.axis.z });
+      if (b) geometry = { mode: 'linear', axis: { x: b.x - c.x, y: b.y - c.y } };
+    } else if (d) {
+      const p = d.pivot ? this.stage.toScreen(d.pivot) : c;
+      if (p) geometry = { mode: d.mode, pivot: { x: p.x, y: p.y }, perUnit: d.perUnit };
+    }
+    const aim = sc.aim ? this.stage.toScreen(sc.aim) : null;
+    return { center: c, radius, scale: radius / sc.controlRadius, geometry, aim: aim ? { x: aim.x, y: aim.y } : null };
+  }
+
+  /** A station's 2.5D scene is coming up or shown: the 2D controls stay hidden meanwhile. */
+  get takingOver(): boolean {
+    return this.scene !== null && this.focus?.kind === 'station';
   }
 
   /** Screen px of a ship-local point in the scene (for labels), null if not shown. */
@@ -213,6 +225,7 @@ export class StationView {
 
     this.redrawTextures(state);
     sc.update(state, view, dt, this.time);
+    this.set?.update(state, view, cam, this.time, dt);
     this.updateActors(state, view, dt, cam.yaw);
     this.updateLights(state, sc);
     this.stage.bounds.x = 0;
@@ -238,8 +251,8 @@ export class StationView {
     this.stage.clear();
     this.players.clear();
     this.objects.clear();
-    this.lantern = null;
-    this.lanternFlame = null;
+    this.set = null;
+    this.lantern = -1;
     this.scene = null;
     this.focus = null;
   }
@@ -263,7 +276,7 @@ export class StationView {
     this.region = this.measure(L, x, feetY);
     this.focus = focus;
     this.owner = localId ?? '';
-    this.buildRoom(L, state.campaign.upgrades.includes('lantern'));
+    this.buildRoom(L, state, focus.kind === 'station' ? focus.id : null);
     const ctx: SceneContext = {
       stage: this.stage,
       props: this.assets.props,
@@ -293,8 +306,11 @@ export class StationView {
         case 'table':
           this.scene = buildTable(ctx, st);
           break;
+        case 'ring':
+          this.scene = buildRing(ctx, st);
+          break;
         default:
-          this.scene = buildGeneric(ctx, st, st.kind === 'ring' ? 'ring_post' : 'helm');
+          this.scene = buildGeneric(ctx, st, 'helm');
       }
     } else if (crate?.kind === 'barrel') {
       const id = localId;
@@ -352,78 +368,26 @@ export class StationView {
     };
   }
 
-  /** A frame cut out of a big image layer (ship hull / back wall), in tiles. */
-  private crop(layer: ImageLayer, tx0: number, ty0: number, tx1: number, ty1: number, normal = true): SheetFrame {
-    const T = 8;
-    const rect = new Rectangle(tx0 * T, ty0 * T, (tx1 - tx0) * T, (ty1 - ty0) * T);
-    const tex = new Texture({ source: layer.texture.source, frame: rect });
-    const n = normal && layer.normal ? new Texture({ source: layer.normal.source, frame: rect.clone() }) : null;
-    return { name: 'crop', texture: tex, normal: n, layers: {}, width: rect.width, height: rect.height, pivot: { x: 0, y: 0 }, duration: 100 };
-  }
-
   private rtFrame(rt: RenderTexture, w: number, h: number): SheetFrame {
     return { name: 'rt', texture: rt, normal: null, layers: {}, width: w, height: h, pivot: { x: w / 2, y: h / 2 }, duration: 100 };
   }
 
-  /** The room: back wall, floor, ceiling, the cut front edge and the lantern. */
-  private buildRoom(L: ShipLayout, extraLantern: boolean): void {
+  /** The whole ship around the station; the lantern of the station's room lights the scene. */
+  private buildRoom(L: ShipLayout, state: GameState, focusStation: number | null): void {
     const rg = this.region;
-    const tx0 = Math.round(rg.x0 / L.tileSize + L.origin.x);
-    const tx1 = Math.round(rg.x1 / L.tileSize + L.origin.x);
-    const floorTy = Math.round(rg.floor / L.tileSize + L.origin.y);
-    const topTy = rg.ceil !== null ? Math.round(rg.ceil / L.tileSize + L.origin.y) - 1 : Math.max(0, floorTy - 14);
-    const at = (tx: number, ty: number): Vec3 => ({ ...tileToLocal(L, tx, ty), z: 0 });
-
-    if (rg.interior) {
-      // back wall (the 2D background art of this room)
-      const back = this.stage.add(this.crop(this.assets.back, tx0, topTy, tx1, floorTy + 1), 'back', 16);
-      back.pos = { ...at(tx0, topTy), z: BACK_Z };
-      // ceiling: dark planks over the room
-      if (rg.ceil !== null) this.tile('st_ceiling', rg.x0, rg.x1, rg.ceil, 0.7);
-    }
-    // floor planks (the open deck is lighter wood)
-    this.tile(rg.interior ? 'st_floor' : 'st_deck', rg.x0, rg.x1, rg.floor, 1);
-    if (!rg.interior) {
-      // the far railing on the other side of the deck
-      const far = this.stage.add(this.crop(this.assets.hull, tx0, topTy, tx1, floorTy + 2), 'back', 16);
-      far.pos = { ...at(tx0, topTy), z: BACK_Z };
-      far.tint = 0x8a96a8;
-    }
-    // inside: the cut front edge - the hull art of this room as the open front of a doll's house
-    if (rg.interior) {
-      const front = this.stage.add(this.crop(this.assets.hull, tx0, topTy, tx1, floorTy + 2), 'cards', 16);
-      front.pos = { ...at(tx0, topTy), z: FRONT_Z };
-      front.bias = -10;
-    }
-    // the nearest lantern of the room
-    let best: { tx: number; ty: number } | null = null;
-    for (const m of L.markers) {
-      if ((m.type !== 'lantern' && !(m.type === 'lantern2' && extraLantern)) || m.tx < tx0 || m.tx > tx1) continue;
-      if (rg.ceil !== null && Math.abs(tileToLocal(L, 0, m.ty).y - rg.ceil) > 1.2) continue;
-      if (!best || Math.abs(m.tx - (tx0 + tx1) / 2) < Math.abs(best.tx - (tx0 + tx1) / 2)) best = m;
-    }
-    if (best && rg.interior) {
-      const p = tileToLocal(L, best.tx + 0.5, best.ty);
-      this.lantern = this.stage.add(this.frame('lantern'), 'cards', 12);
-      this.lantern.pos = { x: p.x, y: p.y, z: 0.4 };
-      this.lanternFlame = this.stage.add(this.frame('lantern_flame'), 'cards', 12, 'unlit');
-      this.lanternFlame.pos = { x: p.x, y: p.y, z: 0.41 };
-    }
-  }
-
-  /** Floor / ceiling planks from x0 to x1 at height y, from the back wall to the open front. */
-  private tile(name: string, x0: number, x1: number, y: number, shade: number): void {
-    const f = this.frame(name);
-    const w = f.width / 32;
-    const depth = FRONT_Z - BACK_Z;
-    for (let x = x0; x < x1; x += w) {
-      const c = this.stage.add(f, 'back', 32);
-      c.pos = { x, y, z: BACK_Z };
-      c.u = { x: 1, y: 0, z: 0 };
-      c.v = { x: 0, y: 0, z: 1 };
-      c.scaleY = depth / (f.height / 32);
-      c.tint = shade < 1 ? 0x9a9a9a : 0xffffff;
-    }
+    const set = new ShipSet(this.stage, L, this.assets, state, focusStation, this.sim.waterGeometry);
+    this.set = set;
+    set.room = { x0: rg.x0, x1: rg.x1, top: rg.ceil ?? rg.floor - 4, bottom: rg.floor };
+    this.stage.maskPainter = (g) => set.paintMask(g, this.stage.camera);
+    if (!rg.interior) return;
+    const extra = state.campaign.upgrades.includes('lantern');
+    let best = -1;
+    set.lanterns.forEach((l, i) => {
+      if ((l.optional && !extra) || l.x < rg.x0 || l.x > rg.x1) return;
+      if (rg.ceil !== null && Math.abs(l.y - rg.ceil) > 1.2) return;
+      if (best < 0 || Math.abs(l.x - rg.cx) < Math.abs(set.lanterns[best]!.x - rg.cx)) best = i;
+    });
+    this.lantern = best;
   }
 
   // ---------------------------------------------------------------- per frame
@@ -471,7 +435,6 @@ export class StationView {
       if (p.overboard > 0) continue;
       const v = view.players.get(p.id) ?? p;
       const feet = v.y + PLAYER_HALF_HEIGHT;
-      if (v.x < rg.x0 - 0.5 || v.x > rg.x1 + 0.5 || Math.abs(feet - rg.floor) > 1.6) continue;
       seen.add(p.id);
       let pc = this.players.get(p.id);
       if (!pc) {
@@ -504,6 +467,8 @@ export class StationView {
       }
       pc.body.setFrame(frame);
       pc.coat.setTexture(frame.layers.coat ?? frame.texture, frame.width, frame.height, frame.pivot.x, frame.pivot.y);
+      // somebody in another room hides behind the floors and walls between
+      const order = this.set?.orderFor(v.x, feet, 0.8, 1.4) ?? null;
       for (const c of [pc.body, pc.coat]) {
         c.pos = { x: v.x, y: feet + 1 / 16, z: pc.z };
         c.u = face.u;
@@ -511,6 +476,8 @@ export class StationView {
         c.scaleX = pose ? 1 : p.facing;
         c.alpha = p.away ? 0.45 : 1;
       }
+      pc.body.order = order;
+      pc.coat.order = order === null ? null : order + 0.01;
     }
     for (const [id, pc] of this.players) {
       if (seen.has(id)) continue;
@@ -529,7 +496,6 @@ export class StationView {
       // close-ups of a crate / barrel keep the space right next to it clear
       if (this.focus?.kind === 'crate' && !o.carriedBy && Math.abs(o.x - this.region.cx) < 1.3) continue;
       const v = view.objects.get(o.id) ?? o;
-      if (v.x < rg.x0 || v.x > rg.x1 || Math.abs(v.y - rg.floor) > 2.2) continue;
       seenO.add(o.id);
       let c = this.objects.get(o.id);
       const name = objectFrame(o);
@@ -545,6 +511,8 @@ export class StationView {
       c.u = face.u;
       c.v = face.v;
       c.rotation = o.carriedBy ? 0 : v.angle;
+      c.order = this.set?.orderFor(v.x, v.y + OBJECT_SPECS[o.kind].hy, 0.8, 0.8) ?? null;
+      if (c.order !== null && o.carriedBy) c.order += 0.02;
       c.visible = true;
     }
     for (const [id, c] of this.objects) if (!seenO.has(id)) c.visible = false;
@@ -552,13 +520,9 @@ export class StationView {
 
   private updateLights(state: GameState, sc: StationScene): void {
     const flick = 0.9 + 0.06 * Math.sin(this.time * 9) + 0.04 * Math.sin(this.time * 23);
-    if (this.lantern && this.lanternFlame) {
-      // the lantern swings with the apparent gravity
-      const g = state.ship.gravity;
-      const ang = -Math.atan2(g.x, g.y) * 0.8;
-      this.lantern.rotation = ang;
-      this.lanternFlame.rotation = ang;
-      const lp = this.lantern.pointAt(3, 7);
+    const lantern = this.lantern >= 0 ? this.set?.lanterns[this.lantern] : undefined;
+    if (lantern) {
+      const lp = lantern.card.pointAt(3, 7);
       this.stage.placeLight(0, { ...lp, z: 0.4 }, [1, 0.66, 0.34], 1.7 * flick, 150);
       this.stage.shadowLight = { ...lp, z: 0.4 };
     } else if (sc.lamp) {

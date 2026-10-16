@@ -78,8 +78,11 @@ uniform float uRadius;
 uniform float uHeight;
 uniform vec4 uCone;      // dir.xy (local), cos(half angle), softness; z < -1.5 = omni light
 uniform float uScatter;
+uniform sampler2D uMask;
+uniform float uBehind;   // 1 = far behind the ship: hidden wherever the ship is drawn
 out vec4 finalColor;
 void main() {
+  if (uBehind > 0.5 && texture(uMask, vRT / uResolution).r > 0.5) discard;
   vec2 d = vLocal - uLightLocal;
   float dist = length(d);
   float att = clamp(1.0 - dist / uRadius, 0.0, 1.0);

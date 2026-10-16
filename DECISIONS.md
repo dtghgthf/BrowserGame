@@ -330,4 +330,18 @@ Format: **Entscheidung** – Begründung.
   Flex-Zentrierung, sonst wären linke/obere Ränder unerreichbar).
 - **Schiffswahl in der Lobby:** Auswahl aus Standard + gespeicherten Schiffen; ein anderes Schiff lädt die Seite neu, weil
   die Rumpfgrafik beim Start gezeichnet wird.
-
+- **Ganzes Schiff in 2.5D (`stage/ShipSet.ts`):** Die festen Kacheln des Grundrisses werden von der Rückwand bis zur offenen
+  Front extrudiert (Böden/Decken/Wände als Flächen, Rumpfgrafik als Schnittkante vorne, Hintergrundgrafik hinten). Weil
+  alles dieselbe Tiefe hat, lässt sich exakt sortieren: zuerst weit weg von der Augenhöhe, dann weit weg von der
+  Augen-Spalte; die Front zuletzt. Dinge im Stationsraum sortieren dazwischen nach Tiefe (`ROOM_BAND`), alles in anderen
+  Räumen bekommt die Gitter-Reihenfolge und wird so von Böden/Wänden verdeckt. Große Karten werden in Zellen zerlegt, damit
+  eine Zelle hinter der Kamera nicht die ganze Karte (früher: den Boden) verschwinden lässt. Das Meer hängt als Vorhang
+  hinter dem Schiff – vorne bleibt es offen wie der 2D-Querschnitt.
+- **Ziehen relativ statt absolut:** Säge, Hebel, Leine und Kurbel merken sich beim Greifen Wert und Zeigerposition und folgen
+  dann 1:1 (gleicher Pixelmaßstab wie die Anzeige); die Simulation begrenzt weiterhin die Geschwindigkeit.
+- **Scheinwerfer in 2.5D per Kurbel** (4:1 übersetzt), weil das Zeigen auf die Lampe in der Nahansicht unklar war. In 2D
+  bleibt das Zeigen auf die Skala.
+- **Zielhilfen (`ui/AimAids.ts`):** Die 2.5D-Szene zeigt das Meer ums Schiff nicht passend, daher Peilungs-Ring um
+  Rohr/Lampe statt Markierungen am Ort; in 2D Markierungen am Ziel bzw. Pfeile am Rand.
+- **Leuchtturm hinter dem Schiff:** Lichter mit `behindShip` werden im Licht-Shader dort verworfen, wo die Maske Schiff zeigt.
+- **2D-Ebenen:** Spieler liegen jetzt vor der Rumpfgrafik (Geländer im Krähennest schnitt sonst durch die Figur).

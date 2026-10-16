@@ -1,4 +1,5 @@
-import { CANNON_PIVOT, SEARCHLIGHT_PIVOT, type GameState, type ObjectState, type StationState } from '@lw/shared';
+import { CANNON_PIVOT, RING_ANCHOR, SEARCHLIGHT_PIVOT, type GameState, type ObjectState, type StationState } from '@lw/shared';
+import { Texture } from 'pixi.js';
 import type { Snapshot } from '../../game/snapshot';
 import { frameOf, type Sheet, type SheetFrame } from '../../render/assets';
 import type { Vec3 } from '../Camera25';
@@ -17,6 +18,13 @@ export interface SceneContext {
   route: SheetFrame;
 }
 
+/**
+ * Relative drag of a prop: `linear` = the prop moves `axis` (scene m) per unit
+ * of value; `lever` / `crank` = it turns `perUnit` radians per unit around
+ * `pivot` (default: the control point).
+ */
+export type SceneDrag = { mode: 'linear'; axis: Vec3 } | { mode: 'lever' | 'crank'; perUnit: number; pivot?: Vec3 };
+
 /** A station's 2.5D set: camera framing, the drag control and an animator. */
 export interface StationScene {
   target: Vec3;
@@ -27,10 +35,14 @@ export interface StationScene {
   /** Scene point the drag control is centred on (null = no drag control) and its radius (m). */
   control: Vec3 | null;
   controlRadius: number;
+  /** How dragging the control moves the value (null = absolute pointing / the wheel). */
+  drag?: SceneDrag;
   /** Depth of the player operating the station. */
   operatorZ: number;
   /** Light hanging over the scene (scene point) - casts the shadows. */
   lamp: Vec3 | null;
+  /** Where the station aims from (barrel / lamp / ring pivot) for the aiming aids. */
+  aim?: Vec3;
   update(state: GameState, view: Snapshot, dt: number, time: number): void;
 }
 
@@ -81,7 +93,8 @@ export function buildWheel(ctx: SceneContext, st: StationState): StationScene {
       const v = view.stations[st.id]?.value ?? st.value;
       wheel.rotation = v * Math.PI * 1.5;
       // the compass card swings in its gimbal and settles on the heading
-      const want = -state.ship.heading * 2 + Math.sin(view.time * 1.3) * 0.15;
+      // same side as the course bar in the HUD: off course to the right = needle to the right
+      const want = state.ship.heading * 2 + Math.sin(view.time * 1.3) * 0.15;
       compass += (want - compass) * Math.min(1, dt * 3);
       needle.rotation = compass;
       board.visible = chart.visible = true;
@@ -110,9 +123,11 @@ export function buildPump(ctx: SceneContext, st: StationState): StationScene {
   const pipe = card(ctx, 'st_pipe', { x: x + 0.95, y: f, z: -0.3 });
   const water = card(ctx, 'st_water', { x: x + 0.95, y: f - 0.09, z: -0.29 });
   water.bias = 0.01;
-  // the gauge hangs on the wall behind the pump (not in front of the face of whoever pumps)
-  const gauge = card(ctx, 'st_gauge', { x: x - 0.55, y: f - 1.4, z: -1.05 });
-  const needle = card(ctx, 'st_gauge_needle', { x: x - 0.55, y: f - 1.4, z: -1.04 });
+  // the gauge sits on the glass pipe, on the far side from whoever pumps (they stand left of the pump)
+  const gauge = card(ctx, 'st_gauge', { x: x + 1.0, y: f - 1.3, z: -0.25 });
+  const needle = card(ctx, 'st_gauge_needle', { x: x + 1.0, y: f - 1.3, z: -0.24 });
+  gauge.bias = 0.01;
+  needle.bias = 0.02;
   needle.bias = 0.01;
   let pressure = 0;
   let last = 0;
@@ -123,6 +138,8 @@ export function buildPump(ctx: SceneContext, st: StationState): StationScene {
     distance: 4.0,
     control: { x, y: f - 1.15, z: 0.08 },
     controlRadius: 0.75,
+    // the lever turns around its pivot with the hand
+    drag: { mode: 'lever', perUnit: 0.55 },
     operatorZ: -0.4,
     lamp: { x: x + 0.6, y: f - 2.4, z: 0.7 },
     update(state, view, dt, time) {
@@ -149,41 +166,89 @@ export function buildPump(ctx: SceneContext, st: StationState): StationScene {
 
 // ---------------------------------------------------------------- searchlight
 
+/** The crank turns this many times as far as the lamp (a geared crank: fine aiming). */
+export const CRANK_GEAR = 4;
+
+let beamCache: SheetFrame | null = null;
+/** The light beam: a long, soft wedge (unlit, drawn over the scene), 10 m at 16 px/m. */
+function beamFrame(): SheetFrame {
+  if (beamCache) return beamCache;
+  const w = 160;
+  const h = 40;
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const g = c.getContext('2d')!;
+  const img = g.createImageData(w, h);
+  for (let x = 0; x < w; x++) {
+    const half = 2 + x * 0.115;
+    // fades with the distance in a few steps (pixel look), ordered dither between the steps
+    const fade = Math.pow(1 - x / w, 1.3);
+    for (let y = 0; y < h; y++) {
+      const d = Math.abs(y + 0.5 - h / 2);
+      if (d > half) continue;
+      const edge = 1 - Math.pow(d / half, 3);
+      const a = fade * edge * 0.55;
+      const steps = Math.floor(a * 6 + (((x & 1) ^ (y & 1)) ? 0.5 : 0)) / 6;
+      const i = (y * w + x) * 4;
+      img.data[i] = 255;
+      img.data[i + 1] = 244;
+      img.data[i + 2] = 205;
+      img.data[i + 3] = Math.round(Math.min(1, steps) * 255);
+    }
+  }
+  g.putImageData(img, 0, 0);
+  const tex = Texture.from(c);
+  tex.source.scaleMode = 'nearest';
+  beamCache = { name: 'beam', texture: tex, normal: null, layers: {}, width: w, height: h, pivot: { x: -16, y: h / 2 }, duration: 100 };
+  return beamCache;
+}
+
 export function buildSearchlight(ctx: SceneContext, st: StationState): StationScene {
   const f = ctx.floorY;
   const px = st.x + SEARCHLIGHT_PIVOT.x;
+  const pivot = { x: px, y: f - 0.85, z: 0.02 };
   const yoke = card(ctx, 'st_yoke', { x: px, y: f, z: 0 });
   ctx.stage.shadow(yoke, ctx.frame('st_yoke'));
-  const lamp = card(ctx, 'st_lamp', { x: px, y: f - 0.85, z: 0.02 });
+  const lamp = card(ctx, 'st_lamp', pivot);
   lamp.bias = 0.03;
   ctx.stage.shadow(lamp, ctx.frame('st_lamp'));
-  const glow = card(ctx, 'st_lamp_glow', { x: px, y: f - 0.85, z: 0.025 }, 32, 'cards', true);
-  const crank = card(ctx, 'st_crank', { x: px - 0.62, y: f - 0.55, z: 0.25 });
+  const glow = card(ctx, 'st_lamp_glow', { ...pivot, z: 0.025 }, 32, 'cards', true);
+  // the beam itself: visible in the scene, it shows where the lamp points
+  const beam = ctx.stage.add(beamFrame(), 'cards', 16, 'unlit');
+  beam.pos = { ...pivot, z: 0.03 };
+  // the crank wheel: big, in front, at hand height - turning it turns the lamp, nothing else does
+  const crankAt = { x: px - 0.8, y: f - 0.62, z: 0.55 };
+  const crank = card(ctx, 'st_crank', crankAt, 17);
   crank.bias = 0.05;
+  ctx.stage.shadow(crank, ctx.frame('st_crank'));
   const oil = card(ctx, 'st_oilglass', { x: px + 0.7, y: f - 0.08, z: 0.2 });
   const fill = card(ctx, 'st_oil', { x: px + 0.7, y: f - 0.17, z: 0.21 });
   fill.bias = 0.01;
   return {
-    target: { x: px + 0.3, y: f - 0.95, z: 0 },
-    yaw: -0.5,
-    pitch: 0.05,
-    distance: 4.0,
-    control: { x: px, y: f - 0.85, z: 0.02 },
-    controlRadius: 0.8,
+    target: { x: px + 0.2, y: f - 0.9, z: 0.1 },
+    yaw: -0.42,
+    pitch: 0.08,
+    distance: 4.2,
+    control: crankAt,
+    controlRadius: 0.3,
+    drag: { mode: 'crank', perUnit: CRANK_GEAR },
+    aim: pivot,
     operatorZ: -0.5,
     lamp: { x: px - 1.2, y: f - 2.2, z: 1.2 },
-    update(state, view, _dt, time) {
+    update(_state, view, _dt, time) {
       const v = view.stations[st.id]?.value ?? st.value;
       lamp.rotation = v;
       glow.rotation = v;
-      crank.rotation = v * 3;
+      beam.rotation = v;
+      crank.rotation = v * CRANK_GEAR;
       const oilLeft = st.charge;
       fill.scaleY = Math.max(0.02, oilLeft);
       const flicker = oilLeft <= 0 ? 0 : oilLeft < 0.15 ? (Math.sin(time * 23) > -0.2 ? 0.75 : 0.15) : 1;
       glow.alpha = flicker;
-      // the beam: a stage light far along the lamp direction
+      beam.alpha = flicker;
+      // the beam lights the scene too: a stage light far along the lamp direction
       ctx.stage.placeLight(1, { x: px + Math.cos(v) * 3.5, y: f - 0.85 + Math.sin(v) * 3.5, z: 0.2 }, [0.82, 0.92, 1], 1.6 * flicker, 220);
-      void state;
     },
   };
 }
@@ -199,8 +264,6 @@ export function buildCannon(ctx: SceneContext, st: StationState): StationScene {
   barrel.bias = 0.03;
   ctx.stage.shadow(barrel, ctx.frame('st_cannon'));
   const rod = card(ctx, 'st_ramrod', { x: st.x - 1.2, y: f - 0.3, z: 0.5 });
-  const pile = card(ctx, 'ball_rack', { x: st.x - 0.9, y: f, z: -0.55 }, 16);
-  ctx.stage.shadow(pile, ctx.frame('ball_rack'));
   const spark = card(ctx, 'st_spark', { x: pivot.x - 0.38, y: pivot.y - 0.3, z: 0.06 }, 32, 'cards', true);
   let recoil = 0;
   let lastCharge = st.charge;
@@ -211,6 +274,7 @@ export function buildCannon(ctx: SceneContext, st: StationState): StationScene {
     distance: 4.4,
     control: pivot,
     controlRadius: 1.1,
+    aim: pivot,
     operatorZ: -0.55,
     lamp: { x: st.x - 0.5, y: f - 2.6, z: 1.2 },
     update(_state, view, dt, time) {
@@ -255,6 +319,8 @@ export function buildWorkshop(ctx: SceneContext, st: StationState): StationScene
     distance: 4.0,
     control: { x: st.x + 0.05, y: f - 1.25, z: 0.1 },
     controlRadius: 1.0,
+    // the saw moves 0.45 m per unit: it stays under the finger
+    drag: { mode: 'linear', axis: { x: 0.45, y: 0, z: 0 } },
     operatorZ: -0.55,
     lamp: { x: st.x - 0.6, y: f - 2.4, z: 0.5 },
     update(state, view) {
@@ -300,7 +366,31 @@ export function buildTable(ctx: SceneContext, st: StationState): StationScene {
   };
 }
 
-// ---------------------------------------------------------------- generic (life ring and others)
+// ---------------------------------------------------------------- life ring
+
+export function buildRing(ctx: SceneContext, st: StationState): StationScene {
+  const f = ctx.floorY;
+  const post = card(ctx, 'ring_post', { x: st.x, y: f, z: 0.1 }, 13);
+  ctx.stage.shadow(post, ctx.frame('ring_post'));
+  const anchor = { x: st.x + RING_ANCHOR.x, y: st.y + RING_ANCHOR.y, z: 0.1 };
+  return {
+    target: { x: st.x - 0.6, y: f - 1.0, z: 0 },
+    yaw: 0.42,
+    pitch: 0.14,
+    distance: 4.6,
+    control: anchor,
+    controlRadius: 1.0,
+    aim: anchor,
+    // the thrower stands next to the post, not on it
+    operatorZ: 0.45,
+    lamp: { x: st.x + 0.5, y: f - 2.6, z: 0.8 },
+    update(state) {
+      post.setFrame(ctx.frame(state.ring ? 'ring_post_empty' : 'ring_post'));
+    },
+  };
+}
+
+// ---------------------------------------------------------------- generic
 
 export function buildGeneric(ctx: SceneContext, st: StationState, sprite: string): StationScene {
   const f = ctx.floorY;

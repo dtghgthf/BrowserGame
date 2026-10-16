@@ -27,6 +27,20 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 - Bedient wird direkt am Gerät: Rad drehen, Hebel ziehen, Säge schieben – eure Figur packt dabei sichtbar mit an. Die anderen laufen vor und hinter euch vorbei, die Laterne wirft Schatten.
 - **Kisten öffnen** passiert auch in der Nahansicht: Brecheisen ansetzen (A/D drücken hilft), der Deckel klappt auf, die Beute steigt heraus.
 - Im Menü abschaltbar („Stationen in 3D“).
+- **Das ganze Schiff in 3D:** In der Nahansicht steht jetzt das komplette Schiff mit Decks, Wänden, Rumpf, Laternen, Wasser im Laderaum und den anderen Stationen – nicht mehr nur ein Block um die Station. Mitspieler in anderen Räumen verschwinden hinter Böden und Wänden. Der Boden flackert nicht mehr weg.
+- **Scheinwerfer:** Der Lichtkegel ist in 3D zu sehen. Gedreht wird an der großen Kurbel (Kurbel drehen – sonst bewegt sich nichts). Ein Ring zeigt, wo das Meer voraus liegt („MEER VORAUS – GUT“) und wo schon Felsen gesichtet sind.
+- **Kanone & Rettungsring:** Eine gepunktete Flugbahn zeigt, wohin Kugel bzw. Ring fliegt – grün mit „TREFFER!“, wenn sie trifft. Krake, Piraten, Felsen und Schwimmer sind mit Entfernung markiert. Kanonenkugeln leuchten und ziehen einen Schweif.
+- **Ziehen geht 1:1:** Säge, Pumpenhebel und Leine bleiben beim Ziehen genau unter dem Finger.
+
+## Behoben
+- Stations-Anzeige blitzte beim Wechsel in die 3D-Ansicht kurz auf.
+- Kompass am Steuerrad zeigte in die falsche Richtung.
+- Steuerrad (2D): Text und Seekarte überlappten sich.
+- Manometer der Pumpe hing vor dem Gesicht.
+- Leuchtturm-Licht schien durchs Schiff.
+- Lecks blieben nach dem Ende einer Runde sichtbar.
+- Geländer im Krähennest wurde über die Figur gezeichnet.
+- Preisschilder der Händler schwebten in der 3D-Ansicht.
 
 ## Kampagne: sechs Etappen bis zum Leuchtturm
 - **Route wählen:** Am Kartentisch im Mitteldeck seht ihr die Seekarte der Fahrt. Alle stimmen ab (zwei passen gleichzeitig an den Tisch), die Mehrheit gewinnt – haben alle gewählt, wird in 10 Sekunden abgelegt. Jede Etappe ist eine andere Meeresart: Ruhige See, Nebelbank, Riff, Krakengrund, Piratenküste, Eismeer – und zum Schluss immer die Sturmfront.

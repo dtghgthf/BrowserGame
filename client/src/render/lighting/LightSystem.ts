@@ -20,6 +20,8 @@ export interface LightDef {
   /** Ship lights are blocked by the hull; world lights are not. */
   occluded: boolean;
   enabled: boolean;
+  /** Far away behind the ship (the lighthouse): neither lights nor scatters where the ship is drawn. */
+  behindShip?: boolean;
 }
 
 interface LightRuntime {
@@ -50,6 +52,7 @@ export class LightSystem {
     private readonly shipLayer: Container,
     private readonly worldLayer: Container,
     private readonly normals: Texture,
+    private readonly mask: Texture,
     private readonly resolution: { width: number; height: number },
   ) {}
 
@@ -61,6 +64,7 @@ export class LightSystem {
   add(def: LightDef): LightDef {
     const shader = glShader(LIGHT_VERT, LIGHT_FRAG, {
       uNormals: this.normals.source,
+      uMask: this.mask.source,
       lightUniforms: {
         uResolution: { value: new Float32Array([this.resolution.width, this.resolution.height]), type: 'vec2<f32>' },
         uLightLocal: { value: new Float32Array(2), type: 'vec2<f32>' },
@@ -71,6 +75,7 @@ export class LightSystem {
         uHeight: { value: def.height, type: 'f32' },
         uCone: { value: new Float32Array([1, 0, -2, 0]), type: 'vec4<f32>' },
         uScatter: { value: def.scatter, type: 'f32' },
+        uBehind: { value: def.behindShip ? 1 : 0, type: 'f32' },
       },
     }, 'light');
     const geometry = new MeshGeometry({

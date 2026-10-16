@@ -40,4 +40,5 @@ export { LOOT_NAMES, LOOT_OBJECTS, rollLoot } from './systems/crates';
 export { PIRATE_HALF_LENGTH, PIRATE_HEIGHT, hookPoint, pirateShip } from './systems/pirates';
 export { fireCenter, isFloorTile } from './systems/fire';
 export { RING_ANCHOR } from './systems/rescue';
+export { CANNON_LENGTH } from './systems/constants';
 export { ENCOUNTER_KINDS, type EncounterKind } from './systems/encounters';

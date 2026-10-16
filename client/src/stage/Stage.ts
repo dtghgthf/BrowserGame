@@ -3,7 +3,7 @@ import type { SheetFrame } from '../render/assets';
 import type { GameRenderer } from '../render/GameRenderer';
 import type { LightDef, LightSystem } from '../render/lighting/LightSystem';
 import { Camera25, type Vec3 } from './Camera25';
-import { Card, type CardKind } from './Card';
+import { Card, ROOM_BAND, type CardKind, type CardSplit } from './Card';
 
 /** How many point lights the 2.5D scene can use. */
 const LIGHTS = 4;
@@ -13,7 +13,8 @@ interface Shadow {
   mesh: PerspectiveMesh;
 }
 
-export type StageLayer = 'back' | 'cards';
+/** back: drawn first in order; ship: the ship set, sorted by its own draw order; cards: depth-sorted props and people. */
+export type StageLayer = 'back' | 'ship' | 'cards';
 
 /**
  * The 2.5D scene: screen-space containers in the albedo, normal, mask and
@@ -27,9 +28,7 @@ export class Stage {
   private readonly normalRoot = new Container();
   private readonly unlitRoot = new Container();
   private readonly back = { a: new Container(), n: new Container() };
-  private readonly shadowLayer = new Container();
-  private readonly cardsA = new Container();
-  private readonly cardsN = new Container();
+  private readonly ship = { a: new Container(), n: new Container() };
   private readonly mask = new Graphics();
   private readonly cards: Card[] = [];
   private readonly shadows: Shadow[] = [];
@@ -43,16 +42,19 @@ export class Stage {
   interior = true;
   /** Screen rectangle the scene covers (for the mask pass). */
   readonly bounds = { x: 0, y: 0, w: 0, h: 0 };
+  /** Draws the scene's own mask (ship / interior areas) instead of the bounds rectangle. */
+  maskPainter: ((g: Graphics) => void) | null = null;
   private alpha = 0;
 
   constructor(
     private readonly r: GameRenderer,
     lights: LightSystem,
   ) {
-    this.albedoRoot.addChild(this.back.a, this.shadowLayer, this.cardsA);
-    this.normalRoot.addChild(this.back.n, this.cardsN);
-    this.cardsA.sortableChildren = true;
-    this.cardsN.sortableChildren = true;
+    // the ship set and the cards share one sorted container: things in other rooms hide behind floors and walls
+    this.albedoRoot.addChild(this.back.a, this.ship.a);
+    this.normalRoot.addChild(this.back.n, this.ship.n);
+    this.ship.a.sortableChildren = true;
+    this.ship.n.sortableChildren = true;
     r.albedo.root.addChild(this.albedoRoot);
     r.normal.root.addChild(this.normalRoot);
     r.mask.root.addChild(this.mask);
@@ -79,8 +81,9 @@ export class Stage {
   }
 
   /** A new card on the back layer (walls, floors: drawn first, in order) or among the sorted cards. */
-  add(frame: SheetFrame, layer: StageLayer = 'cards', ppm = 16, kind: CardKind = 'lit'): Card {
-    const card = new Card(frame, layer === 'back' ? { albedo: this.back.a, normal: this.back.n, unlit: this.unlitRoot } : { albedo: this.cardsA, normal: this.cardsN, unlit: this.unlitRoot }, ppm, kind);
+  add(frame: SheetFrame, layer: StageLayer = 'cards', ppm = 16, kind: CardKind = 'lit', split: CardSplit | null = null): Card {
+    const c = layer === 'back' ? this.back : this.ship;
+    const card = new Card(frame, { albedo: c.a, normal: c.n, unlit: this.unlitRoot }, ppm, kind, split);
     this.cards.push(card);
     return card;
   }
@@ -90,7 +93,9 @@ export class Stage {
     const mesh = new PerspectiveMesh({ texture: frame.texture, verticesX: 4, verticesY: 4 });
     mesh.tint = 0x000000;
     mesh.alpha = 0.42;
-    this.shadowLayer.addChild(mesh);
+    // on the floor of the room: after the ship, before the room's cards
+    mesh.zIndex = ROOM_BAND - 1000;
+    this.ship.a.addChild(mesh);
     this.shadows.push({ card, mesh });
   }
 
@@ -102,6 +107,7 @@ export class Stage {
     this.shadows.length = 0;
     for (const l of this.lights) l.enabled = false;
     this.shadowLight = null;
+    this.maskPainter = null;
   }
 
   get active(): boolean {
@@ -136,7 +142,8 @@ export class Stage {
     const L = this.shadowLight;
     for (const s of this.shadows) {
       const c = s.card;
-      if (!L || !c.visible || c.alpha < 0.5) {
+      // only the room's cards (sorted by depth) throw shadows on its floor
+      if (!L || !c.visible || c.alpha < 0.5 || c.order !== null) {
         s.mesh.visible = false;
         continue;
       }
@@ -160,7 +167,8 @@ export class Stage {
     // mask: the scene area counts as ship (interior: no fog, interior ambient)
     const b = this.bounds;
     this.mask.clear();
-    if (b.w > 0) this.mask.rect(b.x, b.y, b.w, b.h).fill(this.interior ? 0xffff00 : 0xff0000);
+    if (this.maskPainter) this.maskPainter(this.mask);
+    else if (b.w > 0) this.mask.rect(b.x, b.y, b.w, b.h).fill(this.interior ? 0xffff00 : 0xff0000);
   }
 
   /** Puts a stage light at a scene point (converted to world px for the light system). */

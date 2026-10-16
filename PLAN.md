@@ -153,3 +153,9 @@ Legende: `[x]` erledigt, `[ ]` offen. Jeder Schritt endet mit `npm run build`, `
 - [x] Stationsposen: die Figur schaut in der 2.5D-Ansicht zur Kamera (Rad, Pumpe nach dem Hebel, Kurbel, Säge/Stopfer, Tisch, Brecheisen)
 - [x] Werft: Linien-Werkzeug, Zoom (Mausrad, Knöpfe, zwei Finger) und Verschieben; Schiffswahl direkt in der Lobby
 
+## Playtest 16.10. (Log)
+- [x] Ganzes Schiff in 2.5D, Boden-Flackern, Reling, Ring-Anzeige blitzte auf, Kompass-Richtung, 2D-Überlappung am Rad
+- [x] Scheinwerfer: Lichtkegel, Kurbel, Suchsektor; Kanone/Ring: Flugbahn, Ziele, leuchtende Kugeln; Pumpen-Manometer
+- [x] Leuchtturm-Licht hinter dem Schiff, Leck-Grafiken nach Rundenende, Ziehen 1:1, Spieler vor Rumpfgrafik
+- [ ] Eimer und Ölkanne besser auffindbar (Markierung, wenn sie gebraucht werden)
+- [ ] Kugelgestell: nur Hinweistext an der Kanone – ggf. Gestell beschriften oder Mechanik vereinfachen

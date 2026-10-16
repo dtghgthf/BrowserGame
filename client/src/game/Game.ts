@@ -190,6 +190,7 @@ export class Game {
       scatter: 1.1,
       occluded: false,
       enabled: true,
+      behindShip: true,
     });
 
     // hazards live between the far and the near sea; the lighthouse stands in the same layer
@@ -759,10 +760,21 @@ export class Game {
     });
     this.spray.update(dt);
     const ids = this.locals.map((l) => l.id);
-    this.station.setDiorama(this.stationView.active ? this.stationView.control() : null);
+    const control = this.stationView.active ? this.stationView.control() : null;
+    this.station.setDiorama(control);
+    this.station.projectWorld = control
+      ? (wx, wy) => {
+          const l = worldToShip(v.ship, { x: wx, y: wy });
+          return this.stationView.projectShip(l.x, l.y, 0);
+        }
+      : null;
+    // while the camera swings into the 2.5D scene the 2D controls would only flash up
+    this.station.hidden = this.stationView.takingOver && !control;
     this.station.update(s, v, ids[0], this.sim.tuning);
     this.shipView.setOverlaysVisible(!this.stationView.active);
     this.names.root.visible = !this.stationView.active;
+    // the merchants' price tags belong to the 2D deck (they would float in the 2.5D scene)
+    this.harbor.hud.visible = !this.stationView.active;
     this.names.update(s, v, ids, left, top, this.time);
     this.pingView.update(s, v, left, top, width, height, this.time);
     this.popups.update(dt, v, left, top);

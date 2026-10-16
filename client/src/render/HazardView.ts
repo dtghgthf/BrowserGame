@@ -37,6 +37,9 @@ export class HazardView {
   private readonly frontNormal = new Container();
   private readonly rocks = new Map<number, RockView>();
   private readonly balls = new Map<number, Sprite>();
+  /** Glowing trails of the crew's cannonballs (unlit: a ball must be easy to follow at night). */
+  private readonly trails = new Graphics();
+  private readonly trailPts = new Map<number, { x: number; y: number }[]>();
   private readonly head: LitSprite;
   private readonly eyes: Sprite;
   private readonly tentacles: LitSprite[] = [];
@@ -73,6 +76,7 @@ export class HazardView {
     this.eyes = new Sprite(ef.texture);
     this.eyes.anchor.set(ef.pivot.x / ef.width, ef.pivot.y / ef.height);
     r.final.world.addChild(this.eyes);
+    r.final.world.addChild(this.trails);
 
     this.sloop = new LitSprite(frameOf(props, 'sloop'), this.rockAlbedo, this.rockNormal);
     const sg = frameOf(props, 'sloop_glow');
@@ -167,11 +171,30 @@ export class HazardView {
         this.balls.set(b.id, s);
       }
       s.position.set(Math.round(b.x * PPM), Math.round(b.y * PPM));
+      s.scale.set(1.5);
+      const pts = this.trailPts.get(b.id) ?? [];
+      pts.push({ x: b.x * PPM, y: b.y * PPM });
+      if (pts.length > 14) pts.shift();
+      this.trailPts.set(b.id, pts);
     }
     for (const [id, s] of this.balls) {
       if (seenB.has(id)) continue;
       s.destroy();
       this.balls.delete(id);
+      this.trailPts.delete(id);
+    }
+    this.trails.clear();
+    for (const b of state.balls) {
+      const pts = this.trailPts.get(b.id);
+      if (!pts) continue;
+      const color = b.pirate ? 0xff7050 : 0xffd890;
+      pts.forEach((p, i) => {
+        const k = (i + 1) / pts.length;
+        const r = Math.max(1, Math.round(k * 2));
+        this.trails.rect(Math.round(p.x) - r / 2, Math.round(p.y) - r / 2, r, r).fill({ color, alpha: 0.15 + 0.6 * k });
+      });
+      // a bright rim so the ball itself reads against the dark sea
+      this.trails.circle(Math.round(b.x * PPM), Math.round(b.y * PPM), 3).stroke({ color, width: 1, alpha: 0.9 });
     }
   }
 

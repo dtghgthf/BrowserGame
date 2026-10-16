@@ -104,8 +104,9 @@ export class ShipView {
       back: mkLayer(),
       stations: mkLayer(),
       objects: mkLayer(),
-      players: mkLayer(),
       hull: mkLayer(),
+      // the crew in front of the hull art: railings (the crow's nest) never cut through somebody at a station
+      players: mkLayer(),
       front: mkLayer(),
       water: mkLayer(),
     };
@@ -149,7 +150,7 @@ export class ShipView {
     }
 
     // lights
-    this.lights = new LightSystem(r.light.ship, r.light.world, r.rt.normal, { width: r.layout.width, height: r.layout.height });
+    this.lights = new LightSystem(r.light.ship, r.light.world, r.rt.normal, r.rt.mask, { width: r.layout.width, height: r.layout.height });
     this.staticOccluders = L.occluders.map((s) => ({ ax: ox + s.ax * 8, ay: oy + s.ay * 8, bx: ox + s.bx * 8, by: oy + s.by * 8 }));
     this.lights.setOccluders(this.staticOccluders);
 
@@ -491,6 +492,12 @@ export class ShipView {
     const oy = -L.origin.y * 8;
     const latest = new Map<number, (typeof state.leaks)[number]>();
     for (const leak of state.leaks) latest.set(leak.point, leak);
+    // a new run (or a reset) starts with a sound hull: drop holes and patches that are no longer in the state
+    for (const [point, s] of this.leakSprites) {
+      if (latest.has(point)) continue;
+      s.destroy();
+      this.leakSprites.delete(point);
+    }
     for (const [point, leak] of latest) {
       const lp = L.leakPoints[point]!;
       let s = this.leakSprites.get(point);
