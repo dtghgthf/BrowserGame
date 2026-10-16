@@ -12,7 +12,6 @@ describe('pixel layout', () => {
       [1366, 768, 1],
       [1024, 768, 2],
       [1180, 820, 2],
-      [844, 390, 3],
       [2560, 1440, 1],
       [1280, 800, 1],
     ] as const) {
@@ -24,6 +23,22 @@ describe('pixel layout', () => {
       expect(l.deviceHeight).toBeLessThanOrEqual(Math.round(h * dpr));
       expect(l.height).toBeGreaterThanOrEqual(200);
       expect(l.height).toBeLessThanOrEqual(400);
+    }
+  });
+
+  it('a phone in landscape gets bigger pixels (about 190 px of height) and no side bars', () => {
+    for (const [w, h, dpr] of [
+      [844, 390, 3],
+      [932, 430, 3],
+      [740, 360, 2],
+      [800, 340, 2.75],
+    ] as const) {
+      const l = computePixelLayout(w, h, dpr);
+      expect(l.height).toBeGreaterThanOrEqual(150);
+      expect(l.height).toBeLessThanOrEqual(230);
+      expect(l.scale / dpr).toBeGreaterThanOrEqual(1.7);
+      // the full width is used (at most one game pixel short)
+      expect(Math.round(w * dpr) - l.deviceWidth).toBeLessThan(l.scale);
     }
   });
 

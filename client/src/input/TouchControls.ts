@@ -211,8 +211,10 @@ export class TouchControls {
 
   /** Sizes everything to the game's current pixel size (CSS px per game pixel). */
   relayout(): void {
-    this.px = Math.max(1, this.pixelSize());
+    // thumbs need real size: the jump button at least ~76 CSS px, whatever the game's pixel size
+    this.px = Math.max(1, this.pixelSize(), MIN_JUMP_CSS / this.buttons.jump.size);
     const p = this.px;
+    const inset = safeAreaInsets();
     const size = (c: HTMLElement, w: number, h: number) => {
       c.style.width = `${w * p}px`;
       c.style.height = `${h * p}px`;
@@ -224,19 +226,22 @@ export class TouchControls {
       this.drawButton(b);
     }
     const margin = 6 * p;
+    // clear of the notch and the home indicator
+    const right = margin + inset.right;
+    const bottom = margin + inset.bottom;
     const j = this.buttons.jump.el.style;
-    j.right = `${margin}px`;
-    j.bottom = `${margin + 4 * p}px`;
+    j.right = `${right}px`;
+    j.bottom = `${bottom + 4 * p}px`;
     const e = this.buttons.interact.el.style;
-    e.right = `${margin + 34 * p}px`;
-    e.bottom = `${margin}px`;
+    e.right = `${right + 34 * p}px`;
+    e.bottom = `${bottom}px`;
     const f = this.buttons.pick.el.style;
-    f.right = `${margin + 3 * p}px`;
-    f.bottom = `${margin + 38 * p}px`;
+    f.right = `${right + 3 * p}px`;
+    f.bottom = `${bottom + 38 * p}px`;
     const pg = this.ping.el.style;
-    pg.right = `${margin + 32 * p}px`;
-    pg.bottom = `${margin + 30 * p}px`;
-    if (this.stickId === null) this.placeStick(margin + 20 * p, window.innerHeight - margin - 22 * p);
+    pg.right = `${right + 32 * p}px`;
+    pg.bottom = `${bottom + 30 * p}px`;
+    if (this.stickId === null) this.placeStick(margin + inset.left + 20 * p, window.innerHeight - bottom - 22 * p);
   }
 
   setEnabled(v: boolean): void {
@@ -331,6 +336,22 @@ export class TouchControls {
     }
     return input;
   }
+}
+
+/** Smallest size of the jump button in CSS px (the other buttons scale with it). */
+const MIN_JUMP_CSS = 76;
+
+let insetProbe: HTMLDivElement | null = null;
+/** The safe area (notch, rounded corners, home indicator) in CSS px. */
+function safeAreaInsets(): { left: number; right: number; bottom: number } {
+  if (!insetProbe) {
+    insetProbe = document.createElement('div');
+    insetProbe.style.cssText =
+      'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);padding-bottom:env(safe-area-inset-bottom)';
+    document.body.appendChild(insetProbe);
+  }
+  const cs = getComputedStyle(insetProbe);
+  return { left: parseFloat(cs.paddingLeft) || 0, right: parseFloat(cs.paddingRight) || 0, bottom: parseFloat(cs.paddingBottom) || 0 };
 }
 
 let zoomGuard = false;

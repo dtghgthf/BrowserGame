@@ -17,19 +17,27 @@ export interface PixelLayout {
 }
 
 export const TARGET_HEIGHT = 270;
+/** Phones in landscape (little CSS height): fewer, bigger game pixels so text and controls stay readable. */
+export const PHONE_TARGET_HEIGHT = 190;
+/** CSS height below which the screen counts as a phone. */
+export const PHONE_CSS_HEIGHT = 520;
 const MIN_HEIGHT = 200;
-const MAX_WIDTH = 640;
+const PHONE_MIN_HEIGHT = 150;
+const MAX_WIDTH = 760;
 const MIN_WIDTH = 240;
 
-export function computePixelLayout(cssW: number, cssH: number, dpr: number, targetHeight = TARGET_HEIGHT): PixelLayout {
+export function computePixelLayout(cssW: number, cssH: number, dpr: number, targetHeight?: number): PixelLayout {
+  const phone = cssH < PHONE_CSS_HEIGHT;
+  const target = targetHeight ?? (phone ? PHONE_TARGET_HEIGHT : TARGET_HEIGHT);
+  const minHeight = phone ? PHONE_MIN_HEIGHT : MIN_HEIGHT;
   const devW = Math.max(1, Math.round(cssW * dpr));
   const devH = Math.max(1, Math.round(cssH * dpr));
   let scale = 1;
   let bestErr = Infinity;
   for (let s = 1; s <= 16; s++) {
     const h = devH / s;
-    if (h < MIN_HEIGHT && s > 1) break;
-    const err = Math.abs(h - targetHeight);
+    if (h < minHeight && s > 1) break;
+    const err = Math.abs(h - target);
     if (err < bestErr) {
       bestErr = err;
       scale = s;

@@ -8,6 +8,12 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 - **Vollbild ohne Esc-Ärger:** In den Einstellungen gibt es „Vollbild“. In Chrome/Edge öffnet Esc dann das Menü, statt das Vollbild zu beenden (zum Verlassen Esc gedrückt halten). In Safari geht das nicht – dort öffnet **Tab** das Menü, ohne das Vollbild zu verlassen.
 - **Pausenmenü:** Weiterspielen, Einstellungen, Einladungslink (online), Zum Hauptmenü bzw. Schiff verlassen. Allein hält das Spiel in der Pause an.
 
+## Handy
+- **Größer auf dem Handy:** Auf kleinen Bildschirmen rechnet das Spiel mit größeren Pixeln – HUD, Texte und Stationen sind besser lesbar, die schwarzen Ränder links und rechts sind weg.
+- **Größere Touch-Knöpfe** (Sprung-Knopf mindestens ~2 cm) mit Abstand zu Notch und Home-Leiste.
+- **Kompaktes Menü** auf niedrigen Bildschirmen.
+- **Nur quer:** Hochkant erscheint „Bitte quer halten“, eine Einzelfahrt hält so lange an. Unter Android geht das Spiel beim ersten Tippen ins Vollbild und bleibt im Querformat.
+
 ## Mehr zu tun an Bord
 - **Kisten haben Inhalt:** Mit E aufhebeln (dauert kurz) – drin sind Planken, Holz, Kanonenkugeln, Ölkannen, Eimer, Münzen oder Werkzeug. Manchmal springt auch eine Ratte raus und frisst Holz.
 - **Planken muss man sägen:** Die Werkbank ist jetzt eine Station. Hin und her sägen (A/D oder ziehen), jede Planke kostet ein Holz. Leere Kisten an der Werkbank zerlegen gibt neues Holz.

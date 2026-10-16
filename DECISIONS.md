@@ -368,3 +368,7 @@ Format: **Entscheidung** – Begründung.
   ohne Route) beginnt im Hafen ohne Countdown. `castOff` (nur Host, Knopf im Bild) oder F am Kartentisch, wenn alle gewählt
   haben, startet 3 s „Leinen los“. Solo bleibt der bisherige Countdown.
 - **Pause:** nur solo (`Game.paused`, der Stepper läuft mit dt = 0); online segelt das Schiff weiter.
+- **Handy:** unter 520 CSS-px Höhe zielt `computePixelLayout` auf ~190 statt 270 interne Zeilen (Minimum 150), die
+  maximale Breite ist 760 (keine Seitenbalken bei 19,5:9). Touch-Knöpfe skalieren mindestens so, dass der Sprung-Knopf
+  76 CSS-px misst, und rücken um `env(safe-area-inset-*)` ein. Hochkant (`orientation: portrait` + grober Zeiger) deckt eine
+  Drehen-Karte das Spiel ab; Android: Vollbild + `screen.orientation.lock('landscape')` beim ersten Tippen (iOS kann beides nicht).

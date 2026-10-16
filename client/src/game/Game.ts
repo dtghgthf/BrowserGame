@@ -125,6 +125,8 @@ export class Game {
   readonly showcase = new Showcase();
   /** Solo play stops while the pause menu is open. */
   paused = false;
+  /** Solo play also stops while a phone is held upright (the game needs landscape). */
+  upright = false;
   private readonly commands: SimCommand[] = [];
   private prev: Snapshot = emptySnapshot();
   private cur: Snapshot = emptySnapshot();
@@ -476,7 +478,7 @@ export class Game {
 
     const droppedBefore = this.stepper.droppedSteps;
     // solo play holds still while the pause menu is open (online the ship sails on)
-    const steps = this.stepper.advance(this.paused && !net ? 0 : dt, (stepDt) => {
+    const steps = this.stepper.advance((this.paused || this.upright) && !net ? 0 : dt, (stepDt) => {
       // online: nothing to predict until the first snapshot has arrived
       if (net && !net.predictor.synced) return;
       takeSnapshot(this.sim.state, this.prev);

@@ -281,3 +281,41 @@ body.editor-open .menu-btn, body.editor-open .tuning-gear, body.editor-open .tou
 }
 .castoff-btn:active { transform: translateX(-50%) translateY(1px); }
 body.lobby-open .castoff-btn, body.editor-open .castoff-btn { display: none !important; }
+
+/* ---------------- phones */
+.menu-btn { right: calc(8px + env(safe-area-inset-right)); top: calc(8px + env(safe-area-inset-top)); }
+#rotate {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center;
+  background: #05070d; color: #d8dde6; font-size: 15px;
+}
+#rotate b { color: #e0b860; font-size: 20px; letter-spacing: 0.12em; text-transform: uppercase; }
+#rotate span { color: #9aa6b4; }
+.rotate-phone {
+  width: 46px; height: 80px; border: 4px solid #e0b860; border-radius: 9px; box-sizing: border-box;
+  animation: rotate-phone 2.4s ease-in-out infinite;
+}
+@keyframes rotate-phone { 0%, 30% { transform: rotate(0deg); } 60%, 100% { transform: rotate(-90deg); } }
+@media (orientation: portrait) and (pointer: coarse) {
+  #rotate { display: flex; }
+}
+/* low screens (phones in landscape): a compact menu that fits without scrolling where possible */
+@media (max-height: 520px) {
+  .lobby { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  .lobby:not(.lobby-pause) { padding-left: max(12px, env(safe-area-inset-left)); }
+  .lobby-card { padding: 10px 14px; gap: 7px; max-height: calc(100vh - 12px); max-height: calc(100dvh - 12px); }
+  .lobby:not(.lobby-pause) .lobby-card { width: min(330px, 70vw); }
+  .lobby h1 { font-size: 15px; margin: 0; }
+  .lobby h2 { font-size: 12px; }
+  .lobby-screen, .lobby-group, .lobby-online { gap: 7px; }
+  .lobby-btn { padding: 8px 10px; font-size: 14px; }
+  .lobby-btn.big { font-size: 15px; padding: 9px; }
+  .lobby-btn.subtle { padding: 6px; }
+  .lobby-row { gap: 4px; font-size: 10px; }
+  .lobby-seg-btn { padding: 5px 7px; font-size: 11px; }
+  .lobby-role-desc, .lobby-mode-desc, .lobby-hint, .lobby-best { font-size: 11px; margin-top: -3px; }
+  .lobby input { padding: 7px 9px; font-size: 16px; }
+  .lobby-swatch { width: 28px; height: 28px; }
+  .lobby-room b { font-size: 20px; }
+  .castoff-btn { bottom: calc(12px + env(safe-area-inset-bottom)); padding: 10px 18px; font-size: 15px; }
+}

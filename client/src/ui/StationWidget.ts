@@ -318,7 +318,8 @@ export class StationWidget {
     // the helm shares the bottom with its sea chart: the wheel moves a bit to the left
     // the helm shares the bottom with its sea chart; the life ring keeps the sea behind the ship free (control on the right)
     // the cannon keeps the sea on the bow side free (its control sits on the left)
-    const ox = kind === 'wheel' ? -30 : kind === 'ring' ? Math.round(W / 2) - 58 : kind === 'cannon' ? -(Math.round(W / 2) - 58) : 0;
+    // (right of the HUD column, which reaches about 100 px into the screen)
+    const ox = kind === 'wheel' ? -30 : kind === 'ring' ? Math.round(W / 2) - 58 : kind === 'cannon' ? Math.min(0, 140 - cx) : 0;
     this.center = this.diorama ? { x: Math.round(this.diorama.center.x), y: Math.round(this.diorama.center.y) } : { x: cx + ox, y: cy };
     this.g.clear();
     this.geometry2d = null;
@@ -504,7 +505,7 @@ export class StationWidget {
     const top = big ? cy - 80 : kind === 'wheel' ? cy - 64 : cy - 44;
     this.sub.text = sub;
     const half = Math.max(this.title.textWidth, this.sub.textWidth) / 2;
-    const tx = kind === 'ring' ? Math.min(W - 2 - half, cx + ox) : kind === 'cannon' ? Math.max(2 + half, cx + ox) : cx;
+    const tx = kind === 'ring' ? Math.min(W - 2 - half, cx + ox) : kind === 'cannon' ? Math.max(102 + half, cx + ox) : cx;
     this.title.position.set(Math.round(tx - this.title.textWidth / 2), top);
     this.sub.text = sub;
     this.sub.position.set(Math.round(tx - this.sub.textWidth / 2), big ? cy + 37 : top + 7);

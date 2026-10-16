@@ -78,6 +78,7 @@ async function boot(): Promise<void> {
     });
     status.remove();
     setupHelp();
+    setupPhone(game);
     game.start();
     await setupOnline(game, sim, params, audio.engine);
   } catch (err) {
@@ -253,6 +254,28 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
   // the launch screen over the menu scene
   game.startShowcase();
   lobby.show('start');
+}
+
+/**
+ * Phones: landscape only. Upright shows a "turn the phone" card (and holds solo
+ * play); where the browser allows it (Android), the first tap goes full screen
+ * and locks the orientation to landscape.
+ */
+function setupPhone(game: Game): void {
+  const upright = window.matchMedia('(orientation: portrait) and (pointer: coarse)');
+  const sync = () => (game.upright = upright.matches);
+  upright.addEventListener('change', sync);
+  sync();
+  const phone = Math.min(screen.width, screen.height) < 600 && window.matchMedia('(pointer: coarse)').matches;
+  if (!phone || !document.fullscreenEnabled) return;
+  const go = () => {
+    if (document.fullscreenElement) return;
+    document.documentElement
+      .requestFullscreen({ navigationUI: 'hide' })
+      .then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape'))
+      .catch(() => {});
+  };
+  window.addEventListener('pointerup', go, { once: true });
 }
 
 function setupHelp(): void {

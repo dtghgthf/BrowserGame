@@ -182,7 +182,10 @@ export class Hud {
     }
 
     // ---- in the harbour: what to do and when the ship casts off
-    if (state.status === 'harbor') {
+    // (not while the own player stands at the chart table: its big route map shows the same, the banner would cover it)
+    const me = state.players.find((p) => p.id === localIds[0]);
+    const atTable = !!me && me.station !== null && state.stations[me.station]?.kind === 'table';
+    if (state.status === 'harbor' && !atTable) {
       const legs = nextLegs(camp);
       const chosen = camp.choice >= 0 ? camp.nodes[camp.choice] : legs[0];
       const route = camp.nodes.length > 0;
