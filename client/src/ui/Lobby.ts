@@ -90,6 +90,24 @@ export function explainError(e: unknown, code?: string): string {
 
 const hex = (c: number) => `#${c.toString(16).padStart(6, '0')}`;
 
+type KeyboardLock = { lock?(keys?: string[]): Promise<void>; unlock?(): void };
+
+/** Page full screen; in Chromium browsers the Escape key is locked to the page (the browser leaves on a long press). */
+async function toggleFullscreen(): Promise<void> {
+  const kb = (navigator as Navigator & { keyboard?: KeyboardLock }).keyboard;
+  try {
+    if (document.fullscreenElement) {
+      kb?.unlock?.();
+      await document.exitFullscreen();
+      return;
+    }
+    await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+    await kb?.lock?.(['Escape']);
+  } catch {
+    /* not allowed here (iframe, old browser): nothing happens */
+  }
+}
+
 /**
  * The menus (DOM, so text inputs and the iPad keyboard work): the launch
  * screen over the menu scene (single player, multiplayer with host / join,
@@ -184,6 +202,8 @@ export class Lobby {
             <button class="lobby-mute" title="Ton an/aus (M)">🔊</button>
           </div>
           <button class="lobby-btn lobby-3d"></button>
+          <button class="lobby-btn lobby-fullscreen">Vollbild</button>
+          <div class="lobby-hint lobby-fs-hint"></div>
           <button class="lobby-btn subtle lobby-settings-back">Zurück</button>
         </div>
         <div class="lobby-screen" data-screen="pause">
@@ -343,10 +363,25 @@ export class Lobby {
         sync3d();
       });
     } else b3d.style.display = 'none';
+    // full screen of the page: where the browser allows it, Esc stays with the game (hold Esc to leave)
+    const fs = q<HTMLButtonElement>('.lobby-fullscreen');
+    const fsHint = q<HTMLDivElement>('.lobby-fs-hint');
+    const lockable = !!(navigator as Navigator & { keyboard?: { lock?: unknown } }).keyboard?.lock;
+    const syncFs = () => {
+      fs.textContent = document.fullscreenElement ? 'Vollbild beenden' : 'Vollbild';
+      fsHint.textContent = lockable ? 'Im Vollbild öffnet Esc das Menü – zum Verlassen Esc gedrückt halten.' : 'Tab öffnet das Menü ebenfalls, ohne das Vollbild zu verlassen.';
+    };
+    fs.style.display = document.fullscreenEnabled ? '' : 'none';
+    fs.addEventListener('click', () => void toggleFullscreen().then(syncFs));
+    document.addEventListener('fullscreenchange', syncFs);
+    syncFs();
     // keys typed into the menu must not steer the ship
     this.el.addEventListener('keydown', (e) => {
       e.stopPropagation();
-      if (e.key === 'Escape') this.escape();
+      if (e.key === 'Escape' || (e.key === 'Tab' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLSelectElement))) {
+        if (e.key === 'Tab') e.preventDefault();
+        this.escape();
+      }
     });
 
     if (invitedCode && isRoomCode(invitedCode)) {

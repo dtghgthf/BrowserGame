@@ -219,8 +219,12 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
   menu.title = 'Menü (Esc)';
   menu.addEventListener('click', () => lobby.toggle(game.net !== null, game.playing));
   document.body.appendChild(menu);
+  // Esc or Tab: Tab never leaves the browser's full screen (Safari cannot keep Esc for the page)
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !e.repeat) lobby.toggle(game.net !== null, game.playing);
+    const t = e.target as HTMLElement | null;
+    const typing = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT');
+    if (e.key === 'Tab' && !typing) e.preventDefault();
+    if ((e.key === 'Escape' || (e.key === 'Tab' && !typing)) && !e.repeat) lobby.toggle(game.net !== null, game.playing);
   });
   (window as { __lobby?: Lobby }).__lobby = lobby;
 
