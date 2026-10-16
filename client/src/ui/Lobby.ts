@@ -361,7 +361,15 @@ export class Lobby {
     const lockable = !!(navigator as Navigator & { keyboard?: { lock?: unknown } }).keyboard?.lock;
     const syncFs = () => {
       fs.textContent = document.fullscreenElement ? 'Vollbild beenden' : 'Vollbild';
-      fsHint.textContent = lockable ? 'Im Vollbild öffnet Esc das Menü – zum Verlassen Esc gedrückt halten.' : 'Tab öffnet das Menü ebenfalls, ohne das Vollbild zu verlassen.';
+      // iPhone: no full screen for pages - the web app from the home screen runs without the browser bars
+      const ios = /iPhone|iPod/.test(navigator.userAgent);
+      const standalone = window.matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+      fsHint.textContent =
+        ios && !standalone
+          ? 'iPhone: Teilen → „Zum Home-Bildschirm“ – dann startet das Spiel ohne Browserleiste.'
+          : lockable
+            ? 'Im Vollbild öffnet Esc das Menü – zum Verlassen Esc gedrückt halten.'
+            : 'Tab öffnet das Menü ebenfalls, ohne das Vollbild zu verlassen.';
     };
     fs.style.display = document.fullscreenEnabled ? '' : 'none';
     fs.addEventListener('click', () => void toggleFullscreen().then(syncFs));

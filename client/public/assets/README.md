@@ -52,3 +52,8 @@ Alle Sounds sind synthetisierte Platzhalter (`scripts/assets/sfx.ts`), 22 kHz mo
 | `thunder`, `foghorn`, `arrive` | Donner nach Blitzen, Nebelhorn bei „Land in Sicht“, Ankunft |
 | `creak_*` | knarzendes Holz (öfter bei Seegang) |
 | `loop_sea`, `loop_wind`, `loop_rain`, `loop_leak` | Hintergrund |
+
+## App-Icons
+`icon-180.png` (iPhone), `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` (Android, Motiv in den mittleren 75 %)
+und `favicon-32.png` erzeugt `npm run assets` aus `scripts/assets/icon.ts` (32×32 Pixel, ohne Glättung hochskaliert).
+Eigene Icons einfach mit gleichem Namen und gleicher Größe ersetzen – sie werden dann nicht mehr überschrieben.

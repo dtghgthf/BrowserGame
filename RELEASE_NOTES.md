@@ -12,6 +12,7 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 - **Größer auf dem Handy:** Auf kleinen Bildschirmen rechnet das Spiel mit größeren Pixeln – HUD, Texte und Stationen sind besser lesbar, die schwarzen Ränder links und rechts sind weg.
 - **Größere Touch-Knöpfe** (Sprung-Knopf mindestens ~2 cm) mit Abstand zu Notch und Home-Leiste.
 - **Kompaktes Menü** auf niedrigen Bildschirmen.
+- **Als App auf den Home-Bildschirm:** Eigenes Icon (der Leuchtturm). iPhone: Teilen → „Zum Home-Bildschirm“, Android: Menü → „App installieren“ / „Zum Startbildschirm“. So startet das Spiel ohne Browserleiste im Querformat.
 - **Nur quer:** Hochkant erscheint „Bitte quer halten“, eine Einzelfahrt hält so lange an. Unter Android geht das Spiel beim ersten Tippen ins Vollbild und bleibt im Querformat.
 
 ## Mehr zu tun an Bord

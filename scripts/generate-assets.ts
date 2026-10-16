@@ -17,6 +17,7 @@ import { getShipLayout } from '@lw/shared';
 import { asepriteJson, type SheetFrame } from './assets/aseprite';
 import { Canvas } from './assets/canvas';
 import { normalMap } from './assets/normals';
+import { drawIcon, iconAt } from './assets/icon';
 import { encodePng } from './assets/png';
 import { drawPlayerSheet, PLAYER_FRAME } from './assets/player';
 import { drawProps, packSprites } from './assets/props';
@@ -130,6 +131,18 @@ saveCanvas('ship_back', drawBack(layout), 1.2, 0);
   save('props_n.png', width, H, normalMap(atlas, 1.5, 1));
   if (writeAsset('props.json', asepriteJson('props.png', { w: width, h: H }, frames))) console.log(`  props.json (${frames.length} sprites)`);
 }
+// --- app icons (home screen / installed web app): pixel art scaled up without smoothing
+{
+  const icon = drawIcon();
+  const bg = [7, 11, 24, 255] as const;
+  save('icon-180.png', 180, 180, iconAt(icon, 180, 1, bg));
+  save('icon-192.png', 192, 192, iconAt(icon, 192, 1, bg));
+  save('icon-512.png', 512, 512, iconAt(icon, 512, 1, bg));
+  // maskable: the launcher may cut a circle, so the art keeps to the middle 75 %
+  save('icon-maskable-512.png', 512, 512, iconAt(icon, 512, 0.75, bg));
+  save('favicon-32.png', 32, 32, iconAt(icon, 32, 1, bg));
+}
+
 // --- placeholder sounds (WAV, 22 kHz mono). Replace any file with your own recording / Ableton export.
 {
   mkdirSync(join(out, 'sfx'), { recursive: true });
