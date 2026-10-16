@@ -422,8 +422,7 @@ async function playOnline(browser, name, result) {
   await b.page.waitForFunction(() => window.__game.net?.predictor.synced, null, { timeout: 15000 });
   // everybody is aboard: the host casts off from the menu (the start harbour waits without a countdown)
   const holding = await a.page.evaluate(() => window.__game.sim.state.hold);
-  await a.page.keyboard.press('Escape');
-  await a.page.click('.lobby-castoff');
+  await a.page.click('.castoff-btn');
   await a.page.waitForFunction(() => !window.__game.sim.state.hold, null, { timeout: 5000 });
   await sleep(1500);
   await a.page.keyboard.down('KeyD');

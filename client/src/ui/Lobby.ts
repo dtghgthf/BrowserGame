@@ -28,9 +28,6 @@ export interface LobbyActions {
   leave(): Promise<void>;
   /** Ends a solo voyage (back to the main menu). */
   quitSolo(): void;
-  /** Online, waiting in the start harbour: this player may cast off. */
-  canCastOff(): boolean;
-  castOff(): void;
   /** The menu opened / closed while playing (solo pauses). */
   paused(on: boolean): void;
 }
@@ -209,7 +206,6 @@ export class Lobby {
         <div class="lobby-screen" data-screen="pause">
           <h2 class="lobby-pause-title">Pause</h2>
           <div class="lobby-room"></div>
-          <button class="lobby-btn primary lobby-castoff">Ablegen – alle da!</button>
           <button class="lobby-btn primary lobby-back">Weiterspielen</button>
           <button class="lobby-btn lobby-share">Einladungslink teilen</button>
           <button class="lobby-btn" data-go="settings">Einstellungen</button>
@@ -323,10 +319,6 @@ export class Lobby {
       actions.shipyard();
     });
     q<HTMLButtonElement>('.lobby-share').addEventListener('click', () => void this.share());
-    q<HTMLButtonElement>('.lobby-castoff').addEventListener('click', () => {
-      actions.castOff();
-      this.hide();
-    });
     q<HTMLButtonElement>('.lobby-leave').addEventListener('click', () => {
       if (this.online) void actions.leave().then(() => this.show('start', 'Du hast das Schiff verlassen.'));
       else {
@@ -469,7 +461,6 @@ export class Lobby {
     this.roomLabel.style.display = this.online ? '' : 'none';
     this.roomLabel.innerHTML = `Raum <b>${this.roomCode}</b>Code an die anderen weitergeben`;
     q<HTMLElement>('.lobby-share').style.display = this.online ? '' : 'none';
-    q<HTMLElement>('.lobby-castoff').style.display = this.online && this.actions.canCastOff() ? '' : 'none';
     q<HTMLElement>('.lobby-leave').textContent = this.online ? 'Schiff verlassen' : 'Zum Hauptmenü';
   }
 

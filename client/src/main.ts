@@ -145,8 +145,6 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
         game.startShowcase();
       },
       quitSolo: () => game.startShowcase(),
-      canCastOff: () => game.isHost && game.sim.state.status === 'harbor' && game.sim.state.hold,
-      castOff: () => game.command({ type: 'castOff' }),
       paused: (on) => (game.paused = on && !game.net),
     },
     normalizeRoomCode(params.get('room') ?? '') || null,
@@ -219,6 +217,21 @@ async function setupOnline(game: Game, sim: Simulation, params: URLSearchParams,
   menu.title = 'Menü (Esc)';
   menu.addEventListener('click', () => lobby.toggle(game.net !== null, game.playing));
   document.body.appendChild(menu);
+  // waiting for the crew in the harbour: the host casts off with a button on screen
+  const castOff = document.createElement('button');
+  castOff.className = 'castoff-btn allow-touch';
+  castOff.textContent = 'Ablegen – alle da!';
+  castOff.addEventListener('click', () => {
+    game.command({ type: 'castOff' });
+    castOff.style.display = 'none';
+  });
+  document.body.appendChild(castOff);
+  const syncCastOff = () => {
+    const s = game.sim.state;
+    castOff.style.display = game.isHost && s.status === 'harbor' && s.hold && !lobby.visible ? '' : 'none';
+    requestAnimationFrame(syncCastOff);
+  };
+  syncCastOff();
   // Esc or Tab: Tab never leaves the browser's full screen (Safari cannot keep Esc for the page)
   window.addEventListener('keydown', (e) => {
     const t = e.target as HTMLElement | null;

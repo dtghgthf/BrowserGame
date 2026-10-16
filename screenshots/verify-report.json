@@ -31,18 +31,18 @@
     ],
     "fps": {
       "high": {
-        "avg": 9.3,
-        "min": 6.9,
-        "samples": 3
+        "avg": 7.4,
+        "min": 6.5,
+        "samples": 2
       },
       "medium": {
-        "avg": 20.7,
-        "min": 11.6,
+        "avg": 21.2,
+        "min": 14.1,
         "samples": 3
       },
       "low": {
-        "avg": 24.4,
-        "min": 21.3,
+        "avg": 29.3,
+        "min": 25.2,
         "samples": 3
       }
     },
@@ -66,16 +66,16 @@
     "crateOpened": 1,
     "campaign": {
       "status": "campaign",
-      "legs": 12
+      "legs": 14
     },
     "state": {
-      "tick": 359,
+      "tick": 347,
       "water": [
         0,
         0
       ],
       "leaks": 0,
-      "roll": -1.5
+      "roll": -2.1
     },
     "editor": {
       "check": "Alles seetüchtig!",
@@ -95,7 +95,7 @@
       }
     },
     "online": {
-      "code": "AXJV",
+      "code": "VWYP",
       "pingSeen": [
         "here"
       ],
@@ -104,12 +104,12 @@
         "ANNA",
         "BEN"
       ],
-      "rtt": 1,
+      "rtt": 6,
       "stats": {
-        "pending": 7,
-        "replayed": 1,
-        "snapshots": 36,
-        "serverTick": 79
+        "pending": 6,
+        "replayed": 0,
+        "snapshots": 40,
+        "serverTick": 64
       }
     }
   }

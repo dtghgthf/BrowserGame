@@ -365,6 +365,6 @@ Format: **Entscheidung** – Begründung.
   weggeräumt; Krake/Piraten/Treibgut setzt die Szene selbst ein, hält sie ein paar Meter vor dem Bug und schickt sie nach
   ein paar Sekunden weg (`flee`), bevor sie angreifen könnten. Kamera auf den Bug, rechts vom Menü.
 - **Warten im Hafen (`GameState.hold`):** Server-Räume starten mit `holdStart` – jede neue Fahrt (auch Einzelfahrt, dann
-  ohne Route) beginnt im Hafen ohne Countdown. `castOff` (nur Host, Pausenmenü) oder F am Kartentisch, wenn alle gewählt
+  ohne Route) beginnt im Hafen ohne Countdown. `castOff` (nur Host, Knopf im Bild) oder F am Kartentisch, wenn alle gewählt
   haben, startet 3 s „Leinen los“. Solo bleibt der bisherige Countdown.
 - **Pause:** nur solo (`Game.paused`, der Stepper läuft mit dt = 0); online segelt das Schiff weiter.

@@ -272,3 +272,12 @@ body.editor-open .menu-btn, body.editor-open .tuning-gear, body.editor-open .tou
   .lobby-btn.big { font-size: 15px; padding: 9px; }
   .lobby h1 { font-size: 18px; }
 }
+
+/* host only, waiting in the start harbour */
+.castoff-btn {
+  position: fixed; left: 50%; bottom: 16vh; transform: translateX(-50%); z-index: 15;
+  padding: 14px 28px; font: inherit; font-size: 18px; letter-spacing: 0.08em; cursor: pointer; touch-action: manipulation;
+  border: 2px solid #c8963c; background: #3a2810; color: #f0cc72; box-shadow: 0 0 0 2px #05070d, 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+.castoff-btn:active { transform: translateX(-50%) translateY(1px); }
+body.lobby-open .castoff-btn, body.editor-open .castoff-btn { display: none !important; }

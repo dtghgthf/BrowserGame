@@ -191,7 +191,7 @@ export class Hud {
         ? [
             ['IM HAFEN - DIE CREW SAMMELT SICH', C.gold],
             [`${aboard} AN BORD · RAUM ${net?.code ?? ''}`, C.text],
-            [net?.host ? 'ALLE DA? MENÜ (ESC) = ABLEGEN' : 'DER KAPITÄN LEGT AB, WENN ALLE DA SIND', C.text],
+            [net?.host ? 'ALLE DA? DANN UNTEN AUF ABLEGEN' : 'DER KAPITÄN LEGT AB, WENN ALLE DA SIND', C.text],
           ]
         : [
             [camp.node < 0 ? 'IM HAFEN - GLEICH GEHT ES LOS' : 'IM HAFEN', C.gold],

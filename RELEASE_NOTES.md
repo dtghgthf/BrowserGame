@@ -4,7 +4,7 @@ Noch nicht online – das hier kommt mit dem nächsten Update.
 
 ## Neues Hauptmenü
 - **Startbildschirm:** Einzelspieler, Mehrspieler, Werft, Einstellungen – dahinter segelt das Schiff durch die Nacht, ein paar Matrosen laufen über Deck, der Leuchtturm blinkt, und ab und zu schauen Krake, Piraten oder Treibgut vorbei (sie tun nichts).
-- **Mehrspieler:** erst Name, Farbe und Rolle, dann **Hosten** oder **Beitreten**. Wer hostet, wartet mit der Crew im Hafen – ohne Countdown, bis du im Menü „Ablegen – alle da!“ drückst (oder alle am Kartentisch gewählt haben und jemand F drückt).
+- **Mehrspieler:** erst Name, Farbe und Rolle, dann **Hosten** oder **Beitreten**. Wer hostet, wartet mit der Crew im Hafen – ohne Countdown, bis du den Knopf „Ablegen – alle da!“ unten im Bild drückst (oder alle am Kartentisch gewählt haben und jemand F drückt).
 - **Vollbild ohne Esc-Ärger:** In den Einstellungen gibt es „Vollbild“. In Chrome/Edge öffnet Esc dann das Menü, statt das Vollbild zu beenden (zum Verlassen Esc gedrückt halten). In Safari geht das nicht – dort öffnet **Tab** das Menü, ohne das Vollbild zu verlassen.
 - **Pausenmenü:** Weiterspielen, Einstellungen, Einladungslink (online), Zum Hauptmenü bzw. Schiff verlassen. Allein hält das Spiel in der Pause an.
 
